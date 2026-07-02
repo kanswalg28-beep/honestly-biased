@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     let allArticles = [];
     let searchFilterQuery = "";
+    
+    // Admin pagination state
+    let adminCurrentPage = 1;
+    let adminItemsPerPage = 22;
+    let adminTotalPages = 1;
 
     // SELECT DOM ELEMENTS
     const adminArticlesList = document.getElementById('admin-articles-list');
@@ -125,7 +130,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return matchHeadline || matchSource || matchCategory || matchAuthor;
         });
 
-        if (filtered.length === 0) {
+        // Pagination
+        adminTotalPages = Math.ceil(filtered.length / adminItemsPerPage);
+        if (adminCurrentPage > adminTotalPages) adminCurrentPage = adminTotalPages;
+        if (adminCurrentPage < 1) adminCurrentPage = 1;
+        
+        const startIdx = (adminCurrentPage - 1) * adminItemsPerPage;
+        const endIdx = startIdx + adminItemsPerPage;
+        const paginatedArticles = filtered.slice(startIdx, endIdx);
+
+        if (paginatedArticles.length === 0) {
             adminArticlesList.innerHTML = `
                 <div style="padding: 64px 24px; text-align: center; color: var(--text-muted);">
                     <i data-lucide="search-code" style="width: 44px; height: 44px; margin-bottom: 16px; color: var(--accent-saffron); opacity: 0.7;"></i>
@@ -134,10 +148,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             lucide.createIcons();
+            updateAdminPaginationUI();
             return;
         }
 
-        filtered.forEach(article => {
+        paginatedArticles.forEach(article => {
             const card = document.createElement('div');
             card.className = 'admin-card-row';
 
@@ -752,6 +767,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadHeroContent();
+
+    // Admin Pagination UI update function
+    function updateAdminPaginationUI() {
+        const pageIndicator = document.getElementById('admin-page-indicator');
+        const prevBtn = document.getElementById('admin-prev-page');
+        const nextBtn = document.getElementById('admin-next-page');
+        
+        if (pageIndicator) {
+            pageIndicator.textContent = `${adminCurrentPage} / ${adminTotalPages}`;
+        }
+        
+        if (prevBtn) {
+            prevBtn.disabled = adminCurrentPage <= 1;
+            prevBtn.style.opacity = adminCurrentPage <= 1 ? '0.4' : '1';
+            prevBtn.style.cursor = adminCurrentPage <= 1 ? 'not-allowed' : 'pointer';
+        }
+        
+        if (nextBtn) {
+            nextBtn.disabled = adminCurrentPage >= adminTotalPages;
+            nextBtn.style.opacity = adminCurrentPage >= adminTotalPages ? '0.4' : '1';
+            nextBtn.style.cursor = adminCurrentPage >= adminTotalPages ? 'not-allowed' : 'pointer';
+        }
+    }
+
+    // Admin Pagination event listeners
+    const adminPerPageSelect = document.getElementById('admin-per-page-select');
+    const adminPrevPageBtn = document.getElementById('admin-prev-page');
+    const adminNextPageBtn = document.getElementById('admin-next-page');
+    
+    if (adminPerPageSelect) {
+        adminPerPageSelect.addEventListener('change', () => {
+            adminItemsPerPage = parseInt(adminPerPageSelect.value);
+            adminCurrentPage = 1; // Reset to first page
+            populateManagerList();
+        });
+    }
+    
+    if (adminPrevPageBtn) {
+        adminPrevPageBtn.addEventListener('click', () => {
+            if (adminCurrentPage > 1) {
+                adminCurrentPage--;
+                populateManagerList();
+            }
+        });
+    }
+    
+    if (adminNextPageBtn) {
+        adminNextPageBtn.addEventListener('click', () => {
+            if (adminCurrentPage < adminTotalPages) {
+                adminCurrentPage++;
+                populateManagerList();
+            }
+        });
+    }
 
     // Load subscribers initial load and poll every 10 seconds
     loadSubscribers();

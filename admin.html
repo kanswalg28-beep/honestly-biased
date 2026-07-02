@@ -1090,6 +1090,24 @@
                         <!-- Loaded dynamically via admin.js -->
                     </div>
                 </div>
+                
+                <!-- Admin Pagination Controls -->
+                <div class="admin-pagination" style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; padding: 16px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Show:</span>
+                        <select id="admin-per-page-select" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; font-size: 0.8rem;">
+                            <option value="10">10 per page</option>
+                            <option value="22" selected>22 per page</option>
+                            <option value="46">46 per page</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Page:</span>
+                        <button class="admin-pagination-btn" id="admin-prev-page" aria-label="Previous page" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"><i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i></button>
+                        <span id="admin-page-indicator" style="min-width: 60px; text-align: center; font-weight: 600;">1 / 1</span>
+                        <button class="admin-pagination-btn" id="admin-next-page" aria-label="Next page" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"><i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i></button>
+                    </div>
+                </div>
             </section>
         </div>
     </div>

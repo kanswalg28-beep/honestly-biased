@@ -633,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Pagination state
                 let currentPage = 1;
-                let itemsPerPage = 24;
+                let itemsPerPage = 22;
                 let totalPages = 1;
 
                 // Dynamic Asymmetrical Bento Grid compiler
@@ -1018,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let region = 'indian';
         let category = 'all';
 
-        const validRegions = ['indian', 'world', 'uk'];
+        const validRegions = ['indian', 'world', 'uk', 'berkshire'];
         const validCategories = ['politics', 'tech', 'finance', 'entertainment', 'health'];
 
         if (parts.length === 1) {
@@ -1138,6 +1138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let regionName = 'Indian';
             if (currentRegion === 'world') regionName = 'World';
             else if (currentRegion === 'uk') regionName = 'UK';
+            else if (currentRegion === 'berkshire') regionName = 'Berkshire';
 
             const meta = categoryMetadata[currentCategory] || categoryMetadata['all'];
             
