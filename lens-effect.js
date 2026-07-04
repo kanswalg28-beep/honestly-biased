@@ -27,47 +27,68 @@ const PerspectiveLens = {
     tiltOffset: { x: 0, y: 0 },
 
     init() {
-        this.container = document.getElementById('lens-canvas-container');
-        if (!this.container) return;
+            this.container = document.getElementById('lens-canvas-container');
+            if (!this.container) return;
 
-        const textureSrc = this.container.getAttribute('data-src') || './assets/hero-bg.png';
+            const textureSrc = this.container.getAttribute('data-src') || './assets/hero-bg.png';
 
-        // 1. Initialize WebGL Context
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-        this.container.appendChild(this.renderer.domElement);
-        this.canvas = this.renderer.domElement;
+            // 1. Initialize WebGL Context
+            this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            this.container.appendChild(this.renderer.domElement);
+            this.canvas = this.renderer.domElement;
 
-        // Hide structural fallback static image
-        const fallbackImg = this.container.querySelector('.hero-fallback-img');
-        if (fallbackImg) fallbackImg.style.display = 'none';
+            // Hide structural fallback static image
+            const fallbackImg = this.container.querySelector('.hero-fallback-img');
+            if (fallbackImg) fallbackImg.style.display = 'none';
 
-        // 2. Setup camera and flat canvas scene
-        this.scene = new THREE.Scene();
-        this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            // 2. Setup camera and flat canvas scene
+            this.scene = new THREE.Scene();
+            this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-        // 3. Load featured editorial asset texture
-        const loader = new THREE.TextureLoader();
-        loader.load(
-            textureSrc,
-            (texture) => {
-                this.texture = texture;
-                this.texture.minFilter = THREE.LinearFilter;
-                this.texture.magFilter = THREE.LinearFilter;
-                this.texture.generateMipmaps = false;
-                
-                this.setupShaderMesh();
-                this.setupInteractionListeners();
-                this.animate(0);
-            },
-            undefined,
-            (err) => {
-                console.error("Three.js Texture Loader encountered a loading error: ", err);
-                if (fallbackImg) fallbackImg.style.display = 'block';
-            }
-        );
-    },
+            // 3. Load featured editorial asset texture
+            this.loadTexture(textureSrc);
+        },
+
+        loadTexture(textureSrc) {
+            console.log('[PerspectiveLens] Loading texture:', textureSrc);
+            const loader = new THREE.TextureLoader();
+            loader.load(
+                textureSrc,
+                (texture) => {
+                    console.log('[PerspectiveLens] Texture loaded successfully');
+                    this.texture = texture;
+                    this.texture.minFilter = THREE.LinearFilter;
+                    this.texture.magFilter = THREE.LinearFilter;
+                    this.texture.generateMipmaps = false;
+
+                    if (!this.material) {
+                        // First load - setup everything
+                        this.setupShaderMesh();
+                        this.setupInteractionListeners();
+                        this.animate(0);
+                    } else {
+                        // Texture reload - just update the uniform
+                        this.material.uniforms.u_texture.value = this.texture;
+                        this.material.needsUpdate = true;
+                    }
+                },
+                undefined,
+                (err) => {
+                    console.error('[PerspectiveLens] Texture load error:', err);
+                    const fallbackImg = this.container.querySelector('.hero-fallback-img');
+                    if (fallbackImg) fallbackImg.style.display = 'block';
+                }
+            );
+        },
+
+        updateTexture(newSrc) {
+            if (!newSrc || newSrc === this.container.getAttribute('data-src')) return;
+            console.log('[PerspectiveLens] Updating texture to:', newSrc);
+            this.container.setAttribute('data-src', newSrc);
+            this.loadTexture(newSrc);
+        },
 
     setupShaderMesh() {
         // Vertex Shader: Standard UV forwarding
@@ -282,3 +303,6 @@ const PerspectiveLens = {
 document.addEventListener('DOMContentLoaded', () => {
     PerspectiveLens.init();
 });
+
+// Expose for CMS hero image updates
+window.PerspectiveLens = PerspectiveLens;

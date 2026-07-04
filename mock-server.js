@@ -1237,7 +1237,8 @@ function readSiteContent() {
             body: "Traditional news chambers claim to deliver pure, unvarnished objective truth. We say that is a convenient myth. Let us look closer—and biasedly—at the corporate lobbying, administrative inertia, and policy loopholes rewriting the agrarian economy under the cover of artificial neutrality.",
             byline: "Aniket Verma",
             byline_role: "Senior Bias Analyst",
-            cta: "Expose The Script"
+            cta: "Expose The Script",
+            image: "./assets/hero-bg.png"
         }
     };
 }

@@ -729,20 +729,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btnSubmit) btnSubmit.disabled = true;
 
             const payload = {
-                updates: [
-                    {
-                        key: 'hero',
-                        value: {
-                            eyebrow: heroEyebrow.value,
-                            readtime: heroReadtime.value,
-                            headline: heroHeadline.value,
-                            body: heroBody.value,
-                            byline: heroByline.value,
-                            byline_role: heroBylineRole.value,
-                            cta: heroCta.value
-                        }
+                updates: [{
+                    key: 'hero',
+                    value: {
+                        eyebrow: heroEyebrow.value,
+                        readtime: heroReadtime.value,
+                        headline: heroHeadline.value,
+                        body: heroBody.value,
+                        byline: heroByline.value,
+                        byline_role: heroBylineRole.value,
+                        cta: heroCta.value,
+                        image: heroImageUrl.value
                     }
-                ]
+                }]
             };
 
             try {

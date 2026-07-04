@@ -89,6 +89,44 @@ async function hydrateSiteContent() {
             const k = node.dataset.bind;
             if (data[k] != null) node.textContent = String(data[k]);
         });
+
+        // === Hero: update background image if present ===
+        if (blockKey === 'hero' && data.image) {
+            const lensContainer = document.getElementById('lens-canvas-container');
+            if (lensContainer) {
+                lensContainer.dataset.src = data.image;
+                // Update all source/img elements inside
+                const picture = lensContainer.querySelector('picture');
+                if (picture) {
+                    // Update the fallback img
+                    const fallbackImg = picture.querySelector('img.hero-fallback-img');
+                    if (fallbackImg) fallbackImg.src = data.image;
+                    // Update source elements - try to derive responsive variants
+                    const sources = picture.querySelectorAll('source');
+                    sources.forEach(source => {
+                        const srcset = source.getAttribute('srcset');
+                        if (srcset && srcset.includes('hero-bg')) {
+                            // Replace the base filename with new image base
+                            const newSrcset = srcset.replace(/hero-bg(\.[a-z0-9]+)/g, (match, ext) => {
+                                const newBase = data.image.replace(/\.[a-z0-9]+$/, '');
+                                return newBase + ext;
+                            });
+                            source.setAttribute('srcset', newSrcset);
+                        }
+                    });
+                }
+            }
+            // Update Three.js lens effect texture
+            if (window.PerspectiveLens && typeof window.PerspectiveLens.updateTexture === 'function') {
+                console.log('[hydrateSiteContent] Calling PerspectiveLens.updateTexture with:', data.image);
+                window.PerspectiveLens.updateTexture(data.image);
+            } else {
+                console.log('[hydrateSiteContent] PerspectiveLens not ready:', { 
+                    hasPerspectiveLens: !!window.PerspectiveLens, 
+                    hasUpdateTexture: window.PerspectiveLens ? typeof window.PerspectiveLens.updateTexture : 'N/A' 
+                });
+            }
+        }
     }
 }
 
@@ -443,10 +481,24 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("📡 Fetching site_content blocks first, then live feed...");
 
         // ------------------------------------------------------------
-        // 1. Hydrate static editorial blocks from CMS-controlled DB rows.
-        //    Must run BEFORE the bento observer attaches so that
-        //    IntersectionObserver entries aren't missed on a fast re-render.
+        // 1. Wait for PerspectiveLens to be ready, then hydrate site content
         // ------------------------------------------------------------
+        let lensReady = false;
+        const maxWait = 5000;
+        const startTime = Date.now();
+        
+        while (!lensReady && (Date.now() - startTime) < maxWait) {
+            if (window.PerspectiveLens && window.PerspectiveLens.material) {
+                lensReady = true;
+                break;
+            }
+            await new Promise(r => setTimeout(r, 100));
+        }
+        
+        if (!lensReady) {
+            console.warn('PerspectiveLens not ready after timeout, proceeding anyway');
+        }
+        
         try { await hydrateSiteContent(); }
         catch (e) { console.warn('site_content hydration failed:', e); }
 

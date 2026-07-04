@@ -99,26 +99,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // STATE
-    // ==========================================================================
-    let allArticles = [];
-    let searchFilterQuery = "";
-    
-    // Pagination state
-    let currentPage = 1;
-    const pageSize = 20;
-    let totalPages = 1;
-    let totalArticles = 0;
-    let currentSortBy = 'publishdate';
-    let currentSortOrder = 'desc';
+        // STATE
+        // ==========================================================================
+        let allArticles = [];
+        let searchFilterQuery = "";
 
-    // SELECT DOM ELEMENTS
-    const adminArticlesList = document.getElementById('admin-articles-list');
-    const cmsArticleForm = document.getElementById('cms-article-form');
-    const searchInput = document.getElementById('cms-search');
-    
-    // Pagination DOM elements (will be created dynamically)
-    let paginationContainer = null;
+        // Pagination state (uses new UI: per-page select + prev/next + page indicator)
+        let currentPage = 1;
+        let pageSize = 22; // Default, will be overridden by #admin-per-page-select
+        let totalPages = 1;
+        let totalArticles = 0;
+        let currentSortBy = 'publishdate';
+        let currentSortOrder = 'desc';
+
+        // SELECT DOM ELEMENTS
+        const adminArticlesList = document.getElementById('admin-articles-list');
+        const cmsArticleForm = document.getElementById('cms-article-form');
+        const searchInput = document.getElementById('cms-search');
+
+        // NEW Pagination UI elements (from admin.html)
+        const adminPerPageSelect = document.getElementById('admin-per-page-select');
+        const adminPrevPageBtn = document.getElementById('admin-prev-page');
+        const adminNextPageBtn = document.getElementById('admin-next-page');
+        const adminPageIndicator = document.getElementById('admin-page-indicator');
 
     // STATS METRIC LABELS
     const statTotal = document.getElementById('stat-total');
@@ -340,54 +343,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // CMS DATA LOADING (with pagination)
-    // ==========================================================================
-    async function loadCMSData() {
-        console.log("📡 Fetching CMS articles for hydration...");
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
-            
-            const params = new URLSearchParams({
-                page: currentPage,
-                limit: pageSize,
-                sortBy: currentSortBy,
-                sortOrder: currentSortOrder
-            });
-            
-            const response = await fetch(`/api/admin/articles?${params.toString()}&_t=` + Date.now(), {
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
+        // CMS DATA LOADING (fetch all, client-side pagination)
+        // ==========================================================================
+        async function loadCMSData() {
+            console.log("📡 Fetching CMS articles for hydration...");
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-            if (response.ok) {
-                const data = await response.json();
-                // Handle both old format (array) and new format (object with pagination)
-                if (Array.isArray(data)) {
-                    allArticles = data;
-                    totalArticles = data.length;
-                    totalPages = 1;
+                const response = await fetch('/api/admin/articles?_t=' + Date.now(), {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Handle both old format (array) and new format (object with pagination)
+                    if (Array.isArray(data)) {
+                        allArticles = data;
+                    } else {
+                        allArticles = data.articles || [];
+                    }
+                    updateStatsMetrics();
+                    populateManagerList();
                 } else {
-                    allArticles = data.articles || [];
-                    totalArticles = data.pagination?.total || allArticles.length;
-                    totalPages = data.pagination?.totalPages || 1;
-                    currentPage = data.pagination?.page || 1;
+                    console.error("Failed to load CMS articles:", response.status);
+                    showToast('Failed to load articles', 'error');
                 }
-                updateStatsMetrics();
-                populateManagerList();
-                renderPagination();
-            } else {
-                console.error("Failed to load CMS articles:", response.status);
-                showToast('Failed to load articles', 'error');
-            }
-        } catch (error) {
-            if (error.name !== 'AbortError') {
-                console.error("CMS could not connect to server:", error);
-                showToast('Cannot connect to server', 'error');
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error("CMS could not connect to server:", error);
+                    showToast('Cannot connect to server', 'error');
+                }
             }
         }
-    }
-
     // ==========================================================================
     // STATS & LIST RENDERING
     // ==========================================================================
@@ -413,6 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!adminArticlesList) return;
         adminArticlesList.innerHTML = '';
 
+        // Filter based on search input query
         const query = searchFilterQuery.toLowerCase().trim();
         const filtered = allArticles.filter(article => {
             const matchHeadline = article.aiheadline && article.aiheadline.toLowerCase().includes(query);
@@ -422,7 +412,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return matchHeadline || matchSource || matchCategory || matchAuthor;
         });
 
-        if (filtered.length === 0) {
+        // Client-side pagination
+        totalArticles = filtered.length;
+        totalPages = Math.ceil(totalArticles / pageSize);
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * pageSize;
+        const endIdx = startIdx + pageSize;
+        const paginatedArticles = filtered.slice(startIdx, endIdx);
+
+        if (paginatedArticles.length === 0) {
             adminArticlesList.innerHTML = `
                 <div style="padding: 64px 24px; text-align: center; color: var(--text-muted);">
                     <i data-lucide="search-code" style="width: 44px; height: 44px; margin-bottom: 16px; color: var(--accent-saffron); opacity: 0.7;"></i>
@@ -431,13 +431,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             lucide.createIcons();
+            updatePaginationUI();
             return;
         }
 
-        filtered.forEach(article => {
+        paginatedArticles.forEach(article => {
             const card = document.createElement('div');
             card.className = 'admin-card-row';
-            card.setAttribute('role', 'listitem');
 
             let badgeClass = 'badge-ai';
             let badgeText = '🤖 AI Audited';
@@ -450,16 +450,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const cardImageUrl = article.imageurl || "./assets/hero-bg.png";
+
             let regionBadge = '🇮🇳 Indian';
             if (article.region === 'world') regionBadge = '🌐 World';
             else if (article.region === 'uk') regionBadge = '🇬🇧 UK';
+            else if (article.region === 'berkshire') regionBadge = '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Berkshire';
 
             card.innerHTML = `
+                <!-- Thumbnail Cover Preview -->
                 <div class="admin-row-thumb" style="background-image: url('${escapeHtml(cardImageUrl)}')">
                     <span class="admin-row-tag">${escapeHtml(article.category)}</span>
                 </div>
+                
+                <!-- Card content meta -->
                 <div class="admin-row-body">
                     <h3 class="admin-row-title">${escapeHtml(article.aiheadline)}</h3>
+                    
                     <div class="admin-row-meta">
                         <span class="author-type-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
                         <span class="author-type-badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-glass);">${escapeHtml(regionBadge)}</span>
@@ -467,11 +473,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span><i data-lucide="clock"></i> ${escapeHtml(article.timeago)}</span>
                     </div>
                 </div>
+                
+                <!-- Action triggers -->
                 <div class="admin-row-actions">
-                    <button class="btn-action act-edit" data-id="${escapeHtml(article.id)}" title="Refine Satirical Text" aria-label="Edit article ${escapeHtml(article.aiheadline)}">
+                    <button class="btn-action act-edit" data-id="${escapeHtml(article.id)}" title="Refine Satirical Text">
                         <i data-lucide="edit-3"></i>
                     </button>
-                    <button class="btn-action act-delete" data-id="${escapeHtml(article.id)}" title="Permanently Scrub News Card" aria-label="Delete article ${escapeHtml(article.aiheadline)}">
+                    <button class="btn-action act-delete" data-id="${escapeHtml(article.id)}" title="Permanently Scrub News Card">
                         <i data-lucide="trash-2"></i>
                     </button>
                 </div>
@@ -483,108 +491,110 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Bind Edit buttons
         adminArticlesList.querySelectorAll('.act-edit').forEach(btn => {
-            btn.addEventListener('click', () => loadArticleForEdit(btn.getAttribute('data-id')));
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                const article = allArticles.find(a => String(a.id) === String(id));
+                if (article) {
+                    cmsArticleId.value = article.id;
+                    cmsCategory.value = article.category;
+                    cmsRegion.value = article.region || 'indian';
+                    cmsSource.value = article.originalsource || '';
+                    cmsHeadline.value = article.aiheadline;
+                    cmsBiasAudit.value = article.biasaudit;
+                    cmsSummary.value = article.aisummary;
+                    if (cmsFullBlog) cmsFullBlog.value = article.fullblog || '';
+                    cmsImageUrl.value = article.imageurl || '';
+                    cmsOriginalUrl.value = article.originalurl || '';
+                    if (cmsPublishDate) {
+                        if (article.publishdate) {
+                            const d = new Date(article.publishdate);
+                            const pad = num => String(num).padStart(2, '0');
+                            const localString = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                            cmsPublishDate.value = localString;
+                        } else {
+                            cmsPublishDate.value = '';
+                        }
+                    }
+
+                    // Trigger live preview reload
+                    cmsPreviewImg.src = article.imageurl || "./assets/hero-bg.png";
+
+                    // Show edit mode headers
+                    cmsFormTitle.textContent = "Refine News Chronicle";
+                    cmsFormSubtitle.textContent = "Refine satirical headlines, critical summaries or narrative bias audits.";
+                    btnCmsSubmit.textContent = "Save Changes";
+                    btnCmsReset.style.display = "inline-flex";
+
+                    // Smoothly scroll the creator form into view on mobile screens
+                    document.querySelector('.cms-grid').scrollIntoView({ behavior: 'smooth' });
+                }
+            });
         });
 
         // Bind Delete buttons
         adminArticlesList.querySelectorAll('.act-delete').forEach(btn => {
-            btn.addEventListener('click', () => deleteArticle(btn.getAttribute('data-id')));
-        });
-    }
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                const article = allArticles.find(a => String(a.id) === String(id));
+                if (!article) return;
 
-    // ==========================================================================
-    // PAGINATION RENDERING
-    // ==========================================================================
-    function renderPagination() {
-        // Find or create pagination container
-        let container = document.getElementById('pagination-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'pagination-container';
-            container.style.cssText = `
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-                margin-top: 24px;
-                padding: 16px;
-                flex-wrap: wrap;
-            `;
-            adminArticlesList.parentElement.appendChild(container);
-        }
-        
-        if (totalPages <= 1) {
-            container.innerHTML = '';
-            return;
-        }
-        
-        let html = `
-            <div style="color: var(--text-muted); font-size: 0.85rem; margin-right: 16px;">
-                Page ${currentPage} of ${totalPages} (${totalArticles} total)
-            </div>
-        `;
-        
-        // Previous button
-        html += `
-            <button class="btn btn-secondary pagination-btn" 
-                    data-page="${currentPage - 1}" 
-                    ${currentPage <= 1 ? 'disabled' : ''}
-                    aria-label="Previous page">
-                <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
-            </button>
-        `;
-        
-        // Page numbers
-        const startPage = Math.max(1, currentPage - 2);
-        const endPage = Math.min(totalPages, currentPage + 2);
-        
-        if (startPage > 1) {
-            html += `<button class="btn btn-secondary pagination-btn" data-page="1">1</button>`;
-            if (startPage > 2) {
-                html += `<span style="color: var(--text-muted); padding: 0 8px;">...</span>`;
-            }
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-            html += `
-                <button class="btn ${i === currentPage ? 'btn-primary' : 'btn-secondary'} pagination-btn" 
-                        data-page="${i}" 
-                        ${i === currentPage ? 'aria-current="page"' : ''}>
-                    ${i}
-                </button>
-            `;
-        }
-        
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                html += `<span style="color: var(--text-muted); padding: 0 8px;">...</span>`;
-            }
-            html += `<button class="btn btn-secondary pagination-btn" data-page="${totalPages}">${totalPages}</button>`;
-        }
-        
-        // Next button
-        html += `
-            <button class="btn btn-secondary pagination-btn" 
-                    data-page="${currentPage + 1}" 
-                    ${currentPage >= totalPages ? 'disabled' : ''}
-                    aria-label="Next page">
-                <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
-            </button>
-        `;
-        
-        container.innerHTML = html;
-        lucide.createIcons();
-        
-        // Bind pagination buttons
-        container.querySelectorAll('.pagination-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const page = parseInt(btn.getAttribute('data-page'));
-                if (!isNaN(page) && page !== currentPage && page >= 1 && page <= totalPages) {
-                    currentPage = page;
-                    loadCMSData();
+                if (confirm(`Scrub and erase "${article.aiheadline}" permanently from the database cache?`)) {
+                    try {
+                        const response = await fetch(`/api/admin/articles/${id}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            console.log(`🗑️ Successfully deleted article ID: ${id}`);
+                            // Update local state instantly (0ms)
+                            allArticles = allArticles.filter(a => String(a.id) !== String(id));
+
+                            updateStatsMetrics();
+                            populateManagerList();
+
+                            // Reset form if we were currently editing the deleted article
+                            if (cmsArticleId.value === String(id)) {
+                                cancelEditMode();
+                            }
+                        } else {
+                            alert("Failed to delete the article from Express database cache.");
+                        }
+                    } catch (err) {
+                        console.error("Delete CMS request failed:", err);
+                        alert("Cannot connect to honestlybiasedOfficial backend server.");
+                    }
                 }
             });
         });
+
+        updatePaginationUI();
+    }
+
+    // ==========================================================================
+    // PAGINATION UI UPDATE (uses new admin.html elements)
+    // ==========================================================================
+    function updatePaginationUI() {
+        if (adminPageIndicator) {
+            adminPageIndicator.textContent = `${currentPage} / ${totalPages}`;
+        }
+
+        if (adminPrevPageBtn) {
+            adminPrevPageBtn.disabled = currentPage <= 1;
+            adminPrevPageBtn.style.opacity = currentPage <= 1 ? '0.4' : '1';
+            adminPrevPageBtn.style.cursor = currentPage <= 1 ? 'not-allowed' : 'pointer';
+        }
+
+        if (adminNextPageBtn) {
+            adminNextPageBtn.disabled = currentPage >= totalPages;
+            adminNextPageBtn.style.opacity = currentPage >= totalPages ? '0.4' : '1';
+            adminNextPageBtn.style.cursor = currentPage >= totalPages ? 'not-allowed' : 'pointer';
+        }
+
+        // Also remove any old pagination container if it exists
+        const oldContainer = document.getElementById('pagination-container');
+        if (oldContainer) {
+            oldContainer.remove();
+        }
     }
 
     async function loadArticleForEdit(id) {
@@ -635,8 +645,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (res.ok) {
                 showToast('Article deleted', 'success');
-                // Reload data to get updated pagination
-                await loadCMSData();
+                // Update local state and re-render (client-side pagination)
+                allArticles = allArticles.filter(a => String(a.id) !== String(id));
+                updateStatsMetrics();
+                populateManagerList();
                 if (cmsArticleId.value === String(id)) cancelEditMode();
             } else {
                 showToast('Failed to delete article', 'error');
@@ -737,7 +749,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         body: heroBody.value,
                         byline: heroByline.value,
                         byline_role: heroBylineRole.value,
-                        cta: heroCta.value
+                        cta: heroCta.value,
+                        image: heroImageUrl.value
                     }
                 }]
             };
@@ -775,6 +788,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (heroByline) heroByline.value = hero.byline || '';
                 if (heroBylineRole) heroBylineRole.value = hero.byline_role || '';
                 if (heroCta) heroCta.value = hero.cta || '';
+                if (heroImageUrl) heroImageUrl.value = hero.image || './assets/hero-bg.png';
+                if (heroPreviewImg) heroPreviewImg.src = hero.image || './assets/hero-bg.png';
             }
         } catch (e) {
             console.error("Failed to load hero content:", e);
@@ -934,6 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const result = await res.json();
                     showToast(result.message || 'Sync executed', 'success');
                     await loadInstagramConfig();
+                    // Refresh articles from server after Instagram sync
                     await loadCMSData();
                 } else {
                     const err = await res.json();
@@ -979,6 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (res.ok) {
                     showToast('Simulation triggered', 'success');
+                    // Refresh articles from server after simulation (adds new articles)
                     await loadCMSData();
                     await loadInstagramConfig();
                 } else {
@@ -1039,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('input', () => {
             searchFilterQuery = searchInput.value;
             currentPage = 1; // Reset to first page on search
-            loadCMSData(); // Use server-side search
+            populateManagerList(); // Client-side filter + paginate
         });
     }
 
@@ -1051,7 +1068,17 @@ document.addEventListener('DOMContentLoaded', () => {
         sortBySelect.addEventListener('change', () => {
             currentSortBy = sortBySelect.value;
             currentPage = 1;
-            loadCMSData();
+            // Sort the allArticles array client-side
+            allArticles.sort((a, b) => {
+                const aVal = a[currentSortBy] || '';
+                const bVal = b[currentSortBy] || '';
+                if (currentSortOrder === 'asc') {
+                    return String(aVal).localeCompare(String(bVal));
+                } else {
+                    return String(bVal).localeCompare(String(aVal));
+                }
+            });
+            populateManagerList();
         });
     }
 
@@ -1060,7 +1087,46 @@ document.addEventListener('DOMContentLoaded', () => {
         sortOrderSelect.addEventListener('change', () => {
             currentSortOrder = sortOrderSelect.value;
             currentPage = 1;
-            loadCMSData();
+            // Re-sort with new order
+            allArticles.sort((a, b) => {
+                const aVal = a[currentSortBy] || '';
+                const bVal = b[currentSortBy] || '';
+                if (currentSortOrder === 'asc') {
+                    return String(aVal).localeCompare(String(bVal));
+                } else {
+                    return String(bVal).localeCompare(String(aVal));
+                }
+            });
+            populateManagerList();
+        });
+    }
+
+    // ==========================================================================
+    // NEW PAGINATION UI EVENT LISTENERS (admin-per-page-select, admin-prev-page, admin-next-page)
+    // ==========================================================================
+    if (adminPerPageSelect) {
+        adminPerPageSelect.addEventListener('change', () => {
+            pageSize = parseInt(adminPerPageSelect.value);
+            currentPage = 1; // Reset to first page
+            populateManagerList();
+        });
+    }
+
+    if (adminPrevPageBtn) {
+        adminPrevPageBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                populateManagerList();
+            }
+        });
+    }
+
+    if (adminNextPageBtn) {
+        adminNextPageBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                populateManagerList();
+            }
         });
     }
 
