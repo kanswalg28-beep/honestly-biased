@@ -101,18 +101,10 @@ async function hydrateSiteContent() {
                     // Update the fallback img
                     const fallbackImg = picture.querySelector('img.hero-fallback-img');
                     if (fallbackImg) fallbackImg.src = data.image;
-                    // Update source elements - try to derive responsive variants
+                    // Update source elements to use the new image url
                     const sources = picture.querySelectorAll('source');
                     sources.forEach(source => {
-                        const srcset = source.getAttribute('srcset');
-                        if (srcset && srcset.includes('hero-bg')) {
-                            // Replace all ./assets/hero-bg-VARIANT.ext entries with new image base
-                            const newSrcset = srcset.replace(/(\.\/assets\/hero-bg[^"'\s]+)(\.[a-z0-9]+)/g, (match, prefix, ext) => {
-                                const newBase = data.image.replace(/\.[a-z0-9]+$/, '');
-                                return newBase + ext;
-                            });
-                            source.setAttribute('srcset', newSrcset);
-                        }
+                        source.setAttribute('srcset', data.image);
                     });
                 }
             }
