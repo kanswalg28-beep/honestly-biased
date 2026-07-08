@@ -106,8 +106,8 @@ async function hydrateSiteContent() {
                     sources.forEach(source => {
                         const srcset = source.getAttribute('srcset');
                         if (srcset && srcset.includes('hero-bg')) {
-                            // Replace the base filename with new image base
-                            const newSrcset = srcset.replace(/hero-bg(\.[a-z0-9]+)/g, (match, ext) => {
+                            // Replace all ./assets/hero-bg-VARIANT.ext entries with new image base
+                            const newSrcset = srcset.replace(/(\.\/assets\/hero-bg[^"'\s]+)(\.[a-z0-9]+)/g, (match, prefix, ext) => {
                                 const newBase = data.image.replace(/\.[a-z0-9]+$/, '');
                                 return newBase + ext;
                             });
