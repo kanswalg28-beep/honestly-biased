@@ -66,58 +66,6 @@
         </div>
     </header>
     <main id="main-content" style="padding: 120px 24px 80px; max-width: 900px; margin: 0 auto;">
-        <!-- HERO SECTION (Featuring Three.js "Perspective Refraction Lens" over Key Story) -->
-        <section class="hero-section" id="politics">
-            <!-- Three.js Canvas Container -->
-            <div class="lens-canvas-container" id="lens-canvas-container" data-src="/assets/hero-bg.png">
-                <!-- Responsive fallback images with WebP/AVIF -->
-                <picture>
-                    <source type="image/avif" srcset="/assets/hero-bg.avif">
-                    <source type="image/webp" srcset="
-                        /assets/hero-bg-400w.webp 400w,
-                        /assets/hero-bg-800w.webp 800w,
-                        /assets/hero-bg.webp 1024w
-                    " sizes="(max-width: 480px) 400px, (max-width: 900px) 800px, 1024px">
-                    <img src="/assets/hero-bg.png" alt="Featured Story Editorial Graphic" class="hero-fallback-img">
-                </picture>
-                <div class="lens-overlay"></div>
-            </div>
-
-            <!-- Hero Typography Content -->
-            <div class="hero-content-wrapper">
-                <div class="hero-text-block glass-element" data-site-content-block="hero">
-                    <!-- Live indicators with premium Saffron tint -->
-                    <div class="category-tag-wrapper">
-                        <span class="live-indicator"><span class="live-dot saffron-pulse"></span> <span data-bind="eyebrow">DEEP PERSPECTIVE</span></span>
-                        <span class="read-time"><i data-lucide="clock"></i> <span data-bind="readtime">9 Min Read</span></span>
-                    </div>
-
-                    <h1 class="hero-title">
-                        <span data-bind="headline">The Illusion of Consensus: Bending the Corporate News Narrative</span>
-                    </h1>
-                    
-                    <p class="hero-summary">
-                        <span data-bind="body">Traditional news chambers claim to deliver pure, unvarnished objective truth. We say that is a convenient myth. Let us look closer—and biasedly—at the corporate lobbying, administrative inertia, and policy loopholes rewriting the agrarian economy under the cover of artificial neutrality.</span>
-                    </p>
-
-                    <!-- Author Details & Meta -->
-                    <div class="hero-meta">
-                        <div class="author-info">
-                            <div class="author-avatar"><i data-lucide="user"></i></div>
-                            <div>
-                                <span class="author-name" data-bind="byline">Aniket Verma</span>
-                                <span class="author-title" data-bind="byline_role">Senior Bias Analyst</span>
-                            </div>
-                        </div>
-                        <a href="/article/illusion-of-consensus" class="btn btn-primary" aria-label="Read full analysis">
-                            <span data-bind="cta">Expose The Script</span>
-                            <i data-lucide="arrow-up-right"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <article class="glass-element" style="padding: 48px; border-radius: 24px; border: 1px solid var(--border-color);">
             <header style="margin-bottom: 32px;">
                 <h1 style="font-family: var(--font-editorial); font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: var(--text-primary);">The Illusion of Consensus: Bending the Corporate News Narrative</h1>
@@ -131,15 +79,7 @@
                 </div>
             </header>
             <figure style="margin-bottom: 36px; width: 100%; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--border-color);">
-                <picture>
-                    <source type="image/avif" srcset="/assets/hero-bg.avif">
-                    <source type="image/webp" srcset="
-                        /assets/hero-bg-400w.webp 400w,
-                        /assets/hero-bg-800w.webp 800w,
-                        /assets/hero-bg.webp 1024w
-                    " sizes="(max-width: 480px) 400px, (max-width: 900px) 800px, 1024px">
-                    <img src="/assets/hero-bg.png" alt="Featured Story Editorial Graphic: Corporate newsroom with distorted lenses" style="width: 100%; height: auto; display: block;">
-                </picture>
+                <img src="https://mprxrtesqgtznsinsezs.supabase.co/storage/v1/object/public/article-images/articles/1783170883878-kjo3bzzm.jpg" alt="Featured Story Editorial Graphic: Corporate newsroom with distorted lenses" style="width: 100%; height: auto; display: block;">
                 <figcaption style="padding: 16px; background: var(--bg-card); font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border-color);">Illustration: The refracted lens of corporate media — what passes through is never neutral.</figcaption>
             </figure>
             <div class="blog-post-content" style="font-size: 1.15rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 40px; font-weight: 400; letter-spacing: -0.003em;">
@@ -237,6 +177,5 @@
         <script src="https://unpkg.com/lucide@0.453.0"></script>
         <script>lucide.createIcons();</script>
         <script src="/app.js"></script>
-        <script src="/lens-effect.js"></script>
     </body>
     </html>
