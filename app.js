@@ -94,7 +94,10 @@ async function hydrateSiteContent() {
         if (blockKey === 'hero' && data.image) {
             const lensContainer = document.getElementById('lens-canvas-container');
             if (lensContainer) {
-                lensContainer.dataset.src = data.image;
+                // NOTE: Do NOT set lensContainer.dataset.src here — updateTexture()
+                // compares against data-src to detect changes. Setting it early
+                // causes updateTexture to skip loading the new image.
+                // lensContainer.dataset.src = data.image;
                 // Update all source/img elements inside
                 const picture = lensContainer.querySelector('picture');
                 if (picture) {
@@ -106,8 +109,8 @@ async function hydrateSiteContent() {
                     sources.forEach(source => {
                         const srcset = source.getAttribute('srcset');
                         if (srcset && srcset.includes('hero-bg')) {
-                            // Replace all ./assets/hero-bg-VARIANT.ext entries with new image base
-                            const newSrcset = srcset.replace(/(\.\/assets\/hero-bg[^"'\s]+)(\.[a-z0-9]+)/g, (match, prefix, ext) => {
+                            // Replace both ./assets/hero-bg-VARIANT.ext and /assets/hero-bg-VARIANT.ext
+                            const newSrcset = srcset.replace(/(\.{0,1}\/?assets\/hero-bg[^"'\s]+)(\.[a-z0-9]+)/g, (match, prefix, ext) => {
                                 const newBase = data.image.replace(/\.[a-z0-9]+$/, '');
                                 return newBase + ext;
                             });
@@ -115,6 +118,9 @@ async function hydrateSiteContent() {
                         }
                     });
                 }
+                // NOTE: Do NOT set lensContainer.dataset.src here — updateTexture()
+                // sets it internally after confirming the texture changed. Setting
+                // it early causes updateTexture's sanitize() check to skip loading.
             }
             // Update Three.js lens effect texture
             if (window.PerspectiveLens && typeof window.PerspectiveLens.updateTexture === 'function') {
