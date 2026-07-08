@@ -1499,17 +1499,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up router event listeners
     window.addEventListener('hashchange', () => handleRouting(false));
 
-    // Path-to-hash redirect: if someone lands on the homepage shell via a
-    // path-based URL (e.g. /article/some-id served as SPA fallback), redirect
-    // to the hash route so the SPA router can handle it properly.
+    // Path-to-hash redirect: only runs when the SPA shell (index.html) is
+    // served for a path-based URL that doesn't have a static HTML page. We
+    // detect the SPA shell by the presence of #dynamic-bento-grid — if that
+    // element exists, we're on the homepage shell; if not, we're on a static
+    // page that just happens to load app.js, and should NOT redirect.
     (function() {
-        const path = window.location.pathname;
-        if (path && path !== '/' && !path.startsWith('/api/') && !path.startsWith('/admin')) {
-            const pathParts = path.split('/').filter(p => p.trim());
-            if (pathParts.length > 0) {
-                console.log(`🔄 Path-to-hash redirect: converting pathname "${path}" to hash route`);
-                window.location.replace('/#' + path);
-                return;
+        const isBentoGridPresent = !!document.getElementById('dynamic-bento-grid');
+        if (isBentoGridPresent) {
+            const path = window.location.pathname;
+            if (path && path !== '/' && !path.startsWith('/api/') && !path.startsWith('/admin')) {
+                const pathParts = path.split('/').filter(p => p.trim());
+                if (pathParts.length > 0) {
+                    console.log(`🔄 Path-to-hash redirect: converting pathname "${path}" to hash route`);
+                    window.location.replace('/#' + path);
+                    return;
+                }
             }
         }
         // Already on homepage — run initial routing
