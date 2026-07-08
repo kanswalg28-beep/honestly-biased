@@ -84,7 +84,11 @@ const PerspectiveLens = {
         },
 
         updateTexture(newSrc) {
-            if (!newSrc || newSrc === this.container.getAttribute('data-src')) return;
+            if (!newSrc) return;
+            // Clean up relative path variations to ensure consistency
+            const sanitize = s => s.replace(/^\.\//, '').toLowerCase().trim();
+            if (sanitize(newSrc) === sanitize(this.container.getAttribute('data-src') || '')) return;
+            
             console.log('[PerspectiveLens] Updating texture to:', newSrc);
             this.container.setAttribute('data-src', newSrc);
             this.loadTexture(newSrc);
