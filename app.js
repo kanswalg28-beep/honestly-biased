@@ -1499,6 +1499,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up router event listeners
     window.addEventListener('hashchange', () => handleRouting(false));
 
+    // Path-to-hash redirect: if someone lands on the homepage shell via a
+    // path-based URL (e.g. /article/some-id served as SPA fallback), redirect
+    // to the hash route so the SPA router can handle it properly.
+    (function() {
+        const path = window.location.pathname;
+        if (path && path !== '/' && !path.startsWith('/api/') && !path.startsWith('/admin')) {
+            const pathParts = path.split('/').filter(p => p.trim());
+            if (pathParts.length > 0) {
+                console.log(`🔄 Path-to-hash redirect: converting pathname "${path}" to hash route`);
+                window.location.replace('/#' + path);
+                return;
+            }
+        }
+        // Already on homepage — run initial routing
+        handleRouting(true);
+    })();
+
     // Initialize fetching routine
     loadDynamicArticles();
 

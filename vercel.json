@@ -8,6 +8,50 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
+    },
+    {
+      "source": "/article/:slug",
+      "destination": "/article/:slug.html"
+    },
+    {
+      "source": "/politics",
+      "destination": "/politics.html"
+    },
+    {
+      "source": "/tech",
+      "destination": "/tech.html"
+    },
+    {
+      "source": "/finance",
+      "destination": "/finance.html"
+    },
+    {
+      "source": "/entertainment",
+      "destination": "/entertainment.html"
+    },
+    {
+      "source": "/health",
+      "destination": "/health.html"
+    },
+    {
+      "source": "/manifesto",
+      "destination": "/manifesto.html"
+    },
+    {
+      "source": "/standards",
+      "destination": "/standards.html"
+    },
+    {
+      "source": "/funding",
+      "destination": "/funding.html"
+    },
+    {
+      "source": "/finances",
+      "destination": "/finances.html"
+    },
+    {
+      "source": "/collective",
+      "destination": "/collective.html"
     }
   ],
   "crons": [],

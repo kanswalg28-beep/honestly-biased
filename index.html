@@ -127,11 +127,11 @@
     <script src="https://unpkg.com/lucide@0.453.0"></script>
 
     <!-- Preload hero image for LCP -->
-    <link rel="preload" as="image" href="./assets/hero-bg.webp" type="image/webp">
-    <link rel="preload" as="image" href="./assets/hero-bg.avif" type="image/avif">
+    <link rel="preload" as="image" href="/assets/hero-bg.webp" type="image/webp">
+    <link rel="preload" as="image" href="/assets/hero-bg.avif" type="image/avif">
 
     <!-- Core Stylesheet -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body class="dark-theme">
     <!-- Skip to Main Content for Accessibility -->
@@ -143,7 +143,7 @@
                 <!-- LEFT: Brand Logo -->
                 <div class="header-left">
                     <a href="#" class="brand-logo" aria-label="Honestly Biased Home">
-                        <img src="./assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
+                        <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
                     </a>
                 </div>
 
@@ -212,16 +212,16 @@
         <!-- HERO SECTION (Featuring Three.js "Perspective Refraction Lens" over Key Story) -->
         <section class="hero-section" id="politics" data-site-content-block="hero">
             <!-- Three.js Canvas Container -->
-            <div class="lens-canvas-container" id="lens-canvas-container" data-src="./assets/hero-bg.png">
+            <div class="lens-canvas-container" id="lens-canvas-container" data-src="/assets/hero-bg.png">
                 <!-- Responsive fallback images with WebP/AVIF -->
                 <picture>
-                    <source type="image/avif" srcset="./assets/hero-bg.avif">
+                    <source type="image/avif" srcset="/assets/hero-bg.avif">
                     <source type="image/webp" srcset="
-                        ./assets/hero-bg-400w.webp 400w,
-                        ./assets/hero-bg-800w.webp 800w,
-                        ./assets/hero-bg.webp 1024w
+                        /assets/hero-bg-400w.webp 400w,
+                        /assets/hero-bg-800w.webp 800w,
+                        /assets/hero-bg.webp 1024w
                     " sizes="(max-width: 480px) 400px, (max-width: 900px) 800px, 1024px">
-                    <img src="./assets/hero-bg.png" alt="Featured Story Editorial Graphic" class="hero-fallback-img">
+                    <img src="/assets/hero-bg.png" alt="Featured Story Editorial Graphic" class="hero-fallback-img">
                 </picture>
                 <div class="lens-overlay"></div>
             </div>
@@ -404,7 +404,7 @@
             <!-- Footer Brand & Mission -->
             <div class="footer-brand-column">
                 <a href="#" class="footer-logo">
-                    <img src="./assets/logo.png" alt="Honestly Biased Logo" class="logo-png-footer">
+                    <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png-footer">
                 </a>
                 <p class="mission-statement" data-site-content-block="footer">
                     <span data-bind="mission">Honestly Biased is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We believe in providing transparent, analytical, and uncompromisingly honest perspectives on politics, satire, and media power structures in India.</span>
@@ -528,10 +528,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <!-- Dynamic Theme and Page Logic -->
-    <script src="app.js"></script>
+    <script src="/app.js"></script>
 
     <!-- Custom Three.js "Perspective Refraction Lens" Glass Displacement Effect -->
-    <script src="lens-effect.js"></script>
+    <script src="/lens-effect.js"></script>
 
     <!-- Initializing Lucide Icons -->
     <script>

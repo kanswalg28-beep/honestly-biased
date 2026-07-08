@@ -30,7 +30,7 @@ const PerspectiveLens = {
             this.container = document.getElementById('lens-canvas-container');
             if (!this.container) return;
 
-            const textureSrc = this.container.getAttribute('data-src') || './assets/hero-bg.png';
+            const textureSrc = this.container.getAttribute('data-src') || '/assets/hero-bg.png';
 
             // 1. Initialize WebGL Context
             this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
