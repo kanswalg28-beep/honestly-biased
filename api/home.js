@@ -17,6 +17,35 @@ const SITE = 'https://www.honestlybiased.com';
 const SITE_NAME = 'Honestly Biased';
 const SITE_TAGLINE = 'Independent Commentary, Satire & Political Audit';
 
+// Fetch hero from CMS site-content
+async function fetchHeroFromCMS() {
+  try {
+    const res = await fetch(`${SITE}/api/site-content`, { headers: { 'Accept': 'application/json' } });
+    if (res.ok) {
+      const data = await res.json();
+      const hero = data.hero;
+      if (hero && hero.headline) {
+        // Map CMS fields to our internal format
+        return {
+          headline: hero.headline,
+          summary: hero.body || hero.summary,
+          imageUrl: hero.image || hero.imageUrl,
+          byline: hero.byline,
+          eyebrow: hero.eyebrow,
+          readTime: hero.readtime || hero.readTime,
+          bylineRole: hero.byline_role || hero.bylineRole,
+          cta: hero.cta,
+          publishDate: hero.publishDate,
+          id: hero.id
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('CMS hero fetch failed:', e.message);
+  }
+  return null;
+}
+
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
   return String(uuid).replace(/-/g, '').slice(-8);
@@ -225,8 +254,20 @@ async function fetchLatestArticles(limit = 22) {
 // --------------------------------------------------------------------------
 // Full HTML renderer
 // --------------------------------------------------------------------------
-function renderHomepageHtml(articles) {
-  const heroArticle = articles[0] || null;
+async function renderHomepageHtml(articles) {
+  // Fetch CMS hero for the hero section
+  const cmsHero = await fetchHeroFromCMS();
+  const heroArticle = cmsHero ? {
+    aiheadline: cmsHero.headline,
+    aisummary: cmsHero.summary,
+    imageurl: cmsHero.imageUrl || '/assets/hero-bg.png',
+    author: cmsHero.byline || 'Honestly Biased Team',
+    authortype: 'admin',
+    readtime: cmsHero.readTime || '9 Min Read',
+    region: 'indian',
+    publishdate: cmsHero.publishDate || new Date().toISOString(),
+    id: cmsHero.id || articles[0]?.id
+  } : articles[0] || null;
   const heroHeadline = heroArticle ? heroArticle.aiheadline : 'Deep Perspective';
   const heroSummary = heroArticle ? stripTags(heroArticle.aisummary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
   const heroImage = heroArticle ? (heroArticle.imageurl || '/assets/hero-bg.png') : '/assets/hero-bg.png';
@@ -238,7 +279,7 @@ function renderHomepageHtml(articles) {
   const heroPublishDate = heroArticle ? heroArticle.publishdate : new Date().toISOString();
   const heroTimeAgo = heroArticle ? formatTimeAgo(heroPublishDate) : formatTimeAgo(new Date().toISOString());
 
-  // Bento grid cards (first 22 articles)
+  // Bento grid cards (first 22 articles from Supabase)
   const bentoCards = articles.map((a, i) => buildBentoCard(a, i)).join('\n');
 
   // JSON-LD for homepage (WebSite + ItemList)
@@ -599,7 +640,7 @@ module.exports = async (req, res) => {
 
   // Cache miss — fetch fresh data
   const articles = await fetchLatestArticles(22);
-  const html = renderHomepageHtml(articles);
+  const html = await renderHomepageHtml(articles);
   cachedHtml = html;
   cacheTime = now;
 
