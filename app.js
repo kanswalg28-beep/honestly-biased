@@ -491,6 +491,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridContainer = document.getElementById('dynamic-bento-grid');
 
     async function loadDynamicArticles() {
+        // Check if __SSR_DATA__ inline JSON exists (primary hydration source)
+        const ssrDataEl = document.getElementById('__SSR_DATA__');
+        if (ssrDataEl) {
+            try {
+                const ssrData = JSON.parse(ssrDataEl.textContent);
+                if (ssrData.articles && ssrData.articles.length > 0) {
+                    console.log(`⚡ __SSR_DATA__ found with ${ssrData.articles.length} articles — instant hydration`);
+                    allArticles = ssrData.articles.map(a => ({ ...a }));
+                    // Restore base64 images if present
+                    allArticles.forEach(a => {
+                        if (a.hasBase64Image && !a.imageurl) {
+                            // Will be refetched when needed for new cards
+                            a.imageurl = '';
+                        }
+                    });
+                    // Re-fetch base64 images for cards that need them
+                    const cardsWithBase64 = document.querySelectorAll('.card-image-bg[data-bg]');
+                    console.log(`🖼️ ${cardsWithBase64.length} cards have base64 images in data-bg`);
+                }
+            } catch (e) {
+                console.warn('SSR data parse failed:', e);
+            }
+        }
+
         // Check if SSR already populated the bento grid
         const gridContainer = document.getElementById('dynamic-bento-grid');
         const ssrCards = gridContainer ? gridContainer.querySelectorAll('.bento-card') : [];
@@ -509,7 +533,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timeEl = card.querySelector('.card-time')?.textContent || '';
                 const bias = card.querySelector('.card-author')?.textContent?.replace('Bias Audit: ', '') || '';
                 const imgEl = card.querySelector('.card-image-bg');
-                const imgUrl = imgEl ? imgEl.style.backgroundImage.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '') : '';
+                // Check for data-bg attribute (base64 images stripped from SSR)
+                const dataBg = imgEl?.getAttribute('data-bg');
+                const imgUrl = dataBg || (imgEl ? imgEl.style.backgroundImage.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '') : '');
                 const authortype = badge?.classList.contains('badge-admin') ? 'admin' :
                                    badge?.classList.contains('badge-instagram') ? 'instagram' : 'ai';
                 

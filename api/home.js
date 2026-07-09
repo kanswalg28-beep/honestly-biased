@@ -114,14 +114,22 @@ function buildBentoCard(article, index) {
   const timeHtml = cardTimeHtml(article);
   const biasHtml = biasAuditHtml(article.biasaudit);
   const summary = escapeHtml(article.aisummary);
-  const imgUrl = escapeAttr(article.imageurl || '/assets/hero-bg.png');
+  // Strip base64 data URIs from SSR — they bloat HTML by ~1.5MB
+  // Use gradient placeholder + data-bg for JS lazy-load
+  const rawImg = article.imageurl || '/assets/hero-bg.png';
+  const isBase64 = rawImg.startsWith('data:image');
+  const imgUrl = isBase64 ? '' : escapeAttr(rawImg);
+  const dataBgAttr = isBase64 ? ` data-bg="${escapeAttr(rawImg)}"` : '';
+  const bgStyle = imgUrl
+    ? `background-image: url('${imgUrl}')`
+    : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
 
   if (index === 0) {
     // HERO: Large 2x2 feature card
     return `
       <article class="bento-card bento-span-2x2 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="background-image: url('${imgUrl}'); filter: saturate(0.85) contrast(1.15);"></div>
+          <div class="card-image-bg" style="${bgStyle}; filter: saturate(0.85) contrast(1.15);"${dataBgAttr}></div>
           ${catTag}
         </div>
         <div class="card-body">
@@ -147,7 +155,7 @@ function buildBentoCard(article, index) {
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="background-image: url('${imgUrl}'); filter: brightness(0.7) contrast(1.1);"></div>
+          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"${dataBgAttr}></div>
           ${catTag}
           <span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>
         </div>
@@ -172,7 +180,7 @@ function buildBentoCard(article, index) {
   return `
     <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
       <div class="card-visual">
-        <div class="card-image-bg" style="background-image: url('${imgUrl}'); filter: brightness(0.65) grayscale(0.15);"></div>
+        <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.65) grayscale(0.15);"${dataBgAttr}></div>
         ${catTag}
       </div>
       <div class="card-body">
@@ -283,9 +291,13 @@ function renderHomepageHtml(articles) {
 <script type="application/ld+json">${siteJsonLd}</script>
 <script type="application/ld+json">${listJsonLd}</script>
 
-<!-- Google Fonts -->
+<!-- Preconnect to critical external resources -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://mprxrtesqgtznsinsezs.supabase.co">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+<!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Lucide Icons -->
@@ -295,6 +307,7 @@ function renderHomepageHtml(articles) {
 <link rel="preload" as="image" href="${escapeAttr(heroImage)}" type="image/webp">
 
 <!-- Core Stylesheet -->
+<link rel="preload" href="/style.css" as="style">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="dark-theme">
@@ -515,59 +528,82 @@ function renderHomepageHtml(articles) {
 </div>
 
 <!-- Pre-hydration data for instant SSR → SPA transition -->
-<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => ({ ...a, shortId: shortIdFromUuid(a.id) })) })}</script>
+<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
 
-<!-- Three.js Library CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Three.js Library CDN — deferred (non-critical for first paint) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
 
 <!-- Dynamic Theme and Page Logic -->
-<script src="/app.js"></script>
+<script src="/app.js" defer></script>
 
 <!-- Custom Three.js "Perspective Refraction Lens" Glass Displacement Effect -->
-<script src="/lens-effect.js"></script>
+<script src="/lens-effect.js" defer></script>
 
 <!-- Initializing Lucide Icons -->
-<script>lucide.createIcons();</script>
+<script>window.addEventListener('DOMContentLoaded',()=>{if(window.lucide)lucide.createIcons();});</script>
 </body>
 </html>`;
 }
 
 // --------------------------------------------------------------------------
-// Handler
+// In-memory cache (survives within same serverless instance)
+// Key optimization: eliminates Supabase fetch + HTML render on every request
 // --------------------------------------------------------------------------
+let cachedHtml = null;
+let cachedJson = null;
+let cacheTime = 0;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  const now = Date.now();
+  const cacheValid = cachedHtml && (now - cacheTime) < CACHE_TTL_MS;
+
   // Support /api/home/feed.json for SPA pagination
   if (req.url && req.url.includes('/feed.json')) {
+    if (cacheValid && cachedJson) {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(cachedJson);
+    }
     const articles = await fetchLatestArticles(100);
-    const feed = articles.map(a => ({
-      ...a,
-      shortId: shortIdFromUuid(a.id),
-      timeago: formatTimeAgo(a.publishdate)
-    }));
+    const feed = articles.map(a => {
+      const stripped = { ...a, shortId: shortIdFromUuid(a.id), timeago: formatTimeAgo(a.publishdate) };
+      if (a.imageurl && a.imageurl.startsWith('data:image')) {
+        stripped.hasBase64Image = true;
+        stripped.imageurl = '';
+      }
+      return stripped;
+    });
+    cachedJson = { articles: feed };
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
-    return res.status(200).json({ articles: feed });
+    res.setHeader('X-Cache', 'MISS');
+    return res.status(200).json(cachedJson);
   }
 
-  // HTML homepage
-  const articles = await fetchLatestArticles(22);
+  // HTML homepage — serve from cache if valid
+  if (cacheValid) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('X-Cache', 'HIT');
+    return res.status(200).send(cachedHtml);
+  }
 
+  // Cache miss — fetch fresh data
+  const articles = await fetchLatestArticles(22);
   const html = renderHomepageHtml(articles);
+  cachedHtml = html;
+  cacheTime = now;
 
   // Cache: 24h fresh (s-maxage=86400), 7d stale-while-revalidate (604800s)
-  // This means:
-  // - CDN serves cached HTML for 24h
-  // - After 24h, next request triggers revalidation in background
-  // - During revalidation, stale content served for up to 7d
-  // - When admin publishes new article, cache bust via /api/cache/bust
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
   res.setHeader('Vary', 'User-Agent');
-  res.setHeader('Link', `<${SITE}/style.css>; rel=preload; as=style, <https://unpkg.com/lucide@0.453.0>; rel=preload; as=script`);
-  res.setHeader('X-Robots-Tag', 'index, follow');
+  res.setHeader('X-Cache', 'MISS');
 
   return res.status(200).send(html);
 };
