@@ -1394,11 +1394,70 @@ body.light-theme #category-active-pill.health {
     }
 }
 
+/* Tablet: First 4 posts stack as 2x1 horizontal cards (6 cols each) */
+@media (max-width: 1024px) {
+    .bento-grid > .bento-span-2x1:nth-child(-n+4) {
+        grid-column: span 6;
+        grid-row: span 1;
+    }
+    
+    .bento-grid > .bento-span-1x1:nth-child(n+5) {
+        grid-column: span 6;
+        grid-row: span 1;
+    }
+}
+
+/* Mobile: All cards single column */
 @media (max-width: 767px) {
+    .bento-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .bento-grid > .bento-span-2x1,
+    .bento-grid > .bento-span-1x1 {
+        grid-column: span 1;
+        grid-row: span 1;
+    }
+    
+    .bento-card {
+        min-height: auto;
+    }
+    
+    .card-visual {
+        aspect-ratio: 16 / 9;
+    }
+    
+    .bento-span-2x1 .card-visual {
+        aspect-ratio: 16 / 9;
+    }
+    
+    .card-body {
+        padding: 16px;
+    }
+    
+    .card-summary {
+        -webkit-line-clamp: 3;
+    }
+    
+    .card-time {
+        font-size: 0.7rem;
+    }
+    
     .region-tab-btn,
     .category-tab-btn {
         padding: 8px 14px;
         font-size: 0.72rem;
+    }
+    
+    /* Touch-friendly card tap targets */
+    .bento-card {
+        touch-action: manipulation;
+    }
+    
+    .stretched-link::after {
+        /* Make whole card tappable on mobile */
+        inset: 0;
     }
 }
 
@@ -2530,16 +2589,65 @@ body.light-theme #category-active-pill.health {
         padding-left: 0;
     }
 
-    .hero-text-block {
-        padding: 20px 16px;
+    .hero-section {
+        min-height: auto;
+        padding: 32px 0;
     }
     
+    .lens-overlay {
+        background: linear-gradient(
+            to bottom,
+            rgba(var(--bg-primary-rgb), 0.8) 0%,
+            rgba(var(--bg-primary-rgb), 0.95) 100%
+        );
+    }
+
+    .hero-content-wrapper {
+        flex-direction: column;
+    }
+
+    .hero-text-block {
+        max-width: 100%;
+        padding: 24px 16px;
+    }
+
     .hero-meta {
         flex-direction: column;
         align-items: flex-start;
         gap: 16px;
     }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Disable Three.js heavy effects on mobile for performance */
+    .lens-canvas-container canvas {
+        display: none !important;
+    }
     
+    .hero-fallback-img {
+        opacity: 0.6;
+        object-fit: cover;
+    }
+
+    .hero-content-wrapper {
+        flex-direction: column;
+        padding: 0 16px;
+    }
+
+    .hero-text-block {
+        max-width: 100%;
+        padding: 24px 16px;
+    }
+
+    .hero-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
     .btn {
         width: 100%;
         justify-content: center;
@@ -2553,7 +2661,7 @@ body.light-theme #category-active-pill.health {
     .section-title {
         font-size: 1.8rem;
     }
-    
+
     .bento-grid {
         grid-template-columns: 1fr;
         grid-auto-rows: auto;
