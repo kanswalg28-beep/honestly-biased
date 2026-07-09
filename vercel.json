@@ -10,8 +10,16 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/rss.xml",
+      "destination": "/api/rss"
+    },
+    {
+      "source": "/feed.xml",
+      "destination": "/api/rss"
+    },
+    {
       "source": "/article/:slug",
-      "destination": "/article/:slug.html"
+      "destination": "/api/article?slug=:slug"
     },
     {
       "source": "/politics",

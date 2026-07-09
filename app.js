@@ -171,6 +171,13 @@ function formatDate(isoString) {
     }
 }
 
+// Derive a short, URL-friendly 8-hex identifier from a uuid (last 8 hex chars).
+// Must match the same derivation on the server (api/article.js).
+function shortIdFromUuid(uuid) {
+    if (!uuid) return '';
+    return String(uuid).replace(/-/g, '').slice(-8);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     
     // ==========================================================================
@@ -769,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}
                                         </span>
                                         <h3 class="card-title" style="margin-top:10px;">
-                                            <a href="#" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                                            <a href="/article/${shortIdFromUuid(article.id)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
                                         </h3>
                                         <p class="card-summary">${article.aisummary}</p>
                                         <div class="card-footer-meta">
@@ -799,7 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}
                                         </span>
                                         <h3 class="card-title" style="margin-top:10px;">
-                                            <a href="#" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                                            <a href="/article/${shortIdFromUuid(article.id)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
                                         </h3>
                                         <p class="card-summary">${article.aisummary}</p>
                                         <div class="card-footer-meta">
@@ -830,7 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             </span>
                                         </div>
                                         <h3 class="card-title" style="margin-bottom:10px;">
-                                            <a href="#" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                                            <a href="/article/${shortIdFromUuid(article.id)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
                                         </h3>
                                         <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${article.aisummary}</p>
                                         <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.03);">
@@ -1009,8 +1016,17 @@ document.addEventListener('DOMContentLoaded', () => {
         triggers.forEach(t => {
             t.addEventListener('click', (e) => {
                 e.preventDefault();
-                const id = t.getAttribute('data-id');
-                window.location.hash = `#/article/${id}`;
+                // Use the SEO-friendly /article/<shortId> URL so social shares,
+                // search indexers, and link previews all see a real article page
+                // rather than a hash anchor that crawlers often ignore.
+                const href = t.getAttribute('href');
+                if (href && href.startsWith('/article/')) {
+                    window.location.href = href;
+                } else {
+                    const id = t.getAttribute('data-id');
+                    const shortId = shortIdFromUuid(id) || id;
+                    window.location.href = `/article/${shortId}`;
+                }
             });
         });
 
