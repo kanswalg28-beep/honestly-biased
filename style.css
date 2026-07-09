@@ -1410,10 +1410,10 @@ body.light-theme #category-active-pill.health {
     gap: 24px;
 }
 
-/* First 4 posts - 2x2 grid (each spans 6 cols, 2 rows) */
-.bento-grid > .bento-span-2x2:nth-child(-n+4) {
+/* First 4 posts - 2x1 horizontal cards (each spans 6 cols, 1 row) */
+.bento-grid > .bento-span-2x1:nth-child(-n+4) {
     grid-column: span 6;
-    grid-row: span 2;
+    grid-row: span 1;
 }
 
 /* Remaining posts - 3 column grid (each spans 4 cols) */
