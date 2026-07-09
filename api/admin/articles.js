@@ -74,8 +74,9 @@ function formatTimeAgo(dateStr) {
 }
 
 module.exports = async (req, res) => {
-  // Optional auth – if env vars are set, enforce auth
-  if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD) {
+  // Optional auth – if env vars are set, enforce auth for mutating operations only
+  const isMutating = ['POST', 'PUT', 'DELETE'].includes(req.method);
+  if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && isMutating) {
     if (!basicAuth(req)) {
       res.setHeader('WWW-Authenticate', 'Basic realm="CMS Admin"');
       return res.status(401).json({ error: 'Authentication required' });

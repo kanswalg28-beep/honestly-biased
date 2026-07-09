@@ -17,7 +17,8 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // Basic auth check (same pattern as other admin endpoints)
-  if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD) {
+  // Only require auth for POST (upload), not GET
+  if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && req.method === 'POST') {
     const authHeader = req.headers['authorization'];
     if (!authHeader) {
       res.setHeader('WWW-Authenticate', 'Basic realm="CMS Admin"');
