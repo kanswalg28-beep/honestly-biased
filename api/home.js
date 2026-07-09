@@ -153,12 +153,13 @@ function buildBentoCard(article, index) {
     : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
 
   if (index === 0) {
-    // HERO: Large 2x2 feature card
+    // FIRST POST: Same size as posts 2,3,4 (2x1 horizontal card)
     return `
-      <article class="bento-card bento-span-2x2 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
+      <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: saturate(0.85) contrast(1.15);"></div>
+          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
           ${catTag}
+          <span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>
         </div>
         <div class="card-body">
           <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
@@ -171,7 +172,6 @@ function buildBentoCard(article, index) {
           <p class="card-summary">${summary}</p>
           <div class="card-footer-meta">
             ${biasHtml}
-            <span class="card-action"><i data-lucide="arrow-up-right"></i></span>
           </div>
         </div>
       </article>

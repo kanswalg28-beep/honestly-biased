@@ -879,38 +879,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const gridItems = [];
 
             paginatedArticles.forEach((article, index) => {
-            // Layout pattern: Featured (2x2) -> 3 Featured horizontals (2x1) -> Standard cards (1x1) with images
-                        if (index === 0) {
-                            // HERO: Large 2x2 feature card with full visual
-                            gridItems.push(`
-                                <article class="bento-card bento-span-2x2 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
-                                    <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: saturate(0.85) contrast(1.15);"></div>
-                                        <div class="card-tag saffron-bg">${article.category}</div>
-                                    </div>
-                                    <div class="card-body">
-                                        <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
-                                            ${article.authortype === 'admin'
-                                                ? '<span class="author-type-badge badge-admin"><i data-lucide="pen-tool" style="width:10px;height:10px;"></i> Editorial</span>'
-                                                : (article.authortype === 'instagram'
-                                                    ? '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>'
-                                                    : '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>')}
-                                            <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}
-                                        </span>
-                                        <h3 class="card-title" style="margin-top:10px;">
-                                            <a href="/article/${shortIdFromUuid(article.id)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
-                                        </h3>
-                                        <p class="card-summary">${article.aisummary}</p>
-                                        <div class="card-footer-meta">
-                                            <span class="card-author" style="font-size:0.75rem; color:var(--accent-green); font-weight:700;">Bias Audit: ${article.biasaudit}</span>
-                                            <span class="card-action"><i data-lucide="arrow-up-right"></i></span>
-                                        </div>
-                                    </div>
-                                </article>
-                            `);
-                        } else if (index >= 1 && index <= 3) {
-                            // FEATURED HORIZONTALS: Next 3 articles as 2x1 cards with images
-                            gridItems.push(`
+            // Layout pattern: 4 Featured horizontals (2x1) -> Standard cards (1x1) with images
+            if (index >= 0 && index <= 3) {
+                // FEATURED HORIZONTALS: First 4 articles as 2x1 cards with images
+                gridItems.push(`
                                 <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
                                     <div class="card-visual">
                                         <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.7) contrast(1.1);"></div>
@@ -937,7 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </article>
                             `);
-                        } else {
+            } else {
                             // STANDARD CARDS: 1x1 with images (not header-only)
                             gridItems.push(`
                                 <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
