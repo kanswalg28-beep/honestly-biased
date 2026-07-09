@@ -503,6 +503,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Real images will be fetched when app.js re-renders cards from API
                     const base64Count = allArticles.filter(a => a.hasBase64Image).length;
                     if (base64Count > 0) console.log(`🖼️ ${base64Count} articles have base64 images (gradient placeholder shown, real image on API re-fetch)`);
+
+                    // Hydrate highlights ticker from SSR data
+                    if (allArticles.length > 0) {
+                        const tickerTrack = document.querySelector('.ticker-track');
+                        if (tickerTrack) {
+                            let highlights = allArticles.slice(0, 4).map(a => a.aiheadline);
+                            let html = highlights.map(text => `<span>• ${text}</span>`).join('');
+                            html += `<span>• ${highlights[0]}</span>`;
+                            tickerTrack.innerHTML = html;
+                        }
+                    }
+
+                    // Skip the API fetch — SSR data is already here!
+                    // This saves a 4.3MB / 4.5s API round-trip
+                    console.log('✅ Skipping API fetch — using SSR data for instant load');
+                    handleRouting(true);
+                    return; // ← EXIT EARLY, don't fetch from API
                 }
             } catch (e) {
                 console.warn('SSR data parse failed:', e);
