@@ -114,12 +114,11 @@ function buildBentoCard(article, index) {
   const timeHtml = cardTimeHtml(article);
   const biasHtml = biasAuditHtml(article.biasaudit);
   const summary = escapeHtml(article.aisummary);
-  // Strip base64 data URIs from SSR — they bloat HTML by ~1.5MB
-  // Use gradient placeholder + data-bg for JS lazy-load
+  // Strip base64 data URIs from SSR — they bloat HTML by ~1MB
+  // Use gradient placeholder; app.js will restore from real Supabase URL on hydration
   const rawImg = article.imageurl || '/assets/hero-bg.png';
   const isBase64 = rawImg.startsWith('data:image');
   const imgUrl = isBase64 ? '' : escapeAttr(rawImg);
-  const dataBgAttr = isBase64 ? ` data-bg="${escapeAttr(rawImg)}"` : '';
   const bgStyle = imgUrl
     ? `background-image: url('${imgUrl}')`
     : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
@@ -129,7 +128,7 @@ function buildBentoCard(article, index) {
     return `
       <article class="bento-card bento-span-2x2 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: saturate(0.85) contrast(1.15);"${dataBgAttr}></div>
+          <div class="card-image-bg" style="${bgStyle}; filter: saturate(0.85) contrast(1.15);"></div>
           ${catTag}
         </div>
         <div class="card-body">
@@ -155,7 +154,7 @@ function buildBentoCard(article, index) {
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"${dataBgAttr}></div>
+          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
           ${catTag}
           <span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>
         </div>
@@ -180,7 +179,7 @@ function buildBentoCard(article, index) {
   return `
     <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
       <div class="card-visual">
-        <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.65) grayscale(0.15);"${dataBgAttr}></div>
+        <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.65) grayscale(0.15);"></div>
         ${catTag}
       </div>
       <div class="card-body">

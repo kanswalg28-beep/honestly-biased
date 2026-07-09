@@ -499,16 +499,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (ssrData.articles && ssrData.articles.length > 0) {
                     console.log(`⚡ __SSR_DATA__ found with ${ssrData.articles.length} articles — instant hydration`);
                     allArticles = ssrData.articles.map(a => ({ ...a }));
-                    // Restore base64 images if present
-                    allArticles.forEach(a => {
-                        if (a.hasBase64Image && !a.imageurl) {
-                            // Will be refetched when needed for new cards
-                            a.imageurl = '';
-                        }
-                    });
-                    // Re-fetch base64 images for cards that need them
-                    const cardsWithBase64 = document.querySelectorAll('.card-image-bg[data-bg]');
-                    console.log(`🖼️ ${cardsWithBase64.length} cards have base64 images in data-bg`);
+                    // Articles with hasBase64Image flag have gradient placeholder in SSR
+                    // Real images will be fetched when app.js re-renders cards from API
+                    const base64Count = allArticles.filter(a => a.hasBase64Image).length;
+                    if (base64Count > 0) console.log(`🖼️ ${base64Count} articles have base64 images (gradient placeholder shown, real image on API re-fetch)`);
                 }
             } catch (e) {
                 console.warn('SSR data parse failed:', e);
@@ -533,9 +527,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timeEl = card.querySelector('.card-time')?.textContent || '';
                 const bias = card.querySelector('.card-author')?.textContent?.replace('Bias Audit: ', '') || '';
                 const imgEl = card.querySelector('.card-image-bg');
-                // Check for data-bg attribute (base64 images stripped from SSR)
-                const dataBg = imgEl?.getAttribute('data-bg');
-                const imgUrl = dataBg || (imgEl ? imgEl.style.backgroundImage.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '') : '');
+                // For base64 articles, SSR uses gradient placeholder (no bg image)
+                // Real image URL will be restored from __SSR_DATA__ or feed API
+                const bgMatch = imgEl?.style.backgroundImage?.match(/url\(['"]?([^'")]*)/);
+                const imgUrl = bgMatch ? bgMatch[1] : '';
                 const authortype = badge?.classList.contains('badge-admin') ? 'admin' :
                                    badge?.classList.contains('badge-instagram') ? 'instagram' : 'ai';
                 
