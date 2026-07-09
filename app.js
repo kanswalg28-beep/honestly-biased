@@ -1222,11 +1222,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bentoSection) bentoSection.style.display = 'block';
         if (detailSection) detailSection.style.display = 'none';
 
-        // If SSR content exists and it's initial load, skip re-render
+        // If SSR content exists and it's initial load, skip re-render — just update active tab styles
         if (isInitialLoad && hasSSRContent) {
             console.log('📋 SSR content preserved on initial load');
-            // Just update active states and return
-            updateActiveStates();
+            // Update tab button active states without re-rendering cards
+            try {
+                const routeParams = parseHashRoute();
+                if (routeParams) {
+                    currentRegion = routeParams.region;
+                    currentCategory = routeParams.category;
+                }
+                // Highlight region tab
+                document.querySelectorAll('.region-tab-btn').forEach(btn => {
+                    const btnReg = btn.getAttribute('data-region')?.toLowerCase().trim();
+                    if (btnReg === currentRegion) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                });
+                // Highlight category tab
+                document.querySelectorAll('.category-tab-btn').forEach(btn => {
+                    const btnCat = btn.getAttribute('data-category')?.toLowerCase();
+                    if (btnCat === currentCategory.toLowerCase()) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                });
+            } catch (e) { console.warn('Active state update failed:', e); }
             return;
         }
 
