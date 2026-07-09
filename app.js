@@ -519,6 +519,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     // This saves a 4.3MB / 4.5s API round-trip
                     console.log('✅ Skipping API fetch — using SSR data for instant load');
                     handleRouting(true);
+                    
+                    // Background: fetch real images for base64 articles
+                    const base64Articles = allArticles.filter(a => a.hasBase64Image);
+                    if (base64Articles.length > 0) {
+                        console.log(`🖼️ Background fetch: hydrating ${base64Articles.length} base64 images from API`);
+                        setTimeout(async () => {
+                            try {
+                                const res = await fetch('/api/honestly-biased-feed');
+                                const data = await res.json();
+                                const apiArticles = data.articles || [];
+                                // Update allArticles with real image URLs
+                                base64Articles.forEach(bs64 => {
+                                    const match = apiArticles.find(a => a.id === bs64.id);
+                                    if (match && match.imageurl && match.imageurl.startsWith('data:image')) {
+                                        bs64.imageurl = match.imageurl;
+                                        bs64.hasBase64Image = false;
+                                    }
+                                });
+                                // Re-render cards with real images
+                                handleRouting(false);
+                                console.log('✅ Base64 images hydrated with real images');
+                            } catch (e) {
+                                console.warn('Background image fetch failed:', e);
+                            }
+                        }, 2000);
+                    }
                     return; // ← EXIT EARLY, don't fetch from API
                 }
             } catch (e) {
