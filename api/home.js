@@ -256,10 +256,15 @@ function renderHomepageHtml(articles) {
   const listJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    'itemListElement': articles.slice(0, 22).map((a, i) => ({
-      '@type': 'ListItem', 'position': i + 1,
-      'item': { '@type': 'NewsArticle', 'url': SITE + '/article/' + shortIdFromUuid(a.id), 'headline': a.aiheadline, 'image': a.imageurl || SITE + '/assets/hero-bg.png', 'datePublished': a.publishdate }
-    }))
+    'itemListElement': articles.slice(0, 22).map((a, i) => {
+      // Strip base64 data URIs from JSON-LD — they bloat HTML by ~1.5MB
+      let img = a.imageurl || SITE + '/assets/hero-bg.png';
+      if (img.startsWith('data:image')) img = SITE + '/assets/hero-bg.png';
+      return {
+        '@type': 'ListItem', 'position': i + 1,
+        'item': { '@type': 'NewsArticle', 'url': SITE + '/article/' + shortIdFromUuid(a.id), 'headline': a.aiheadline, 'image': img, 'datePublished': a.publishdate }
+      };
+    })
   });
 
   const heroAbsImage = heroImage.startsWith('http') ? heroImage : SITE + heroImage;
