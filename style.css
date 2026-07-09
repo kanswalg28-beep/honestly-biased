@@ -1201,10 +1201,36 @@ body.light-theme .category-tab-btn.active {
     color: #ffffff;
 }
 
-/* Frosted Active Indicator Pill */
-.active-indicator-pill {
-    position: absolute;
-    border-radius: var(--border-radius-sm);
+/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+@media (max-width: 767px) {
+    .region-tab-btn {
+        font-size: 0;
+        padding: 8px 10px;
+    }
+    
+    .region-tab-btn::after {
+        content: attr(data-region);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .region-tab-btn i {
+        width: 14px;
+        height: 14px;
+        opacity: 1;
+    }
+    
+    .region-tab-btn.active::after {
+        color: #ffffff;
+    }
+}
+
+.category-tab-btn {
+    width: 100%;
+    justify-content: flex-start;
+}
     background: rgba(255, 255, 255, 0.06);
     border: 1.5px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
@@ -1262,8 +1288,34 @@ body.light-theme .category-tab-btn:not(.active):hover {
 }
 
 body.light-theme .region-tab-btn i,
-body.light-theme .category-tab-btn i {
-    opacity: 0.7;
+body.light-theme .category-tab-btn.active {
+    color: #ffffff;
+}
+
+/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+@media (max-width: 767px) {
+    .region-tab-btn {
+        font-size: 0;
+        padding: 8px 10px;
+    }
+    
+    .region-tab-btn::after {
+        content: attr(data-region);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .region-tab-btn i {
+        width: 14px;
+        height: 14px;
+        opacity: 1;
+    }
+    
+    .region-tab-btn.active::after {
+        color: #ffffff;
+    }
 }
 
 .category-tab-btn {
@@ -1300,18 +1352,70 @@ body.light-theme .category-tab-btn i {
 }
 
 /* Light mode active state - keep white text on colored background */
-body.light-theme .region-tab-btn.active {
-    color: #ffffff;
-}
-
 body.light-theme .category-tab-btn.active {
     color: #ffffff;
 }
 
-/* Light mode active indicator pills */
-body.light-theme #region-active-pill.active-indian {
-    background: linear-gradient(135deg, rgba(255, 110, 0, 0.15), rgba(255, 110, 0, 0.25));
-    box-shadow: 0 4px 20px rgba(255, 110, 0, 0.25);
+/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+@media (max-width: 767px) {
+    .region-tab-btn {
+        font-size: 0;
+        padding: 8px 10px;
+    }
+    
+    .region-tab-btn::after {
+        content: attr(data-region);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .region-tab-btn i {
+        width: 14px;
+        height: 14px;
+        opacity: 1;
+    }
+    
+    .region-tab-btn.active::after {
+        color: #ffffff;
+    }
+}
+
+.category-tab-btn {
+    width: 100%;
+    justify-content: flex-start;
+}
+/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+@media (max-width: 767px) {
+    .region-tab-btn {
+        font-size: 0;
+        padding: 8px 10px;
+    }
+    
+    .region-tab-btn::after {
+        content: attr(data-region);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .region-tab-btn i {
+        width: 14px;
+        height: 14px;
+        opacity: 1;
+    }
+    
+    .region-tab-btn.active::after {
+        color: #ffffff;
+    }
+}
+
+.category-tab-btn {
+    width: 100%;
+    justify-content: flex-start;
+}
 }
 
 body.light-theme #region-active-pill.active-world {
@@ -1356,14 +1460,40 @@ body.light-theme #category-active-pill.health {
 }
 
 /* Active state highlights for categories */
-.category-tab-btn.active {
+body.light-theme .category-tab-btn.active {
     color: #ffffff;
 }
 
-.category-tab-btn.active i {
-    opacity: 1;
+/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+@media (max-width: 767px) {
+    .region-tab-btn {
+        font-size: 0;
+        padding: 8px 10px;
+    }
+    
+    .region-tab-btn::after {
+        content: attr(data-region);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .region-tab-btn i {
+        width: 14px;
+        height: 14px;
+        opacity: 1;
+    }
+    
+    .region-tab-btn.active::after {
+        color: #ffffff;
+    }
 }
 
+.category-tab-btn {
+    width: 100%;
+    justify-content: flex-start;
+}
 .category-tab-btn[data-category="all"].active { color: var(--accent-green); text-shadow: 0 0 8px rgba(0, 229, 255, 0.3); }
 .category-tab-btn[data-category="Politics"].active { color: hsl(28, 90%, 55%); text-shadow: 0 0 8px rgba(255, 110, 0, 0.3); }
 
@@ -1402,13 +1532,39 @@ body.light-theme #category-active-pill.health {
         scrollbar-width: none;
     }
     
-    .category-tabs-container::-webkit-scrollbar {
-        display: none;
+    body.light-theme .category-tab-btn.active {
+        color: #ffffff;
     }
+
+    /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+    @media (max-width: 767px) {
+        .region-tab-btn {
+            font-size: 0;
+            padding: 8px 10px;
+        }
     
+        .region-tab-btn::after {
+            content: attr(data-region);
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    
+        .region-tab-btn i {
+            width: 14px;
+            height: 14px;
+            opacity: 1;
+        }
+    
+        .region-tab-btn.active::after {
+            color: #ffffff;
+        }
+    }
+
     .category-tab-btn {
-        width: auto;
-        justify-content: center;
+        width: 100%;
+        justify-content: flex-start;
     }
     
     .category-tabs-container .active-indicator-pill {
@@ -1520,14 +1676,40 @@ body.light-theme #category-active-pill.health {
         font-size: 0.7rem;
         min-width: fit-content;
         white-space: nowrap;
-        width: auto;
-        justify-content: center;
-    }
+        body.light-theme .category-tab-btn.active {
+            color: #ffffff;
+        }
+
+        /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+        @media (max-width: 767px) {
+            .region-tab-btn {
+                font-size: 0;
+                padding: 8px 10px;
+            }
     
-    .category-tab-btn i {
-        width: 14px;
-        height: 14px;
-    }
+            .region-tab-btn::after {
+                content: attr(data-region);
+                font-size: 0.65rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+    
+            .region-tab-btn i {
+                width: 14px;
+                height: 14px;
+                opacity: 1;
+            }
+    
+            .region-tab-btn.active::after {
+                color: #ffffff;
+            }
+        }
+
+        .category-tab-btn {
+            width: 100%;
+            justify-content: flex-start;
+        }
     
     .active-indicator-pill {
         top: 4px;
@@ -2350,13 +2532,39 @@ body.light-theme #category-active-pill.health {
     transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.poll-option-btn:hover .poll-bar {
-    background-color: rgba(var(--accent-green-rgb), 0.18);
+body.light-theme .category-tab-btn.active {
+    color: #ffffff;
 }
 
-/* 8. TECH CARD HEADER ONLY */
-.header-only-body {
-    justify-content: center;
+/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+@media (max-width: 767px) {
+    .region-tab-btn {
+        font-size: 0;
+        padding: 8px 10px;
+    }
+    
+    .region-tab-btn::after {
+        content: attr(data-region);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .region-tab-btn i {
+        width: 14px;
+        height: 14px;
+        opacity: 1;
+    }
+    
+    .region-tab-btn.active::after {
+        color: #ffffff;
+    }
+}
+
+.category-tab-btn {
+    width: 100%;
+    justify-content: flex-start;
 }
 
 .header-only-body .card-tag {
@@ -2483,14 +2691,40 @@ body.light-theme #category-active-pill.health {
 }
 
 .newsletter-btn:hover {
-    background-color: var(--accent-saffron);
-    color: #ffffff;
-}
+    body.light-theme .category-tab-btn.active {
+        color: #ffffff;
+    }
 
-.newsletter-btn i {
-    width: 16px;
-    height: 16px;
-}
+    /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+    @media (max-width: 767px) {
+        .region-tab-btn {
+            font-size: 0;
+            padding: 8px 10px;
+        }
+    
+        .region-tab-btn::after {
+            content: attr(data-region);
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    
+        .region-tab-btn i {
+            width: 14px;
+            height: 14px;
+            opacity: 1;
+        }
+    
+        .region-tab-btn.active::after {
+            color: #ffffff;
+        }
+    }
+
+    .category-tab-btn {
+        width: 100%;
+        justify-content: flex-start;
+    }
 
 /* Custom Checkbox design */
 .checkbox-label {
@@ -2651,13 +2885,39 @@ body.light-theme #category-active-pill.health {
         );
     }
     
-    .hero-content-wrapper {
-        flex-direction: column;
+    body.light-theme .category-tab-btn.active {
+        color: #ffffff;
     }
+
+    /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+    @media (max-width: 767px) {
+        .region-tab-btn {
+            font-size: 0;
+            padding: 8px 10px;
+        }
     
-    .hero-text-block {
-        max-width: 100%;
-        padding: 30px;
+        .region-tab-btn::after {
+            content: attr(data-region);
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    
+        .region-tab-btn i {
+            width: 14px;
+            height: 14px;
+            opacity: 1;
+        }
+    
+        .region-tab-btn.active::after {
+            color: #ffffff;
+        }
+    }
+
+    .category-tab-btn {
+        width: 100%;
+        justify-content: flex-start;
     }
     
     .bento-grid {
@@ -2722,25 +2982,77 @@ body.light-theme #category-active-pill.health {
         );
     }
 
-    .hero-content-wrapper {
-        flex-direction: column;
+    body.light-theme .category-tab-btn.active {
+        color: #ffffff;
     }
 
-    .hero-text-block {
-        max-width: 100%;
-        padding: 24px 16px;
+    /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+    @media (max-width: 767px) {
+        .region-tab-btn {
+            font-size: 0;
+            padding: 8px 10px;
+        }
+    
+        .region-tab-btn::after {
+            content: attr(data-region);
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    
+        .region-tab-btn i {
+            width: 14px;
+            height: 14px;
+            opacity: 1;
+        }
+    
+        .region-tab-btn.active::after {
+            color: #ffffff;
+        }
+    }
+
+    .category-tab-btn {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .hero-meta {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-    }
+        body.light-theme .category-tab-btn.active {
+            color: #ffffff;
+        }
 
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
+        /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+        @media (max-width: 767px) {
+            .region-tab-btn {
+                font-size: 0;
+                padding: 8px 10px;
+            }
+    
+            .region-tab-btn::after {
+                content: attr(data-region);
+                font-size: 0.65rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+    
+            .region-tab-btn i {
+                width: 14px;
+                height: 14px;
+                opacity: 1;
+            }
+    
+            .region-tab-btn.active::after {
+                color: #ffffff;
+            }
+        }
+
+        .category-tab-btn {
+            width: 100%;
+            justify-content: flex-start;
+        }
 
     /* Disable Three.js heavy effects on mobile for performance */
     .lens-canvas-container canvas {
@@ -2753,25 +3065,77 @@ body.light-theme #category-active-pill.health {
     }
 
     .hero-content-wrapper {
-        flex-direction: column;
-        padding: 0 16px;
-    }
+        body.light-theme .category-tab-btn.active {
+            color: #ffffff;
+        }
 
-    .hero-text-block {
-        max-width: 100%;
-        padding: 24px 16px;
-    }
+        /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+        @media (max-width: 767px) {
+            .region-tab-btn {
+                font-size: 0;
+                padding: 8px 10px;
+            }
+    
+            .region-tab-btn::after {
+                content: attr(data-region);
+                font-size: 0.65rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+    
+            .region-tab-btn i {
+                width: 14px;
+                height: 14px;
+                opacity: 1;
+            }
+    
+            .region-tab-btn.active::after {
+                color: #ffffff;
+            }
+        }
+
+        .category-tab-btn {
+            width: 100%;
+            justify-content: flex-start;
+        }
 
     .hero-meta {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-    }
+        body.light-theme .category-tab-btn.active {
+            color: #ffffff;
+        }
 
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
+        /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
+        @media (max-width: 767px) {
+            .region-tab-btn {
+                font-size: 0;
+                padding: 8px 10px;
+            }
+    
+            .region-tab-btn::after {
+                content: attr(data-region);
+                font-size: 0.65rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+    
+            .region-tab-btn i {
+                width: 14px;
+                height: 14px;
+                opacity: 1;
+            }
+    
+            .region-tab-btn.active::after {
+                color: #ffffff;
+            }
+        }
+
+        .category-tab-btn {
+            width: 100%;
+            justify-content: flex-start;
+        }
 
     .bento-section {
         margin: 40px auto;
