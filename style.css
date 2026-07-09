@@ -798,6 +798,30 @@ body.light-theme .icon-dark { opacity: 0; transform: rotate(90deg); }
     100% { transform: translate3d(-50%, 0, 0); }
 }
 
+/* Mobile ticker - stacked layout */
+@media (max-width: 767px) {
+    .ticker-banner {
+        height: auto;
+        padding: 6px 0;
+    }
+
+    .ticker-container {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0 16px;
+        gap: 4px;
+    }
+
+    .ticker-label {
+        border-right: none;
+        padding-right: 0;
+    }
+
+    .ticker-scroll {
+        padding-left: 0;
+    }
+}
+
 /* ==========================================================================
    HERO SECTION (Featuring refractive 3D Perspective Lens)
    ========================================================================== */
@@ -1407,8 +1431,89 @@ body.light-theme #category-active-pill.health {
     }
 }
 
-/* Mobile: All cards single column */
+/* Mobile: Region tabs & Category tabs - horizontal scroll with smaller buttons */
 @media (max-width: 767px) {
+    .ticker-banner {
+        height: auto;
+        padding: 6px 0;
+    }
+
+    .ticker-container {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0 16px;
+        gap: 4px;
+    }
+
+    .ticker-label {
+        border-right: none;
+        padding-right: 0;
+    }
+
+    .ticker-scroll {
+        padding-left: 0;
+    }
+    
+    /* Region tabs - horizontal scroll with smaller buttons */
+    .top-region-bar {
+        padding: 8px 0;
+    }
+    
+    .top-region-container {
+        padding: 0 16px;
+    }
+    
+    .region-tabs-container {
+        gap: 4px;
+        padding: 4px;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .region-tab-btn {
+        padding: 6px 10px;
+        font-size: 0.65rem;
+        min-width: fit-content;
+        white-space: nowrap;
+    }
+    
+    .region-tab-btn i {
+        width: 12px;
+        height: 12px;
+    }
+    
+    /* Category tabs - horizontal scroll with smaller buttons */
+    .category-tabs-container {
+        flex-direction: row;
+        align-items: center;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding: 6px;
+        gap: 4px;
+    }
+    
+    .category-tab-btn {
+        padding: 8px 12px;
+        font-size: 0.7rem;
+        min-width: fit-content;
+        white-space: nowrap;
+        width: auto;
+        justify-content: center;
+    }
+    
+    .category-tab-btn i {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .active-indicator-pill {
+        top: 4px;
+        height: calc(100% - 8px);
+    }
+
+    /* Mobile grid: all cards single column */
     .bento-grid {
         grid-template-columns: 1fr;
         gap: 16px;
@@ -1442,12 +1547,6 @@ body.light-theme #category-active-pill.health {
     
     .card-time {
         font-size: 0.7rem;
-    }
-    
-    .region-tab-btn,
-    .category-tab-btn {
-        padding: 8px 14px;
-        font-size: 0.72rem;
     }
     
     /* Touch-friendly card tap targets */
