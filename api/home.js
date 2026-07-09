@@ -514,6 +514,9 @@ function renderHomepageHtml(articles) {
   </div>
 </div>
 
+<!-- Pre-hydration data for instant SSR → SPA transition -->
+<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => ({ ...a, shortId: shortIdFromUuid(a.id) })) })}</script>
+
 <!-- Three.js Library CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 

@@ -491,6 +491,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridContainer = document.getElementById('dynamic-bento-grid');
 
     async function loadDynamicArticles() {
+        // Check if SSR already populated the bento grid
+        const gridContainer = document.getElementById('dynamic-bento-grid');
+        const ssrCards = gridContainer ? gridContainer.querySelectorAll('.bento-card') : [];
+        const hasSSRContent = ssrCards.length > 0;
+        
+        if (hasSSRContent) {
+            console.log(`⚡ SSR detected ${ssrCards.length} pre-rendered cards, skipping initial render`);
+            // Extract articles from SSR cards for pagination
+            ssrCards.forEach(card => {
+                const id = card.id;
+                const link = card.querySelector('a.stretched-link');
+                const headline = link ? link.textContent : '';
+                const summary = card.querySelector('.card-summary')?.textContent || '';
+                const badge = card.querySelector('.author-type-badge');
+                const category = card.querySelector('.card-tag')?.textContent || '';
+                const timeEl = card.querySelector('.card-time')?.textContent || '';
+                const bias = card.querySelector('.card-author')?.textContent?.replace('Bias Audit: ', '') || '';
+                const imgEl = card.querySelector('.card-image-bg');
+                const imgUrl = imgEl ? imgEl.style.backgroundImage.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '') : '';
+                const authortype = badge?.classList.contains('badge-admin') ? 'admin' :
+                                   badge?.classList.contains('badge-instagram') ? 'instagram' : 'ai';
+                
+                allArticles.push({
+                    id,
+                    aiheadline: headline,
+                    aisummary: summary,
+                    biasaudit: bias,
+                    category,
+                    timeago: timeEl,
+                    imageurl: imgUrl,
+                    authortype
+                });
+            });
+            console.log(`📦 Extracted ${allArticles.length} articles from SSR for pagination`);
+        }
+
         console.log("📡 Fetching site_content blocks first, then live feed...");
 
         // ------------------------------------------------------------
@@ -1129,6 +1165,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const hash = window.location.hash;
         console.log(`🌐 SPA Routing event triggered: hash="${hash}", isInitialLoad=${isInitialLoad}`);
 
+        // Check if SSR content exists and we should preserve it on initial load
+        const hasSSRContent = document.getElementById('dynamic-bento-grid')?.querySelector('.bento-card');
+        
         // Handle Article Detail Page Routing
         if (hash.startsWith('#/article/')) {
             const articleId = hash.replace('#/article/', '').trim();
@@ -1144,6 +1183,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (heroSection) heroSection.style.display = 'block';
         if (bentoSection) bentoSection.style.display = 'block';
         if (detailSection) detailSection.style.display = 'none';
+
+        // If SSR content exists and it's initial load, skip re-render
+        if (isInitialLoad && hasSSRContent) {
+            console.log('📋 SSR content preserved on initial load');
+            // Just update active states and return
+            updateActiveStates();
+            return;
+        }
 
         // Handle "Our Bias" / Manifesto special case
         if (hash === '#/our-bias' || hash === '#manifesto') {
