@@ -1872,7 +1872,7 @@ body.light-theme .category-tab-btn.active {
     }
     
     .bento-grid > .bento-span-1x1:nth-child(n+5) {
-        grid-column: span 6;
+        grid-column: span 4;
         grid-row: span 1;
     }
 }
