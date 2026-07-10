@@ -2077,6 +2077,30 @@ body.light-theme .category-tab-btn.active {
 
 
 
+
+
+
+/* Main Grid Structure - 12 column grid for flexible layouts */
+.bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: minmax(200px, auto);
+    gap: 24px;
+}
+
+/* First 4 posts - 2x1 horizontal cards (each spans 6 cols, 1 row) */
+.bento-grid > .bento-span-2x1:nth-child(-n+4) {
+    grid-column: span 6;
+    grid-row: span 1;
+}
+
+/* Remaining posts - 3 column grid (each spans 4 cols) */
+.bento-grid > .bento-span-1x1:nth-child(n+5) {
+    grid-column: span 4;
+    grid-row: span 1;
+}
+
+
 /* Mobile: Region tabs & Category tabs - horizontal scroll with smaller buttons */
 
 
