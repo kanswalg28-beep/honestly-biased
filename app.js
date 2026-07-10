@@ -879,13 +879,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const gridItems = [];
 
             paginatedArticles.forEach((article, index) => {
+            // Handle base64 images - use gradient placeholder instead (match SSR behavior)
+            const rawImg = article.imageurl || '/assets/hero-bg.png';
+            const isBase64 = rawImg.startsWith('data:image');
+            const imgUrl = isBase64 ? '' : rawImg;
+            const bgStyle = imgUrl
+                ? `background-image: url('${imgUrl}')`
+                : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
+
             // Layout pattern: 4 Featured horizontals (2x1) -> Standard cards (1x1) with images
             if (index >= 0 && index <= 3) {
                 // FEATURED HORIZONTALS: First 4 articles as 2x1 cards with images
                 gridItems.push(`
                                 <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
                                     <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.7) contrast(1.1);"></div>
+                                        <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
                                         <span class="card-tag saffron-bg">${article.category}</span>
                                         <span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>
                                     </div>
@@ -914,7 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             gridItems.push(`
                                 <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
                                     <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.65) grayscale(0.15);"></div>
+                                        <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.65) grayscale(0.15);"></div>
                                         <span class="card-tag saffron-bg">${article.category}</span>
                                     </div>
                                     <div class="card-body">
