@@ -2050,6 +2050,7 @@ body.light-theme .category-tab-btn.active {
     .stretched-link::after {
         /* Make whole card tappable on mobile */
         inset: 0;
+}
     }
 }
 
@@ -2242,7 +2243,7 @@ body.light-theme .category-tab-btn.active {
 }
     margin-bottom: 12px;
     line-height: 1.5;
-}
+
 
 .card-footer-meta {
     margin-top: auto;
