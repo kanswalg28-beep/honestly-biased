@@ -1877,7 +1877,406 @@ body.light-theme .category-tab-btn.active {
     }
 }
 
+
+
+/* Bento card modular designs */
+.bento-card {
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border: 1px solid var(--border-color);
+    min-height: 420px;
+}
+
+/* Card Sizes (12-column Desktop Spans) */
+.bento-span-2x2 {
+    grid-column: span 6;
+    grid-row: span 2;
+    min-height: 420px;
+}
+
+.bento-span-1x2 {
+    grid-column: span 4;
+    grid-row: span 2;
+    min-height: 420px;
+}
+
+.bento-span-2x1 {
+    grid-column: span 6;
+    grid-row: span 1;
+    min-height: 220px;
+}
+
+.bento-span-1x1 {
+    grid-column: span 4;
+    grid-row: span 1;
+    min-height: 420px;
+}
+
+/* Dynamic transform transitions */
+.bento-card:hover {
+    border-color: var(--border-color-hover);
+    transform: translateY(-4px);
+}
+
+/* Stretched link support for dynamic accessibility */
+.stretched-link::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    content: "";
+}
+
+/* Card Subcomponents */
+.card-visual {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+/* Ensure consistent image sizing across all card types */
+.bento-card .card-visual {
+    flex-shrink: 0;
+}
+
+/* For 2x2 cards, slightly taller visual area */
+.bento-span-2x2 .card-visual {
+    aspect-ratio: 16 / 10;
+}
+
+/* For 1x1 cards, standard 16:9 */
+.bento-span-1x1 .card-visual {
+    aspect-ratio: 16 / 9;
+}
+
+/* Cover Image background with premium zoom-out hover */
+.card-image-bg {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    transition: transform var(--transition-slow);
+}
+
+.bento-card:hover .card-image-bg {
+    transform: scale(1.03);
+}
+
+/* Category tags placed on image elements */
+.card-tag {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-family: var(--font-editorial);
+    padding: 4px 10px;
+    border-radius: 4px;
+    color: #ffffff;
+    z-index: 2;
+}
+
+.saffron-bg { background-color: var(--accent-saffron); }
+.green-bg { background-color: var(--accent-green); }
+
+/* Card Text layouts */
+.card-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.card-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-time i {
+    width: 12px;
+    height: 12px;
+}
+
+.card-title {
+    font-size: 1.35rem;
+    margin-bottom: 12px;
+    line-height: 1.25;
+    letter-spacing: -0.5px;
+}
+
+.bento-span-2x2 .card-title {
+    font-size: 1.65rem;
+}
+
+.card-title a {
+    color: var(--text-primary);
+}
+
+.card-title a:hover {
+    color: var(--accent-saffron);
+}
+
+.card-summary {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 20px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* For 1x1 cards, allow more lines */
+.bento-span-1x1 .card-summary {
+    -webkit-line-clamp: 4;
+}
+
+.card-footer-meta {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.card-author {
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.card-action i {
+    width: 16px;
+    height: 16px;
+    transition: transform var(--transition-fast);
+}
+
+.bento-card:hover .card-action i {
+    transform: translate(2px, -2px);
+    color: var(--accent-saffron);
+}
+
+
+
 /* Mobile: Region tabs & Category tabs - horizontal scroll with smaller buttons */
+
+
+
+/* Bento card modular designs */
+.bento-card {
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border: 1px solid var(--border-color);
+    min-height: 420px;
+}
+
+/* Card Sizes (12-column Desktop Spans) */
+.bento-span-2x2 {
+    grid-column: span 6;
+    grid-row: span 2;
+    min-height: 420px;
+}
+
+.bento-span-1x2 {
+    grid-column: span 4;
+    grid-row: span 2;
+    min-height: 420px;
+}
+
+.bento-span-2x1 {
+    grid-column: span 6;
+    grid-row: span 1;
+    min-height: 220px;
+}
+
+.bento-span-1x1 {
+    grid-column: span 4;
+    grid-row: span 1;
+    min-height: 420px;
+}
+
+/* Dynamic transform transitions */
+.bento-card:hover {
+    border-color: var(--border-color-hover);
+    transform: translateY(-4px);
+}
+
+/* Stretched link support for dynamic accessibility */
+.stretched-link::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    content: "";
+}
+
+/* Card Subcomponents */
+.card-visual {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+/* Ensure consistent image sizing across all card types */
+.bento-card .card-visual {
+    flex-shrink: 0;
+}
+
+/* For 2x2 cards, slightly taller visual area */
+.bento-span-2x2 .card-visual {
+    aspect-ratio: 16 / 10;
+}
+
+/* For 1x1 cards, standard 16:9 */
+.bento-span-1x1 .card-visual {
+    aspect-ratio: 16 / 9;
+}
+
+/* Cover Image background with premium zoom-out hover */
+.card-image-bg {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    transition: transform var(--transition-slow);
+}
+
+.bento-card:hover .card-image-bg {
+    transform: scale(1.03);
+}
+
+/* Category tags placed on image elements */
+.card-tag {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-family: var(--font-editorial);
+    padding: 4px 10px;
+    border-radius: 4px;
+    color: #ffffff;
+    z-index: 2;
+}
+
+.saffron-bg { background-color: var(--accent-saffron); }
+.green-bg { background-color: var(--accent-green); }
+
+/* Card Text layouts */
+.card-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.card-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-time i {
+    width: 12px;
+    height: 12px;
+}
+
+.card-title {
+    font-size: 1.35rem;
+    margin-bottom: 12px;
+    line-height: 1.25;
+    letter-spacing: -0.5px;
+}
+
+.bento-span-2x2 .card-title {
+    font-size: 1.65rem;
+}
+
+.card-title a {
+    color: var(--text-primary);
+}
+
+.card-title a:hover {
+    color: var(--accent-saffron);
+}
+
+.card-summary {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 20px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* For 1x1 cards, allow more lines */
+.bento-span-1x1 .card-summary {
+    -webkit-line-clamp: 4;
+}
+
+.card-footer-meta {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.card-author {
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.card-action i {
+    width: 16px;
+    height: 16px;
+    transition: transform var(--transition-fast);
+}
+
+.bento-card:hover .card-action i {
+    transform: translate(2px, -2px);
+    color: var(--accent-saffron);
+}
+
 @media (max-width: 767px) {
     .header-container {
         padding: 0 16px;
