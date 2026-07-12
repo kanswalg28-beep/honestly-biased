@@ -2907,6 +2907,7 @@ body.light-theme .header-highlights .ticker-track {
 /* Tablet breakpoint (1024px and below) */
 @media (max-width: 1024px) {
     .bento-grid {
+        display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 20px;
     }
@@ -2953,6 +2954,7 @@ body.light-theme .header-highlights .ticker-track {
 @media (max-width: 767px) {
     /* ===== BENTO GRID ===== */
     .bento-grid {
+    display: grid;
         grid-template-columns: 1fr;
         gap: 16px;
     }
@@ -2961,6 +2963,14 @@ body.light-theme .header-highlights .ticker-track {
     .bento-span-1x2,
     .bento-span-2x1,
     .bento-span-1x1 {
+        grid-column: span 1;
+        grid-row: span 1;
+        min-height: auto;
+    }
+
+    .bento-span-2x2,
+    .bento-span-1x2,
+    .bento-span-2x1 {
         grid-column: span 1;
         grid-row: span 1;
         min-height: auto;
@@ -3165,7 +3175,27 @@ body.light-theme .header-highlights .ticker-track {
 /* Small mobile (480px and below) */
 @media (max-width: 480px) {
     .bento-grid {
+        display: grid;
+        grid-template-columns: 1fr;
         gap: 12px;
+    }
+
+    .bento-span-2x2,
+    .bento-span-1x2,
+    .bento-span-2x1,
+    .bento-span-1x1 {
+        grid-column: span 1;
+        grid-row: span 1;
+        min-height: auto;
+    }
+
+    .bento-card {
+        min-height: auto;
+        border-radius: 12px;
+    }
+
+    .card-body {
+        padding: 14px;
     }
     
     .card-body {
