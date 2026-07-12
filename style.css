@@ -1337,35 +1337,42 @@ body.light-theme .category-tab-btn.active {
     color: #ffffff;
 }
 
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-
-
-.category-tab-btn {
-    width: 100%;
-    justify-content: flex-start;
-}
-
-/* Mobile: Icon-only regi   .active-indicator-pill {
-        top: 4px;
-        height: calc(100% - 8px);
-    }
-}
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-
-
-.category-tab-btn {
-    width: 100%;
-    justify-content: flex-start;
-}
-
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-
-
 /* Mobile: Category tabs horizontal scroll */
 
+.region-tab-btn i,
+.category-tab-btn i {
+    width: 13px;
+    height: 13px;
+    opacity: 0.65;
+    transition: all var(--transition-fast) ease;
+}
 
+.region-tab-btn:hover,
+.category-tab-btn:hover {
+    color: var(--text-primary);
+}
 
-body.light-theme #region-active-pill.active-world {
+.region-tab-btn:hover i,
+.category-tab-btn:hover i {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Active state highlights for regions */
+.region-tab-btn.active {
+    color: #ffffff;
+}
+
+.region-tab-btn.active i {
+    opacity: 1;
+}
+
+/* Light mode active state - keep white text on colored background */
+body.light-theme .category-tab-btn.active {
+    color: #ffffff;
+}
+
+body.light-theme #region-active-pill.active-world {body.light-theme #region-active-pill.active-world {
     background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 229, 255, 0.25));
     box-shadow: 0 4px 20px rgba(0, 229, 255, 0.25);
 }
@@ -1400,7 +1407,9 @@ body.light-theme #category-active-pill.tech {
 
 
 /* Mobile: Category tabs horizontal scroll */
-@media (max-width: 767px) {
+@}
+}
+media (max-width: 767px) {
     .category-tabs-container {
         flex-direction: row;
         align-items: center;
@@ -1885,6 +1894,7 @@ body.light-theme #category-active-pill.tech {
     color: var(--accent-saffron);
 }
 
+}
 @media (max-width: 767px) {
     .header-container {
         padding: 0 16px;
