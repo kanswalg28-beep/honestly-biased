@@ -1395,7 +1395,10 @@ body.light-theme #category-active-pill.politics {
 
 body.light-theme #category-active-pill.tech {
     background: rgba(50, 255, 100, 0.15);
-    boxian/World/UK/Berkshire) */
+    box-shadow: 0 4px 20px rgba(50, 255, 100, 0.25);
+}
+
+/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
 
 
 .category-tab-btn {
