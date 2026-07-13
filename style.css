@@ -1227,15 +1227,7 @@ body.light-theme .category-tab-btn.active {
     }
 }
 
-.category-tab-btn {
-    width: 100%;
-    justify-content: flex-start;
-}
-
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-
-
-/* Mobile: Category tabs horizontal scroll */
+/* Category tab base styles
 
 
 .region-tabs-container .active-indicator-pill {
@@ -1290,20 +1282,7 @@ body.light-theme .category-tab-btn.active {
     color: #ffffff;
 }
 
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-
-
-.category-tab-btn {
-    width: 100%;
-    justify-content: flex-start;
-}
-
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-
-
-/* Mobile: Category tabs horizontal scroll */
-
-
+/* Tab icon base styles */
 .region-tab-btn i,
 .category-tab-btn i {
     width: 13px;
@@ -1398,21 +1377,8 @@ body.light-theme #category-active-pill.tech {
     box-shadow: 0 4px 20px rgba(50, 255, 100, 0.25);
 }
 
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-
-
-.category-tab-btn {
-    width: 100%;
-    justify-content: flex-start;
-}
-
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-
-
 /* Mobile: Category tabs horizontal scroll */
-@}
-}
-media (max-width: 767px) {
+@media (max-width: 767px) {
     .category-tabs-container {
         flex-direction: row;
         align-items: center;
@@ -1445,7 +1411,7 @@ media (max-width: 767px) {
 .category-tab-btn[data-category="all"].active { color: var(--accent-green); text-shadow: 0 0 8px rgba(0, 229, 255, 0.3); }
 .category-tab-btn[data-category="Politics"].active { color: hsl(28, 90%, 55%); text-shadow: 0 0 8px rgba(255, 110, 0, 0.3); }
 
-.category-tab-btn[data-category="Tech"].active { color: hsl(145, 80%, 50%); text-shadow0.25); background: rgba(255, 110, 0, 0.05); box-shadow: 0 4px 15px rgba(255, 110, 0, 0.1); }
+.category-tab-btn[data-category="Tech"].active { color: hsl(145, 80%, 50%); text-shadow: 0 0 8px rgba(50, 255, 100, 0.25); background: rgba(50, 255, 100, 0.05); box-shadow: 0 4px 15px rgba(50, 255, 100, 0.1); }
 
 #category-active-pill.tech { border-color: rgba(50, 255, 100, 0.25); background: rgba(50, 255, 100, 0.05); box-shadow: 0 4px 15px rgba(50, 255, 100, 0.1); }
 #category-active-pill.finance { border-color: rgba(255, 200, 0, 0.25); background: rgba(255, 200, 0, 0.05); box-shadow: 0 4px 15px rgba(255, 200, 0, 0.1); }
@@ -1477,10 +1443,7 @@ media (max-width: 767px) {
     body.light-theme .category-tab-btn.active {
         color: #ffffff;
     }
-
-    /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
     
-
     .category-tab-btn {
         width: 100%;
         justify-content: flex-start;
@@ -1541,7 +1504,8 @@ media (max-width: 767px) {
 .bento-span-1x1 {
     grid-column: span 4;
     grid-row: span 1;
-    min-heigh
+    min-height: 420px;
+}
 
 /* For 2x2 cards, slightly taller visual area */
 .bento-span-2x2 .card-visual {
@@ -3197,10 +3161,6 @@ body.light-theme .header-highlights .ticker-track {
         border-radius: 12px;
     }
 
-    .card-body {
-        padding: 14px;
-    }
-    
     .card-body {
         padding: 14px;
     }
