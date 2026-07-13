@@ -798,30 +798,6 @@ body.light-theme .icon-dark { opacity: 0; transform: rotate(90deg); }
     100% { transform: translate3d(-50%, 0, 0); }
 }
 
-/* Mobile ticker - stacked layout */
-@media (max-width: 767px) {
-    .ticker-banner {
-        height: auto;
-        padding: 6px 0;
-    }
-
-    .ticker-container {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 0 16px;
-        gap: 4px;
-    }
-
-    .ticker-label {
-        border-right: none;
-        padding-right: 0;
-    }
-
-    .ticker-scroll {
-        padding-left: 0;
-    }
-}
-
 /* ==========================================================================
    HERO SECTION (Featuring refractive 3D Perspective Lens)
    ========================================================================== */
@@ -1201,34 +1177,18 @@ body.light-theme .category-tab-btn.active {
     color: #ffffff;
 }
 
-/* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-@media (max-width: 767px) {
-    .region-tab-btn {
-        font-size: 0;
-        padding: 8px 10px;
-    }
-    
-    .region-tab-btn::after {
-        content: attr(data-region);
-        font-size: 0.65rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .region-tab-btn i {
-        width: 14px;
-        height: 14px;
-        opacity: 1;
-    }
-    
-    .region-tab-btn.active::after {
-        color: #ffffff;
-    }
+/* Frosted Active Indicator Pill */
+.active-indicator-pill {
+    position: absolute;
+    border-radius: var(--border-radius-sm);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+    z-index: 0;
+    transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
 }
-
-/* Category tab base styles
-
 
 .region-tabs-container .active-indicator-pill {
     top: 6px;
@@ -1278,45 +1238,14 @@ body.light-theme .category-tab-btn:not(.active):hover {
 }
 
 body.light-theme .region-tab-btn i,
-body.light-theme .category-tab-btn.active {
-    color: #ffffff;
+body.light-theme .category-tab-btn i {
+    opacity: 0.7;
 }
 
-/* Tab icon base styles */
-.region-tab-btn i,
-.category-tab-btn i {
-    width: 13px;
-    height: 13px;
-    opacity: 0.65;
-    transition: all var(--transition-fast) ease;
+.category-tab-btn {
+    width: 100%;
+    justify-content: flex-start;
 }
-
-.region-tab-btn:hover,
-.category-tab-btn:hover {
-    color: var(--text-primary);
-}
-
-.region-tab-btn:hover i,
-.category-tab-btn:hover i {
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-/* Active state highlights for regions */
-.region-tab-btn.active {
-    color: #ffffff;
-}
-
-.region-tab-btn.active i {
-    opacity: 1;
-}
-
-/* Light mode active state - keep white text on colored background */
-body.light-theme .category-tab-btn.active {
-    color: #ffffff;
-}
-
-/* Mobile: Category tabs horizontal scroll */
 
 .region-tab-btn i,
 .category-tab-btn i {
@@ -1347,11 +1276,21 @@ body.light-theme .category-tab-btn.active {
 }
 
 /* Light mode active state - keep white text on colored background */
+body.light-theme .region-tab-btn.active {
+    color: #ffffff;
+}
+
 body.light-theme .category-tab-btn.active {
     color: #ffffff;
 }
 
-body.light-theme #region-active-pill.active-world {body.light-theme #region-active-pill.active-world {
+/* Light mode active indicator pills */
+body.light-theme #region-active-pill.active-indian {
+    background: linear-gradient(135deg, rgba(255, 110, 0, 0.15), rgba(255, 110, 0, 0.25));
+    box-shadow: 0 4px 20px rgba(255, 110, 0, 0.25);
+}
+
+body.light-theme #region-active-pill.active-world {
     background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 229, 255, 0.25));
     box-shadow: 0 4px 20px rgba(0, 229, 255, 0.25);
 }
@@ -1377,41 +1316,40 @@ body.light-theme #category-active-pill.tech {
     box-shadow: 0 4px 20px rgba(50, 255, 100, 0.25);
 }
 
-/* Mobile: Category tabs horizontal scroll */
-@media (max-width: 767px) {
-    .category-tabs-container {
-        flex-direction: row;
-        align-items: center;
-        overflow-x: auto;
-        white-space: nowrap;
-        -webkit-overflow-scrolling: touch;
-        padding: 6px;
-        gap: 4px;
-    }
-    
-    .category-tab-btn {
-        padding: 8px 12px;
-        font-size: 0.7rem;
-        min-width: fit-content;
-        white-space: nowrap;
-        width: auto;
-        justify-content: center;
-    }
-    
-    .category-tab-btn i {
-        width: 14px;
-        height: 14px;
-    }
-    
-    .active-indicator-pill {
-        top: 4px;
-        height: calc(100% - 8px);
-    }
+body.light-theme #category-active-pill.finance {
+    background: rgba(255, 200, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(255, 200, 0, 0.25);
 }
+
+body.light-theme #category-active-pill.entertainment {
+    background: rgba(255, 50, 150, 0.15);
+    box-shadow: 0 4px 20px rgba(255, 50, 150, 0.25);
+}
+
+body.light-theme #category-active-pill.health {
+    background: rgba(255, 0, 50, 0.15);
+    box-shadow: 0 4px 20px rgba(255, 0, 50, 0.25);
+}
+
+/* Active state highlights for categories */
+.category-tab-btn.active {
+    color: #ffffff;
+}
+
+.category-tab-btn.active i {
+    opacity: 1;
+}
+
 .category-tab-btn[data-category="all"].active { color: var(--accent-green); text-shadow: 0 0 8px rgba(0, 229, 255, 0.3); }
 .category-tab-btn[data-category="Politics"].active { color: hsl(28, 90%, 55%); text-shadow: 0 0 8px rgba(255, 110, 0, 0.3); }
 
-.category-tab-btn[data-category="Tech"].active { color: hsl(145, 80%, 50%); text-shadow: 0 0 8px rgba(50, 255, 100, 0.25); background: rgba(50, 255, 100, 0.05); box-shadow: 0 4px 15px rgba(50, 255, 100, 0.1); }
+.category-tab-btn[data-category="Tech"].active { color: hsl(145, 80%, 50%); text-shadow: 0 0 8px rgba(50, 255, 100, 0.3); }
+.category-tab-btn[data-category="Finance"].active { color: hsl(45, 90%, 50%); text-shadow: 0 0 8px rgba(255, 200, 0, 0.3); }
+.category-tab-btn[data-category="Entertainment"].active { color: hsl(340, 85%, 55%); text-shadow: 0 0 8px rgba(255, 50, 150, 0.3); }
+.category-tab-btn[data-category="Health"].active { color: hsl(358, 85%, 50%); text-shadow: 0 0 8px rgba(255, 0, 50, 0.3); }
+
+#category-active-pill.all { border-color: rgba(0, 229, 255, 0.25); background: rgba(0, 229, 255, 0.05); box-shadow: 0 4px 15px rgba(0, 229, 255, 0.1); }
+#category-active-pill.politics { border-color: rgba(255, 110, 0, 0.25); background: rgba(255, 110, 0, 0.05); box-shadow: 0 4px 15px rgba(255, 110, 0, 0.1); }
 
 #category-active-pill.tech { border-color: rgba(50, 255, 100, 0.25); background: rgba(50, 255, 100, 0.05); box-shadow: 0 4px 15px rgba(50, 255, 100, 0.1); }
 #category-active-pill.finance { border-color: rgba(255, 200, 0, 0.25); background: rgba(255, 200, 0, 0.05); box-shadow: 0 4px 15px rgba(255, 200, 0, 0.1); }
@@ -1440,13 +1378,13 @@ body.light-theme #category-active-pill.tech {
         scrollbar-width: none;
     }
     
-    body.light-theme .category-tab-btn.active {
-        color: #ffffff;
+    .category-tabs-container::-webkit-scrollbar {
+        display: none;
     }
     
     .category-tab-btn {
-        width: 100%;
-        justify-content: flex-start;
+        width: auto;
+        justify-content: center;
     }
     
     .category-tabs-container .active-indicator-pill {
@@ -1456,189 +1394,13 @@ body.light-theme #category-active-pill.tech {
     }
 }
 
-/* Tablet: First 4 posts stack as 2x1 horizontal cards (6 cols each) */
-@media (max-width: 1024px) {
-    .bento-grid > .bento-span-2x1:nth-child(-n+4) {
-        grid-column: span 6;
-        grid-row: span 1;
-    }
-    
-    .bento-grid > .bento-span-1x1:nth-child(n+5) {
-        grid-column: span 4;
-        grid-row: span 1;
+@media (max-width: 767px) {
+    .region-tab-btn,
+    .category-tab-btn {
+        padding: 8px 14px;
+        font-size: 0.72rem;
     }
 }
-
-
-
-/* Bento card modular designs */
-.bento-card {
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    border: 1px solid var(--border-color);
-    min-height: 420px;
-}
-
-/* Card Sizes (12-column Desktop Spans) */
-.bento-span-2x2 {
-    grid-column: span 6;
-    grid-row: span 2;
-    min-height: 420px;
-}
-
-.bento-span-1x2 {
-    grid-column: span 4;
-    grid-row: span 2;
-    min-height: 420px;
-}
-
-.bento-span-2x1 {
-    grid-column: span 6;
-    grid-row: span 1;
-    min-height: 220px;
-}
-
-.bento-span-1x1 {
-    grid-column: span 4;
-    grid-row: span 1;
-    min-height: 420px;
-}
-
-/* For 2x2 cards, slightly taller visual area */
-.bento-span-2x2 .card-visual {
-    aspect-ratio: 16 / 10;
-}
-
-/* For 1x1 cards, standard 16:9 */
-.bento-span-1x1 .card-visual {
-    aspect-ratio: 16 / 9;
-}
-
-/* Cover Image background with premium zoom-out hover */
-.card-image-bg {
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-    transition: transform var(--transition-slow);
-}
-
-.bento-card:hover .card-image-bg {
-    transform: scale(1.03);
-}
-
-/* Category tags placed on image elements */
-.card-tag {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-family: var(--font-editorial);
-    padding: 4px 10px;
-    border-radius: 4px;
-    color: #ffffff;
-    z-index: 2;
-}
-
-.saffron-bg { background-color: var(--accent-saffron); }
-.green-bg { background-color: var(--accent-green); }
-
-/* Card Text layouts */
-.card-body {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-}
-
-.card-time {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-weight: 600;
-    margin-bottom: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.card-time i {
-    width: 12px;
-    height: 12px;
-}
-
-.card-title {
-    font-size: 1.35rem;
-    margin-bottom: 12px;
-    line-height: 1.25;
-    letter-spacing: -0.5px;
-}
-
-.bento-span-2x2 .card-title {
-    font-size: 1.65rem;
-}
-
-.card-title a {
-    color: var(--text-primary);
-}
-
-.card-title a:hover {
-    color: var(--accent-saffron);
-}
-
-.card-summary {
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: 20px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* For 1x1 cards, allow more lines */
-.bento-span-1x1 .card-summary {
-    -webkit-line-clamp: 4;
-}
-
-.card-footer-meta {
-    margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    font-weight: 600;
-}
-
-.card-author {
-    font-weight: 700;
-    color: var(--text-secondary);
-}
-
-.card-action i {
-    width: 16px;
-    height: 16px;
-    transition: transform var(--transition-fast);
-}
-
-.bento-card:hover .card-action i {
-    transform: translate(2px, -2px);
-    color: var(--accent-saffron);
-}
-
-
-
-
-
 
 /* Main Grid Structure - 12 column grid for flexible layouts */
 .bento-grid {
@@ -1659,11 +1421,6 @@ body.light-theme #category-active-pill.tech {
     grid-column: span 4;
     grid-row: span 1;
 }
-
-
-/* Mobile: Region tabs & Category tabs - horizontal scroll with smaller buttons */
-
-
 
 /* Bento card modular designs */
 .bento-card {
@@ -1832,6 +1589,9 @@ body.light-theme #category-active-pill.tech {
 .bento-span-1x1 .card-summary {
     -webkit-line-clamp: 4;
 }
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
 
 .card-footer-meta {
     margin-top: auto;
@@ -1861,106 +1621,586 @@ body.light-theme #category-active-pill.tech {
     color: var(--accent-saffron);
 }
 
+/* ==========================================================================
+   BENTO DESIGN VARIANTS
+   ========================================================================== */
+
+/* 2. DYNAMIC NARRATIVE INDEX VISUALIZATION */
+.theme-green {
+    border-top: 3px solid var(--accent-green);
 }
-@media (max-width: 767px) {
-    .header-container {
-        padding: 0 16px;
-    }
-    
-    .brand-logo {
-        height: 38px;
-    }
 
-    .ticker-banner {
-        height: auto;
-        padding: 6px 0;
-    }
+.card-header-tag {
+    padding: 20px 24px 0 24px;
+}
 
-    .ticker-container {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 0 16px;
-        gap: 4px;
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .bento-grid {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 20px;
     }
+    .bento-grid > .bento-span-2x2:nth-child(-n+4) {
+        grid-column: span 3;
+        grid-row: span 2;
+    }
+    .bento-grid > .bento-span-1x1:nth-child(n+5) {
+        grid-column: span 2;
+        grid-row: span 1;
+    }
+    .bento-span-2x2 {
+        grid-column: span 3;
+    }
+    .bento-span-1x2 {
+        grid-column: span 2;
+        grid-row: span 2;
+    }
+}
 
-    .ticker-label {
-        border-right: none;
-        padding-right: 0;
+@media (max-width: 640px) {
+    .bento-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
+    .bento-grid > .bento-span-2x2:nth-child(-n+4) {
+        grid-column: span 1;
+        grid-row: auto;
+    }
+    .bento-grid > .bento-span-1x1:nth-child(n+5) {
+        grid-column: span 1;
+        grid-row: auto;
+    }
+    .bento-span-2x2, .bento-span-2x1, .bento-span-1x2 {
+        grid-column: span 1;
+        grid-row: auto;
+    }
+}
 
-    .ticker-scroll {
-        padding-left: 0;
-    }
-    
-    .hero-section {
-        min-height: auto;
-        padding: 32px 0;
-    }
-    
-    .lens-overlay {
-        background: linear-gradient(
-            to bottom,
-            rgba(var(--bg-primary-rgb), 0.8) 0%,
-            rgba(var(--bg-primary-rgb), 0.95) 100%
-        );
-    }
-    
-    body.light-theme .category-tab-btn.active {
-        color: #ffffff;
-    }
+.ticker-pulse-container {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent-green);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-editorial);
+    letter-spacing: 1px;
+}
 
-    /* Mobile: Icon-only region tabs (Indian/World/UK/Berkshire) */
-    .region-tab-btn {
-        font-size: 0;
-        padding: 8px 10px;
-    }
-    
-    .region-tab-btn::after {
-        content: attr(data-region);
-        font-size: 0.65rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .region-tab-btn i {
-        width: 14px;
-        height: 14px;
-        opacity: 1;
-    }
-    
-    .region-tab-btn.active::after {
-        color: #ffffff;
-    }
-    
-    .category-tab-btn {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    /* Disable Three.js heavy effects on mobile for performance */
-    .lens-canvas-container canvas {
-        display: none !important;
-    }
-    
-    .hero-fallback-img {
-        opacity: 0.6;
-        object-fit: cover;
-    }
+.data-viz-body {
+    padding-top: 12px;
+}
 
-    .hero-meta {
-        flex-direction: column;
-    }
-    
-    .category-tab-btn {
-        width: 100%;
-        justify-content: flex-start;
-    }
+.card-subtitle-small {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: -8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.data-graph-container {
+    width: 100%;
+    margin-bottom: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--border-radius-sm);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.data-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+}
+
+/* Micro-animations for data plot line */
+.graph-path {
+    stroke-dasharray: 600;
+    stroke-dashoffset: 600;
+    animation: draw-line 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.graph-area {
+    opacity: 0;
+    animation: fade-in-area 1.5s ease-out 1.2s forwards;
+}
+
+.pulse-ring {
+    animation: pulse-ring-anim 1.5s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+    transform-origin: 190px 15px;
+}
+
+@keyframes draw-line {
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes fade-in-area {
+    to { opacity: 1; }
+}
+
+@keyframes pulse-ring-anim {
+    0% { transform: scale(0.6); opacity: 1; }
+    80%, 100% { transform: scale(1.8); opacity: 0; }
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.metric-block {
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-val {
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    font-family: var(--font-editorial);
+}
+
+.metric-lbl {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+    font-weight: 600;
+}
+
+.green-text {
+    color: var(--accent-green);
+}
+
+/* 3. MANIFESTO QUOTE BLOCK */
+.quote-card {
+    padding: 32px;
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--accent-saffron-rgb), 0.05) 100%);
+    justify-content: space-between;
+}
+
+.quote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    color: var(--text-muted);
+}
+
+.quote-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--accent-saffron);
+}
+
+.quote-card .card-tag {
+    position: static;
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.quote-body {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+.quote-text {
+    font-family: var(--font-ui);
+    font-size: 1.15rem;
+    line-height: 1.55;
+    font-style: italic;
+    color: var(--text-primary);
+    font-weight: 400;
+}
+
+.quote-author-meta {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.quote-author-name {
+    display: block;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.quote-author-title {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* 4. QUICK FEED TILE */
+.feed-card {
+    padding: 24px;
+}
+
+.feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1.5px solid var(--border-color);
+}
+
+.feed-title {
+    font-size: 1rem;
+    font-family: var(--font-editorial);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feed-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-saffron);
+}
+
+.feed-badge {
+    background-color: rgba(var(--accent-saffron-rgb), 0.15);
+    color: var(--accent-saffron);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+}
+
+.feed-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    max-height: 230px;
+}
+
+.feed-item {
+    display: flex;
+    gap: 12px;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.feed-time {
+    color: var(--accent-saffron);
+    font-weight: 700;
+    font-size: 0.8rem;
+    font-family: var(--font-editorial);
+}
+
+.feed-content {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* 5. AUDIO PODCAST CARD */
+.audio-card {
+    padding: 24px;
+    justify-content: space-between;
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--accent-saffron-rgb), 0.03) 100%);
+}
+
+.audio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.audio-card .card-tag {
+    position: static;
+}
+
+.audio-duration {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.audio-card .card-title {
+    font-size: 1.15rem;
+    margin-bottom: 10px;
+}
+
+.audio-player-ui {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.play-btn-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--text-primary);
+    color: var(--bg-primary);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.play-btn-circle:hover {
+    transform: scale(1.08);
+    background-color: var(--accent-saffron);
+    color: #ffffff;
+}
+
+.play-icon {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    margin-left: 2px;
+}
+
+.audio-progress-bar {
+    flex-grow: 1;
+    height: 4px;
+    background-color: var(--border-color);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.audio-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: var(--accent-saffron);
+    border-radius: 2px;
+}
+
+/* 6. HIGH IMPACT STORY WITH VIDEO */
+.video-preview-card {
+    grid-column: span 2;
+    grid-row: span 1;
+    flex-direction: row;
+}
+
+.video-preview-card .card-visual {
+    width: 45%;
+    height: 100%;
+}
+
+.video-preview-card .card-body {
+    width: 55%;
+}
+
+.video-play-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 56px;
+    height: 56px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ripple-outer, .ripple-inner {
+    position: absolute;
+    border-radius: 50%;
+}
+
+.ripple-outer {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.15);
+    animation: video-ripple 2s infinite ease-out;
+}
+
+.ripple-inner {
+    width: 46px;
+    height: 46px;
+    background-color: #ffffff;
+    color: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.video-play-overlay:hover .ripple-inner {
+    transform: scale(1.1);
+    background-color: var(--accent-saffron);
+    color: #ffffff;
+}
+
+.ripple-inner i {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    margin-left: 2px;
+}
+
+.video-play-overlay {
+    transition: opacity var(--transition-medium), visibility var(--transition-medium);
+}
+
+.video-play-overlay.playing {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.bento-card:hover .video-play-overlay.playing {
+    opacity: 1;
+    visibility: visible;
+}
+
+@keyframes video-ripple {
+    0% { transform: scale(0.8); opacity: 0.5; }
+    100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* 7. INTERACTIVE CIVIC POLL CARD */
+.poll-card {
+    padding: 24px;
+}
+
+.poll-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.poll-title {
+    font-size: 0.95rem;
+    font-family: var(--font-editorial);
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.5px;
+}
+
+.poll-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-green);
+}
+
+.poll-card .card-tag {
+    position: static;
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.poll-question {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.poll-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.poll-option-btn {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all var(--transition-fast);
+}
+
+.poll-option-btn:hover {
+    border-color: var(--border-color-hover);
+    color: var(--text-primary);
+}
+
+.poll-option-text {
+    position: relative;
+    z-index: 2;
+    font-weight: 600;
+}
+
+.poll-percentage {
+    position: relative;
+    z-index: 2;
+    font-weight: 700;
+    opacity: 0.9;
+}
+
+.poll-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: rgba(var(--accent-green-rgb), 0.12);
+    border-right: 2px solid var(--accent-green);
+    z-index: 1;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.poll-option-btn:hover .poll-bar {
+    background-color: rgba(var(--accent-green-rgb), 0.18);
+}
+
+/* 8. TECH CARD HEADER ONLY */
+.header-only-body {
+    justify-content: center;
+}
+
+.header-only-body .card-tag {
+    position: static;
+    align-self: flex-start;
+    margin-bottom: 12px;
+    background-color: rgba(var(--accent-saffron-rgb), 0.08);
+    color: var(--accent-saffron);
+}
+
+.header-only-body .card-title {
+    font-size: 1.15rem;
 }
 
 /* ==========================================================================
    FOOTER SECTION
    ========================================================================== */
+.editorial-footer {
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    padding: 80px 0 40px 0;
+    font-size: 0.9rem;
+}
 
 .footer-grid {
     max-width: 1400px;
@@ -2065,12 +2305,68 @@ body.light-theme #category-active-pill.tech {
 
 .newsletter-btn:hover {
     background-color: var(--accent-saffron);
-    color: var(--bg-primary);
+    color: #ffffff;
 }
 
 .newsletter-btn i {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
+}
+
+/* Custom Checkbox design */
+.checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.checkbox-label input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkbox-custom {
+    min-width: 16px;
+    height: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background-color: var(--bg-primary);
+    position: relative;
+    margin-top: 1px;
+    transition: all var(--transition-fast);
+}
+
+.checkbox-label:hover input ~ .checkbox-custom {
+    border-color: var(--accent-saffron);
+}
+
+.checkbox-label input:checked ~ .checkbox-custom {
+    background-color: var(--accent-saffron);
+    border-color: var(--accent-saffron);
+}
+
+.checkbox-custom::after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-label input:checked ~ .checkbox-custom::after {
+    display: block;
 }
 
 /* Footer Bottom Layout */
@@ -2119,66 +2415,188 @@ body.light-theme #category-active-pill.tech {
     height: 16px;
 }
 
-/* Responsive Footer */
+/* ==========================================================================
+   RESPONSIVE DESIGN SYSTEM (Breakpoints)
+   ========================================================================== */
+
+/* Tablets & Small Desktops */
 @media (max-width: 1200px) {
-    .footer-grid {
-        grid-template-columns: 2fr 1fr 1fr 2fr;
-        gap: 32px;
-        margin-bottom: 48px;
+    .bento-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
-}
-
-@media (max-width: 1024px) {
-    .footer-grid {
-        grid-template-columns: 1.5fr 1fr 1fr 2fr;
-        gap: 32px;
-        margin-bottom: 48px;
+    
+    .bento-span-2x2 {
+        grid-column: span 2;
     }
-}
-
-@media (max-width: 900px) {
+    
     .footer-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 32px;
-        margin-bottom: 40px;
+        grid-template-columns: 1.5fr 1fr 1fr;
     }
     
     .footer-newsletter-column {
-        grid-column: span 2;
-        max-width: 100%;
+        grid-column: span 3;
+        max-width: 500px;
+        margin-top: 20px;
     }
 }
 
+/* Mobile Tablets */
+@media (max-width: 1024px) {
+    :root {
+        --header-height: 70px;
+    }
+    
+    .main-header {
+        border-radius: 0;
+    }
+
+    .nav-menu-desktop {
+        display: none !important;
+    }
+    
+    .mobile-menu-toggle {
+        display: flex !important;
+    }
+
+    /* Hero section layouts */
+    .hero-section {
+        min-height: auto;
+        padding: 40px 0;
+    }
+    
+    .lens-overlay {
+        background: linear-gradient(
+            to bottom,
+            rgba(var(--bg-primary-rgb), 0.8) 0%,
+            rgba(var(--bg-primary-rgb), 0.95) 100%
+        );
+    }
+    
+    .hero-content-wrapper {
+        flex-direction: column;
+    }
+    
+    .hero-text-block {
+        max-width: 100%;
+        padding: 30px;
+    }
+    
+    .bento-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .video-preview-card {
+        flex-direction: column;
+    }
+    
+    .video-preview-card .card-visual,
+    .video-preview-card .card-body {
+        width: 100%;
+    }
+    
+    .video-preview-card .card-visual {
+        height: auto;
+    }
+}
+
+/* Portrait Cell Phones (Crucial for Indian News consumption) */
 @media (max-width: 767px) {
-    .footer-grid {
-        grid-template-columns: 1fr;
-        gap: 32px;
-        margin-bottom: 32px;
+    .header-container {
         padding: 0 16px;
     }
     
+    .brand-logo {
+        height: 38px;
+    }
+
+    .ticker-banner {
+        height: auto;
+        padding: 6px 0;
+    }
+
+    .ticker-container {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0 16px;
+        gap: 4px;
+    }
+
+    .ticker-label {
+        border-right: none;
+        padding-right: 0;
+    }
+
+    .ticker-scroll {
+        padding-left: 0;
+    }
+
+    .hero-text-block {
+        padding: 20px 16px;
+    }
+    
+    .hero-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .bento-section {
+        margin: 40px auto;
+        padding: 0 16px;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+    }
+    
+    .bento-grid {
+        grid-template-columns: 1fr;
+        grid-auto-rows: auto;
+        gap: 16px;
+    }
+    
+    .bento-span-2x2,
+    .bento-span-1x2,
+    .bento-span-2x1,
+    .bento-span-1x1 {
+        grid-column: span 1;
+        grid-row: span 1;
+    }
+
+    .card-visual {
+        height: auto;
+    }
+
+    .card-body {
+        padding: 16px;
+    }
+
+    .quote-card {
+        padding: 24px;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        padding: 0 16px;
+    }
+
     .footer-newsletter-column {
         grid-column: span 1;
     }
-    
-    .newsletter-form {
-        max-width: 100%;
-    }
-}
 
-@media (max-width: 640px) {
     .footer-bottom {
         flex-direction: column;
+        align-items: center;
         text-align: center;
-        padding: 32px 16px 0 16px;
-    }
-    
-    .social-links {
-        justify-content: center;
+        padding: 30px 16px 0 16px;
     }
 }
-
-
 
 /* ==========================================================================
    PREMIUM GLASSMORPHIC AUDIT READER MODAL STYLES
@@ -2852,7 +3270,6 @@ body.light-theme .header-highlights .ticker-track {
     color: var(--text-primary);
 }
 
-
 @media (max-width: 1100px) {
     .header-highlights {
         max-width: 500px;
@@ -2864,397 +3281,5 @@ body.light-theme .header-highlights .ticker-track {
 @media (max-width: 900px) {
     .header-highlights {
         display: none !important;
-    }
-}
-
-/* ==========================================================================
-   COMPREHENSIVE MOBILE & TABLET RESPONSIVE RULES
-   ========================================================================== */
-
-/* Tablet breakpoint (1024px and below) */
-@media (max-width: 1024px) {
-    .bento-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-    }
-    
-    .bento-card {
-        min-height: auto;
-    }
-    
-    .bento-span-2x2,
-    .bento-span-1x2,
-    .bento-span-2x1,
-    .bento-span-1x1 {
-        grid-column: span 1;
-        grid-row: span 1;
-    }
-    
-    /* Exception: First 4 posts as 2x1 horizontal cards (6 cols each) - already handled at line 1868 */
-    /* Exception: Posts 5+ as 1x1 (4 cols each) - already handled at line 1874 */
-    
-    .bento-layout-wrapper {
-        padding: 0 20px;
-        gap: 20px;
-    }
-    
-    .bento-sidebar {
-        position: static;
-        width: 100%;
-    }
-    
-    .main-content {
-        padding: 20px 0;
-    }
-    
-    .section-heading {
-        font-size: 1.8rem;
-    }
-    
-    .section-subheading {
-        font-size: 0.9rem;
-    }
-}
-
-/* Mobile breakpoint (767px and below) */
-@media (max-width: 767px) {
-    /* ===== BENTO GRID ===== */
-    .bento-grid {
-    display: grid;
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-    
-    .bento-span-2x2,
-    .bento-span-1x2,
-    .bento-span-2x1,
-    .bento-span-1x1 {
-        grid-column: span 1;
-        grid-row: span 1;
-        min-height: auto;
-    }
-
-    .bento-span-2x2,
-    .bento-span-1x2,
-    .bento-span-2x1 {
-        grid-column: span 1;
-        grid-row: span 1;
-        min-height: auto;
-    }
-    
-    .bento-card {
-        min-height: auto;
-        border-radius: 12px;
-    }
-    
-    .card-body {
-        padding: 16px;
-    }
-    
-    .card-body h3 {
-        font-size: 1.1rem;
-        line-height: 1.4;
-    }
-    
-    .card-visual {
-        aspect-ratio: 16/9;
-    }
-    
-    .bento-span-2x2 .card-visual {
-        aspect-ratio: 16/10;
-    }
-    
-    .bento-span-1x1 .card-visual {
-        aspect-ratio: 16/9;
-    }
-    
-    .card-tag {
-        font-size: 0.65rem;
-        padding: 3px 8px;
-        top: 12px;
-        left: 12px;
-    }
-    
-    .card-meta {
-        font-size: 0.7rem;
-        gap: 8px;
-    }
-    
-    .card-action {
-        padding: 12px 16px;
-        font-size: 0.8rem;
-    }
-    
-    /* ===== BENTO LAYOUT WRAPPER ===== */
-    .bento-layout-wrapper {
-        flex-direction: column;
-        gap: 16px;
-        padding: 0 16px;
-    }
-    
-    .bento-sidebar {
-        position: static;
-        width: 100%;
-    }
-    
-    .main-content {
-        padding: 16px 0;
-    }
-    
-    /* ===== HERO SECTION ===== */
-    .hero-section {
-        min-height: 60vh;
-        padding: 24px 0;
-    }
-    
-    .hero-content-wrapper {
-        padding: 0 16px;
-    }
-    
-    .hero-meta {
-        flex-direction: column;
-        gap: 8px;
-        align-items: flex-start;
-    }
-    
-    .hero-headline {
-        font-size: 2rem;
-        line-height: 1.2;
-    }
-    
-    .hero-subheadline {
-        font-size: 1rem;
-    }
-    
-    /* Disable Three.js on mobile for performance (already handled at line 2381-2383) */
-    .lens-canvas-container canvas {
-        display: none !important;
-    }
-    
-    .hero-fallback-img {
-        opacity: 0.6;
-        object-fit: cover;
-    }
-    
-    /* ===== HEADER ===== */
-    .header-container {
-        padding: 0 12px;
-        flex-wrap: wrap;
-        gap: 8px;
-        height: auto;
-        min-height: 60px;
-    }
-    
-    .brand-logo {
-        height: 36px;
-    }
-    
-    .region-tabs-container {
-        width: 100%;
-        order: 3;
-        padding: 8px 0;
-    }
-    
-    .category-tabs-container {
-        order: 4;
-    }
-    
-    /* ===== SECTION HEADINGS ===== */
-    .section-heading {
-        font-size: 1.5rem;
-        margin-bottom: 8px;
-    }
-    
-    .section-subheading {
-        font-size: 0.85rem;
-    }
-    
-    /* ===== PAGINATION ===== */
-    .pagination-container {
-        flex-wrap: wrap;
-        gap: 8px;
-        justify-content: center;
-    }
-    
-    .pagination-btn {
-        padding: 8px 12px;
-        font-size: 0.8rem;
-    }
-    
-    .per-page-container {
-        flex-direction: column;
-        gap: 8px;
-        align-items: stretch;
-    }
-    
-    .per-page-select {
-        width: 100%;
-        text-align: center;
-    }
-    
-    /* ===== CARDS CONTAINER ===== */
-    .cards-container,
-    .articles-grid,
-    .posts-grid {
-        gap: 12px;
-    }
-    
-    /* ===== FOOTER ===== */
-    /* Footer mobile rules already exist at lines 2591-2618 - keep those */
-    
-    /* ===== BLOG POST CONTENT ===== */
-    .blog-post-content p {
-        font-size: 1rem;
-        line-height: 1.7;
-    }
-    
-    .blog-post-content .blog-lead {
-        font-size: 1.15rem;
-    }
-    
-    .blog-post-content h2,
-    .blog-post-content h3 {
-        font-size: 1.4rem;
-    }
-    
-    .blog-post-content blockquote {
-        padding: 16px 20px;
-        font-size: 1rem;
-    }
-    
-    /* ===== MODAL ===== */
-    /* Modal mobile rules already at lines 2907-2922 - keep those */
-    
-    /* ===== ADMIN ===== */
-    /* Admin mobile rules already at lines 3098-3121 - keep those */
-    
-    /* ===== HEADER HIGHLIGHTS ===== */
-    /* Already handled at lines 3328-3339 - hides at 900px */
-    
-    /* ===== TICKER ===== */
-    /* Already handled at lines 802-823 and 2304-2332 */
-    
-    /* ===== CATEGORY/REGION TABS ===== */
-    /* Already handled - region tabs become icon-only, category tabs horizontal scroll */
-}
-
-/* Small mobile (480px and below) */
-@media (max-width: 480px) {
-    .bento-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-
-    .bento-span-2x2,
-    .bento-span-1x2,
-    .bento-span-2x1,
-    .bento-span-1x1 {
-        grid-column: span 1;
-        grid-row: span 1;
-        min-height: auto;
-    }
-
-    .bento-card {
-        min-height: auto;
-        border-radius: 12px;
-    }
-
-    .card-body {
-        padding: 14px;
-    }
-    
-    .card-body h3 {
-        font-size: 1rem;
-    }
-    
-    .hero-headline {
-        font-size: 1.6rem;
-    }
-    
-    .section-heading {
-        font-size: 1.3rem;
-    }
-    
-    .header-container {
-        padding: 0 8px;
-    }
-    
-    .brand-logo {
-        height: 32px;
-    }
-    
-    .footer-grid {
-        padding: 0 12px;
-        gap: 24px;
-    }
-    
-    .footer-bottom {
-        padding: 24px 12px 0;
-    }
-    
-    .copyright {
-        font-size: 0.7rem;
-    }
-    
-    .social-links {
-        gap: 12px;
-    }
-    
-    .social-links a {
-        width: 36px;
-        height: 36px;
-    }
-}
-
-/* Landscape mobile */
-@media (max-width: 767px) and (orientation: landscape) {
-    .hero-section {
-        min-height: 50vh;
-    }
-    
-    .bento-sidebar {
-        max-height: 40vh;
-        overflow-y: auto;
-    }
-}
-
-/* ==========================================================================
-   PRINT STYLES
-   ========================================================================== */
-@media print {
-    .header-container,
-    .ticker-banner,
-    .region-tabs-container,
-    .category-tabs-container,
-    .footer-grid,
-    .footer-bottom,
-    .pagination-container,
-    .card-action,
-    .modal-backdrop,
-    .audit-modal,
-    .admin-portal-btn {
-        display: none !important;
-    }
-    
-    .bento-card {
-        break-inside: avoid;
-        border: 1px solid #ccc;
-        box-shadow: none;
-    }
-    
-    .card-visual {
-        aspect-ratio: auto;
-        max-height: 200px;
-    }
-    
-    body {
-        background: white;
-        color: black;
-    }
-    
-    .blog-post-content {
-        max-width: 100%;
     }
 }
