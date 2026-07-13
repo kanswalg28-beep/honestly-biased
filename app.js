@@ -879,11 +879,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const gridItems = [];
 
             paginatedArticles.forEach((article, index) => {
-            // Handle base64 images - use the data URL directly (browsers support base64 in img src)
-            // Only use gradient placeholder if there's NO image at all
-            const rawImg = article.imageurl || '';
-            const hasImage = rawImg && rawImg.trim() !== '';
-            const imgUrl = hasImage ? rawImg : '';
+            // Handle base64 images - use gradient placeholder instead (match SSR behavior)
+            // Base64 images are 80KB+ each, 27 articles = 2.2MB of inline data that kills mobile
+            const rawImg = article.imageurl || '/assets/hero-bg.png';
+            const isBase64 = rawImg.startsWith('data:image');
+            const imgUrl = isBase64 ? '' : rawImg;
             const bgStyle = imgUrl
                 ? `background-image: url('${imgUrl}')`
                 : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
