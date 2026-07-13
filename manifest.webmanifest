@@ -1,0 +1,27 @@
+{
+  "name": "Honestly Biased — Independent Commentary, Satire & News Analysis",
+  "short_name": "Honestly Biased",
+  "description": "Independent commentary, satire, and political audit. We reject the corporate performance of neutral objectivity.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
+  "lang": "en-IN",
+  "categories": ["news", "politics", "satire", "media"],
+  "icons": [
+    {
+      "src": "/assets/logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

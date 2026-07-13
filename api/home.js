@@ -58,7 +58,7 @@ function escapeHtml(s) {
     lt:    String.fromCharCode(38, 108, 116, 59),
     gt:    String.fromCharCode(38, 103, 116, 59),
     quot:  String.fromCharCode(38, 113, 117, 111, 116, 59),
-    apos:  String.fromCharCode(38, 35, 49, 48, 55, 59)
+    apos:  String.fromCharCode(38, 35, 51, 57, 59)
   };
   return String(s)
     .replace(/&/g, E.amp)
@@ -333,6 +333,9 @@ async function renderHomepageHtml(articles) {
 <meta name="twitter:image" content="${escapeAttr(heroAbsImage)}">
 <meta name="twitter:site" content="@honestlybiased">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="theme-color" content="#0a0e1a">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/logo.png">
 <script type="application/ld+json">${siteJsonLd}</script>
 <script type="application/ld+json">${listJsonLd}</script>
 
@@ -491,7 +494,7 @@ async function renderHomepageHtml(articles) {
   </section>
 
   <!-- ARTICLE DETAIL SECTION (SPA Page View) -->
-  <section class="article-detail-section" id="article-detail-section" style="display: none; padding: 120px 0 80px 0; min-height: 80vh;">
+  <section class="article-detail-section" id="article-detail-section" aria-hidden="true" style="display: none; padding: 120px 0 80px 0; min-height: 80vh;">
     <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 24px;">
       <div style="margin-bottom: 32px;">
         <a href="#/" class="btn btn-secondary back-btn" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; text-decoration: none; padding: 10px 20px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-glass); color: var(--text-primary); transition: background 0.2s;">
@@ -501,7 +504,7 @@ async function renderHomepageHtml(articles) {
       </div>
       <div class="article-detail-grid" style="max-width: 1050px; margin: 0 auto;">
         <article class="article-detail-card glass-element" style="padding: 48px; border-radius: 16px; border: 1.5px solid var(--border-glass); box-shadow: var(--glass-shadow); position: relative; background: var(--bg-card); backdrop-filter: blur(20px);">
-          <h1 id="detail-title" style="font-family: var(--font-heading); font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: var(--text-primary); text-shadow: 0 2px 10px var(--shadow-color);">Headline Placeholder</h1>
+          <h2 id="detail-title" style="font-family: var(--font-heading); font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: var(--text-primary); text-shadow: 0 2px 10px var(--shadow-color);"></h2>
           <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1.5px solid var(--border-glass); font-size: 0.7rem; color: var(--text-muted);">
             <span class="modal-tag saffron-bg" id="detail-category" style="font-size: 0.65rem; padding: 4px 10px; border-radius: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; color: var(--text-primary); background-color: var(--accent-saffron);">Politics</span>
             <span id="detail-time" style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;"><i data-lucide="clock" style="width: 11px; height: 11px;"></i> 12:25 am IST</span>

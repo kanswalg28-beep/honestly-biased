@@ -33,7 +33,7 @@ function escapeHtml(s) {
     lt:    String.fromCharCode(38, 108, 116, 59),
     gt:    String.fromCharCode(38, 103, 116, 59),
     quot:  String.fromCharCode(38, 113, 117, 111, 116, 59),
-    apos:  String.fromCharCode(38, 35, 49, 48, 55, 59)
+    apos:  String.fromCharCode(38, 35, 51, 57, 59)
   };
   return String(s)
     .replace(/&/g, E.amp)
@@ -231,6 +231,10 @@ function renderArticleHtml(article) {
 
 <script type="application/ld+json">${newsJsonLd}</script>
 <script type="application/ld+json">${breadcrumbJsonLd}</script>
+
+<meta name="theme-color" content="#0a0e1a">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/logo.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

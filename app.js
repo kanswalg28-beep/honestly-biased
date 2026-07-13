@@ -146,7 +146,7 @@ function escapeHtml(s) {
         lt:    String.fromCharCode(38, 108, 116, 59),                   // <
         gt:    String.fromCharCode(38, 103, 116, 59),                   // >
         quot:  String.fromCharCode(38, 113, 117, 111, 116, 59),        // "
-        apos:  String.fromCharCode(38, 35, 49, 48, 55, 59)             // '
+        apos:  String.fromCharCode(38, 35, 51, 57, 59)             // &#39; (correct apostrophe entity)
     };
     return String(s)
         .replace(/&/g, E.amp)
