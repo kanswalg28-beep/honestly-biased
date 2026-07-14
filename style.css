@@ -1589,9 +1589,6 @@ body.light-theme #category-active-pill.health {
 .bento-span-1x1 .card-summary {
     -webkit-line-clamp: 4;
 }
-    margin-bottom: 12px;
-    line-height: 1.5;
-}
 
 .card-footer-meta {
     margin-top: auto;
@@ -1662,17 +1659,13 @@ body.light-theme #category-active-pill.health {
         grid-template-columns: 1fr;
         gap: 16px;
     }
-    .bento-grid > .bento-span-2x2:nth-child(-n+4) {
-        grid-column: span 1;
-        grid-row: auto;
-    }
+    .bento-grid > .bento-span-2x1:nth-child(-n+4),
     .bento-grid > .bento-span-1x1:nth-child(n+5) {
-        grid-column: span 1;
-        grid-row: auto;
+        grid-area: auto / span 1;
     }
-    .bento-span-2x2, .bento-span-2x1, .bento-span-1x2 {
-        grid-column: span 1;
-        grid-row: auto;
+    .bento-span-2x2, .bento-span-2x1, .bento-span-1x2, .bento-span-1x1 {
+        grid-area: auto / span 1;
+        min-height: auto;
     }
 }
 
@@ -2560,12 +2553,16 @@ body.light-theme #category-active-pill.health {
         gap: 16px;
     }
     
+    .bento-card {
+        min-height: auto;
+    }
+    
     .bento-span-2x2,
     .bento-span-1x2,
     .bento-span-2x1,
     .bento-span-1x1 {
-        grid-column: span 1;
-        grid-row: span 1;
+        grid-area: span 1 / span 1;
+        min-height: auto;
     }
 
     .card-visual {
