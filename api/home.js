@@ -159,7 +159,7 @@ function buildBentoCard(article, index) {
         <div class="card-visual">
           <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
           ${catTag}
-          <span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>
+          ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
         <div class="card-body">
           <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
@@ -185,7 +185,7 @@ function buildBentoCard(article, index) {
         <div class="card-visual">
           <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
           ${catTag}
-          <span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>
+          ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
         <div class="card-body">
           <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">

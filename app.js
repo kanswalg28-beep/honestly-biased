@@ -887,7 +887,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <div class="card-visual">
                                         <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.7) contrast(1.1);"></div>
                                         <span class="card-tag saffron-bg">${article.category}</span>
-                                        <span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>
+                                        ${article.authortype === 'instagram' ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
                                     </div>
                                     <div class="card-body">
                                         <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
