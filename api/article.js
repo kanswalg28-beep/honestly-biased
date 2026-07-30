@@ -23,6 +23,14 @@ const SITE_NAME = 'Honestly Biased';
 const SITE_TAGLINE = 'Independent Commentary, Satire & Political Audit';
 
 // --------------------------------------------------------------------------
+// In-memory article cache — survives warm serverless invocations
+// Key: slug or uuid; Value: { article, time }
+// TTL: 5 minutes (articles rarely change after publish)
+// --------------------------------------------------------------------------
+const articleCache = new Map();
+const ARTICLE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// --------------------------------------------------------------------------
 // Helpers
 // --------------------------------------------------------------------------
 
@@ -101,6 +109,13 @@ async function resolveArticleBySlug(slug) {
   if (!supabase) return null;
   if (!slug) return null;
 
+  // Cache hit? (5 min TTL — articles rarely change after publish)
+  const cacheKey = slug.toLowerCase();
+  const cached = articleCache.get(cacheKey);
+  if (cached && (Date.now() - cached.time) < ARTICLE_CACHE_TTL_MS) {
+    return cached.article;
+  }
+
   // First try a precise ID match (works for both uuid and shortId — we
   // query .eq('id', slug) and also .ilike partial match on shortId)
   // 1. Try by exact uuid / column id
@@ -111,7 +126,10 @@ async function resolveArticleBySlug(slug) {
       .eq('id', slug)
       .eq('archived', false)
       .maybeSingle();
-    if (data) return data;
+    if (data) {
+      articleCache.set(cacheKey, { article: data, time: Date.now() });
+      return data;
+    }
   }
 
   // 2. Try shortId suffix (last 8 hex). We fetch recent articles and match
@@ -126,6 +144,9 @@ async function resolveArticleBySlug(slug) {
 
   if (!list) return null;
   const match = list.find(a => shortIdFromUuid(a.id) === slug.toLowerCase());
+  if (match) {
+    articleCache.set(cacheKey, { article: match, time: Date.now() });
+  }
   return match || null;
 }
 
