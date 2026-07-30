@@ -342,7 +342,6 @@ async function renderHomepageHtml(articles) {
 <!-- Preconnect to critical external resources -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://mprxrtesqgtznsinsezs.supabase.co">
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
 <!-- Google Fonts -->
@@ -597,14 +596,93 @@ async function renderHomepageHtml(articles) {
 // In-memory cache (survives within same serverless instance)
 // Key optimization: eliminates Supabase fetch + HTML render on every request
 // --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// Image URL rewriter — proxies Supabase Storage URLs through Vercel CDN
+// Cuts Supabase egress by ~99% (Vercel CDN caches 1 year immutable, free)
+//
+// Original:  https://mprxrtesqgtznsinsezs.supabase.co/storage/v1/object/public/article-images/foo.webp
+// Proxied:   /img-proxy/storage/v1/object/public/article-images/foo.webp
+// --------------------------------------------------------------------------
+const SUPABASE_STORAGE_HOSTS = [
+  'https://mprxrtesqgtznsinsezs.supabase.co',
+  'http://mprxrtesqgtznsinsezs.supabase.co',
+];
+const STORAGE_PATH = '/storage/v1/object/public/';
+
+function proxyImageUrls(text) {
+  if (!text || typeof text !== 'string') return text;
+  let out = text;
+  for (const host of SUPABASE_STORAGE_HOSTS) {
+    // Replace host + storage path with local proxy path
+    out = out.split(host + STORAGE_PATH).join('/img-proxy' + STORAGE_PATH);
+  }
+  return out;
+}
+
 let cachedHtml = null;
 let cachedJson = null;
 let cacheTime = 0;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// --------------------------------------------------------------------------
+// Image proxy handler — intercepts /img-proxy/* requests to cache Supabase
+// images at Vercel CDN (1 year immutable). Triggered via Vercel rewrite:
+//   /img-proxy/(.*) → /api/home?__imgproxy=1&__path=$1
+// --------------------------------------------------------------------------
+async function handleImgProxy(req, res) {
+  const supabasePath = (req.query && req.query.__path) || '';
+  if (!supabasePath || !supabasePath.startsWith('storage/v1/object/public/')) {
+    return res.status(403).json({ error: 'Forbidden: only public storage paths allowed' });
+  }
+
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  if (!SUPABASE_URL) {
+    return res.status(503).json({ error: 'SUPABASE_URL env var not configured' });
+  }
+
+  const targetUrl = `${SUPABASE_URL.replace(/\/$/, '')}/${supabasePath}`;
+
+  try {
+    // 1-year immutable cache at Vercel CDN — first request cached, all subsequent free
+    res.setHeader('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Vary', 'Accept');
+
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    if (req.method !== 'GET') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const originRes = await fetch(targetUrl, {
+      headers: { 'Accept': req.headers['accept'] || '*/*' },
+    });
+
+    if (!originRes.ok) {
+      return res.status(originRes.status).json({ error: `Origin returned ${originRes.status}` });
+    }
+
+    const contentType = originRes.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+
+    const buffer = await originRes.arrayBuffer();
+    return res.status(200).send(Buffer.from(buffer));
+  } catch (err) {
+    console.error('img-proxy error:', err.message);
+    return res.status(502).json({ error: 'Failed to fetch from origin', details: err.message });
+  }
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Image proxy short-circuit (triggered by /img-proxy/* rewrite)
+  if (req.query && req.query.__imgproxy) {
+    return handleImgProxy(req, res);
+  }
 
   const now = Date.now();
   const cacheValid = cachedHtml && (now - cacheTime) < CACHE_TTL_MS;
@@ -623,6 +701,9 @@ module.exports = async (req, res) => {
       if (a.imageurl && a.imageurl.startsWith('data:image')) {
         stripped.hasBase64Image = true;
         stripped.imageurl = '';
+      } else if (a.imageurl) {
+        // Route through Vercel image proxy to reduce Supabase egress
+        stripped.imageurl = proxyImageUrls(a.imageurl);
       }
       return stripped;
     });
@@ -643,7 +724,7 @@ module.exports = async (req, res) => {
 
   // Cache miss — fetch fresh data
   const articles = await fetchLatestArticles(22);
-  const html = await renderHomepageHtml(articles);
+  const html = proxyImageUrls(await renderHomepageHtml(articles));
   cachedHtml = html;
   cacheTime = now;
 

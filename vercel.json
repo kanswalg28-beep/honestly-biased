@@ -10,6 +10,10 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/img-proxy/(.*)",
+      "destination": "/api/home?__imgproxy=1&__path=$1"
+    },
+    {
       "source": "/api/admin/articles/(.+)",
       "destination": "/api/admin/articles?id=$1"
     },
