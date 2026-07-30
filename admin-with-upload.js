@@ -12,16 +12,48 @@ document.addEventListener('DOMContentLoaded', () => {
         if (meta) meta.content = token;
     }
 
-    // Fetch CSRF token on load
+    // Store Basic Auth credentials
+    let adminCredentials = null;
+
+    // Fetch Basic Auth credentials from server (chicken-egg fix)
+    async function fetchCredentials() {
+        try {
+            const res = await fetch('/api/admin/auth?type=credentials');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.username && data.password) {
+                    adminCredentials = btoa(`${data.username}:${data.password}`);
+                    console.log('✅ Admin credentials loaded');
+                }
+            }
+        } catch (e) {
+            console.warn('Credentials fetch failed (auth endpoint may not exist):', e);
+        }
+    }
+
+    function getAuthHeader() {
+        return adminCredentials ? `Basic ${adminCredentials}` : '';
+    }
+
+    // Fetch CSRF token from auth endpoint
     async function fetchCsrfToken() {
         try {
-            const res = await fetch('/api/admin/csrf-token');
+            const res = await fetch('/api/admin/auth?type=csrf');
             if (res.ok) {
                 const data = await res.json();
                 setCsrfToken(data.token);
             }
         } catch (e) {
-            console.warn('CSRF token fetch failed:', e);
+            // Fallback to legacy path
+            try {
+                const res2 = await fetch('/api/admin/csrf-token');
+                if (res2.ok) {
+                    const data = await res2.json();
+                    setCsrfToken(data.token);
+                }
+            } catch (e2) {
+                console.warn('CSRF token fetch failed:', e2);
+            }
         }
     }
 
@@ -212,7 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/admin/upload', {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-Token': getCsrfToken()
+                    'X-CSRF-Token': getCsrfToken(),
+                    ...(getAuthHeader() ? { 'Authorization': getAuthHeader() } : {})
                 },
                 body: formData
             });
@@ -327,6 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ...options.headers
         };
         if (csrf) headers['X-CSRF-Token'] = csrf;
+        const authHeader = getAuthHeader();
+        if (authHeader) headers['Authorization'] = authHeader;
 
         const res = await fetch(path, {
             ...options,
@@ -1134,6 +1169,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // INIT
     // ==========================================================================
     (async function init() {
+        await fetchCredentials();
         await fetchCsrfToken();
         await loadHeroContent();
         await loadHighlightsConfig();
