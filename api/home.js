@@ -652,11 +652,12 @@ async function handleImgProxy(req, res) {
     if (req.method === 'OPTIONS') {
       return res.status(200).end();
     }
-    if (req.method !== 'GET') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const originRes = await fetch(targetUrl, {
+      method: req.method,
       headers: { 'Accept': req.headers['accept'] || '*/*' },
     });
 
@@ -666,6 +667,11 @@ async function handleImgProxy(req, res) {
 
     const contentType = originRes.headers.get('content-type');
     if (contentType) res.setHeader('Content-Type', contentType);
+
+    // HEAD: just send headers, no body
+    if (req.method === 'HEAD') {
+      return res.status(200).end();
+    }
 
     const buffer = await originRes.arrayBuffer();
     return res.status(200).send(Buffer.from(buffer));
@@ -677,12 +683,17 @@ async function handleImgProxy(req, res) {
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   // Image proxy short-circuit (triggered by /img-proxy/* rewrite)
+  // Accept GET and HEAD for cache-warmup by crawlers/CDNs
   if (req.query && req.query.__imgproxy) {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
     return handleImgProxy(req, res);
   }
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const now = Date.now();
   const cacheValid = cachedHtml && (now - cacheTime) < CACHE_TTL_MS;
