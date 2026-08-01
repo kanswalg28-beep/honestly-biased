@@ -30,6 +30,13 @@ const SITE_TAGLINE = 'Independent Commentary, Satire & Political Audit';
 const articleCache = new Map();
 const ARTICLE_CACHE_TTL_MS = 5 * 60 * 1000;
 
+// Explicit column set for article queries. Contains ONLY columns that provably
+// exist on the `articles` table (verified against home/sitemap/rss/admin queries
+// and the CMS write path). Do NOT add site_content hero fields (readtime, byline,
+// byline_role, cta, eyebrow) or `originaltitle` — they are not article columns
+// and requesting them makes PostgREST reject the query, which 404s every page.
+const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat';
+
 // --------------------------------------------------------------------------
 // Helpers
 // --------------------------------------------------------------------------
@@ -116,13 +123,11 @@ async function resolveArticleBySlug(slug) {
     return cached.article;
   }
 
-  // First try a precise ID match (works for both uuid and shortId — we
-  // query .eq('id', slug) and also .ilike partial match on shortId)
   // 1. Try by exact uuid / column id
   if (/^[a-f0-9-]{36}$/.test(slug)) {
     const { data } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat')
+      .select(ARTICLE_SELECT)
       .eq('id', slug)
       .eq('archived', false)
       .maybeSingle();
@@ -132,22 +137,49 @@ async function resolveArticleBySlug(slug) {
     }
   }
 
-  // 2. Try shortId suffix (last 8 hex). We fetch recent articles and match
-  //    in app — this avoids writing a generated column on the DB.
-  //    For better perf with large tables, switch to a `slug` text column.
-  const { data: list } = await supabase
-    .from('articles')
-    .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat')
-    .eq('archived', false)
-    .order('publishdate', { ascending: false })
-    .limit(100);
-
-  if (!list) return null;
-  const match = list.find(a => shortIdFromUuid(a.id) === slug.toLowerCase());
-  if (match) {
-    articleCache.set(cacheKey, { article: match, time: Date.now() });
+  // 2. Try the dedicated `slug` column (exact, indexed, unlimited).
+  //    Populated by db/add_article_slug.sql for existing rows and auto-stamped
+  //    on insert by a trigger. If the column doesn't exist yet (migration not
+  //    run), the query returns no data and we fall through to the scan below.
+  if (slug.length <= 40) {
+    try {
+      const { data: bySlug } = await supabase
+        .from('articles')
+        .select(ARTICLE_SELECT)
+        .eq('slug', slug)
+        .eq('archived', false)
+        .order('publishdate', { ascending: false })
+        .limit(1);
+      if (bySlug && bySlug[0]) {
+        articleCache.set(cacheKey, { article: bySlug[0], time: Date.now() });
+        return bySlug[0];
+      }
+    } catch (e) {
+      // slug column missing (pre-migration) — fall through to the scan
+    }
   }
-  return match || null;
+
+  // 3. Fallback: shortId suffix (last 8 hex of uuid). Paginate through ALL
+  //    non-archived articles (newest first) until matched — no arbitrary cap,
+  //    so every published article resolves regardless of catalog size.
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    const { data: list, error } = await supabase
+      .from('articles')
+      .select(ARTICLE_SELECT)
+      .eq('archived', false)
+      .order('publishdate', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error || !list || list.length === 0) return null;
+    const match = list.find(a => shortIdFromUuid(a.id) === slug.toLowerCase());
+    if (match) {
+      articleCache.set(cacheKey, { article: match, time: Date.now() });
+      return match;
+    }
+    if (list.length < PAGE) return null; // last page, no match
+    from += PAGE;
+  }
 }
 
 // --------------------------------------------------------------------------
