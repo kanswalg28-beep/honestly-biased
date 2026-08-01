@@ -102,13 +102,15 @@ module.exports = async (req, res) => {
       // Get total count for pagination
       const { count, error: countError } = await supabase
         .from('articles')
-        .select('id', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true })
+        .eq('archived', false);
       if (countError) throw countError;
       
       // Fetch paginated, sorted articles
       const { data, error } = await supabase
         .from('articles')
         .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+        .eq('archived', false)
         .order(sortBy, sortOrder)
         .range(from, to);
       if (error) throw error;
