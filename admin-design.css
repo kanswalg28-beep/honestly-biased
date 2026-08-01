@@ -1,0 +1,213 @@
+/* ==========================================================================
+   HONESTLY BIASED — CMS "THE AUDIT DESK"
+   Design system: ink-navy newsroom dispatch console, ruled + editorial.
+   Signature: full-width bias ticker tape of live headlines.
+   Loaded after style.css so these tokens/components win.
+   ========================================================================== */
+
+:root {
+  /* Override site tokens for the CMS only */
+  --ink:        #0A0E17;
+  --ink-2:      #0F1420;
+  --ink-3:      #141B29;
+  --paper:      #F1EDE3;
+  --steel:      #8891A3;
+  --saffron:    #F0A92E;
+  --crimson:    #C73E35;
+  --green:      #37B27A;
+  --hairline:   rgba(241, 237, 227, 0.10);
+  --hairline-2: rgba(241, 237, 227, 0.16);
+
+  --font-heading: "Fraunces", Georgia, serif;
+  --font-body:    "Archivo", system-ui, sans-serif;
+  --font-mono:    "IBM Plex Mono", ui-monospace, monospace;
+
+  --text-primary:   var(--paper);
+  --text-secondary: #C9C4B4;
+  --text-muted:     var(--steel);
+  --bg-card:        var(--ink-2);
+  --bg-secondary:   var(--ink-3);
+  --border-color:   var(--hairline);
+  --border-glass:   var(--hairline);
+  --border-color-hover: var(--hairline-2);
+  --glass-shadow:   0 1px 0 rgba(255,255,255,0.02) inset, 0 10px 40px -18px rgba(0,0,0,0.7);
+  --border-radius-sm: 2px;
+  --border-radius-md: 4px;
+  --transition-fast: 0.12s ease;
+  --transition-medium: 0.2s ease;
+  --accent-saffron: var(--saffron);
+  --accent-saffron-rgb: 240, 169, 46;
+  --accent-green:  var(--green);
+  --accent-green-rgb: 55, 178, 122;
+  --accent-crimson: var(--crimson);
+  --accent-crimson-rgb: 199, 62, 53;
+  --accent-cyan: #4FB3D9;
+  --accent-gold: var(--saffron);
+  --success-green: var(--green);
+  --instagram-pink: #E1306C;
+}
+
+/* ---- Base shell -------------------------------------------------------- */
+body {
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(240,169,46,0.06), transparent 60%),
+    linear-gradient(180deg, var(--ink) 0%, #080B12 100%);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  padding: 0 0 72px;
+  letter-spacing: 0.01em;
+}
+
+.cms-wrapper {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 28px 0;
+}
+
+/* ---- Masthead ----------------------------------------------------------
+   Editorial banner: brand, section label (mono), live status, actions. */
+.cms-masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 4px 20px;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 0;
+}
+
+.cms-masthead .brand-line {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.cms-masthead .brand-mark {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+}
+
+.cms-masthead .brand-copy .kicker {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  margin: 0 0 4px;
+}
+
+.cms-masthead .brand-copy h1 {
+  font-family: var(--font-heading);
+  font-size: 2.4rem;
+  font-weight: 560;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  margin: 0;
+  color: var(--paper);
+}
+
+.cms-masthead .mast-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.live-status .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(55,178,122,0.5);
+  animation: status-pulse 2.4s infinite;
+}
+
+/* ---- Bias ticker tape (SIGNATURE) ------------------------------------- */
+.ticker-rail {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0));
+  margin-bottom: 28px;
+}
+
+.ticker-rail .ticker-label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 10px 4px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  border-right: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+.ticker-rail .ticker-label .glyph { font-size: 0.8rem; }
+
+.ticker-viewport {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+
+.ticker-track {
+  display: flex;
+  align-items: center;
+  gap: 52px;
+  padding: 10px 0;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.ticker-track.playing { animation: ticker-scroll 60s linear infinite; }
+.ticker-viewport:hover .ticker-track.playing { animation-play-state: paused; }
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+.ticker-item .stamp {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  border: 1px solid rgba(240,169,46,0.45);
+  padding: 2px 7px;
+  border-radius: 2px;
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes status-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(55,178,122,0.5); }
+  50%     { box-shadow: 0 0 0 6px rgba(55,178,122,0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track.playing { animation: none; }
+  .live-status .dot { animation: none; }
+}

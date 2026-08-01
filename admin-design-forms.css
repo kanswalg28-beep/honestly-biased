@@ -1,0 +1,157 @@
+/* CMS "The Audit Desk" — forms, panels, controls */
+.cms-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.9fr;
+  gap: 28px;
+  align-items: start;
+}
+.cms-left-col { display: flex; flex-direction: column; gap: 28px; }
+
+.cms-panel-card {
+  border: 1px solid var(--hairline);
+  border-radius: var(--border-radius-md);
+  background: linear-gradient(180deg, rgba(255,255,255,0.016), rgba(255,255,255,0));
+  padding: 26px 28px 30px;
+  box-shadow: var(--glass-shadow);
+}
+
+/* Section eyebrow — small-caps mono rule */
+.cms-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--saffron);
+}
+.cms-eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
+
+/* Legacy header rows still used by JS titles */
+.form-header-row {
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+}
+.form-header-row h2, .form-header-row .modal-title {
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  font-weight: 560;
+  letter-spacing: -0.3px;
+  color: var(--paper);
+}
+
+.cms-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.cms-input, .cms-textarea, .cms-select {
+  width: 100%;
+  border: 1px solid var(--hairline);
+  border-radius: var(--border-radius-sm);
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  background: rgba(10,14,23,0.5);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.cms-input::placeholder, .cms-textarea::placeholder { color: #5d6675; }
+.cms-input:focus, .cms-textarea:focus, .cms-select:focus {
+  border-color: var(--saffron);
+  background: rgba(10,14,23,0.75);
+}
+.cms-select option { background: var(--ink-2); color: var(--text-primary); }
+.form-group { margin-bottom: 18px; }
+
+/* Preview + upload */
+.image-preview-wrapper {
+  width: 100%;
+  height: 136px;
+  border-radius: var(--border-radius-sm);
+  border: 1px dashed var(--hairline-2);
+  background: rgba(0,0,0,0.25);
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 18px;
+}
+.image-preview-wrapper img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+.image-preview-placeholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  color: var(--text-muted); font-size: 0.7rem; font-family: var(--font-mono);
+}
+
+.file-upload-group { display: flex; flex-direction: column; gap: 12px; }
+.file-upload-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+.file-upload-input-wrapper { position: relative; }
+.file-upload-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
+.file-upload-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 18px;
+  background: var(--ink-3);
+  border: 1px solid var(--hairline-2);
+  color: var(--saffron);
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.7rem; letter-spacing: 0.06em; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.file-upload-btn:hover { border-color: var(--saffron); background: rgba(240,169,46,0.08); }
+.file-upload-btn i { width: 15px; height: 15px; }
+.file-upload-btn.uploading { color: var(--saffron); cursor: wait; }
+.file-upload-status {
+  font-family: var(--font-mono);
+  font-size: 0.66rem; color: var(--text-muted);
+  min-height: 18px; padding: 2px 0;
+}
+.file-upload-status.success { color: var(--green); }
+.file-upload-status.error { color: var(--crimson); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
+  padding: 12px 22px; cursor: pointer;
+  border: 1px solid var(--hairline-2);
+  color: var(--text-primary); background: var(--ink-3);
+  transition: all var(--transition-fast);
+}
+.btn-primary {
+  background: var(--saffron); border-color: var(--saffron); color: #221303;
+  font-weight: 700;
+}
+.btn-primary:hover { background: #ffbe4d; border-color: #ffbe4d; }
+.btn-secondary { background: transparent; color: var(--text-secondary); }
+.btn-secondary:hover { border-color: var(--text-muted); }
+.btn-live-feed {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--ink-3); border: 1px solid var(--hairline-2);
+  color: var(--text-primary);
+  font-family: var(--font-body); font-size: 0.76rem; font-weight: 600;
+  padding: 11px 18px; border-radius: var(--border-radius-sm); cursor: pointer;
+}
+.btn-live-feed:hover { border-color: var(--saffron); color: var(--saffron); }
+.btn-live-feed i { width: 15px; height: 15px; }
+
+/* Legacy utility anchors used by footer of panels */
+.cms-form-footer {
+  display: flex; justify-content: flex-end; gap: 12px;
+  margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--hairline);
+}
+
+/* Hero / IG / Highlights / Audience inner labels override inline txt colors elsewhere */

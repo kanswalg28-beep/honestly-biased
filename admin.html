@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+    <!-- Audit Desk type: Fraunces (masthead) / Archivo (UI) / IBM Plex Mono (data) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,560;9..144,700&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
     
     <!-- Lucide Icons via CDN -->
     <script src="https://unpkg.com/lucide@0.453.0"></script>
@@ -750,28 +752,42 @@
             outline-offset: 2px;
         }
     </style>
+
+    <!-- The Audit Desk design system (loaded LAST so it overrides inline styles) -->
+    <link rel="stylesheet" href="admin-design.css">
+    <link rel="stylesheet" href="admin-design-forms.css">
+    <link rel="stylesheet" href="admin-design-ledger.css">
 </head>
 <body class="dark-theme">
     <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
     
     <div class="cms-wrapper">
-        <!-- HEADER CONTROL BANNER -->
-        <header class="cms-header">
-            <div class="cms-logo-block">
-                <img src="./assets/logo.png" alt="Honestly Biased Logo" class="cms-logo-img">
-                <div class="cms-header-text">
-                    <h1>Editorial Control Center</h1>
-                    <p><span class="status-dot"></span> HB CMS Dashboard v3.0 • Premium Glassmorphic Edition</p>
+        <!-- HEADER CONTROL BANNER — THE AUDIT DESK MASTHEAD -->
+        <header class="cms-masthead">
+            <div class="brand-line">
+                <img src="./assets/logo.png" alt="Honestly Biased Logo" class="brand-mark">
+                <div class="brand-copy">
+                    <p class="kicker">Honestly Biased · Satire &amp; Narrative Audit</p>
+                    <h1>The Audit Desk</h1>
                 </div>
             </div>
-            <div>
+            <div class="mast-actions">
+                <span class="live-status"><span class="dot"></span> Control center online</span>
                 <a href="/index.html" class="btn-live-feed" aria-label="Go to dynamic reader feed">
                     <i data-lucide="eye"></i>
                     <span>Inspect Public Feed</span>
                 </a>
             </div>
         </header>
+
+        <!-- BIAS TICKER TAPE (signature element) -->
+        <div class="ticker-rail" role="region" aria-label="Latest published headlines">
+            <span class="ticker-label"><span class="glyph">&#9656;</span> On the press</span>
+            <div class="ticker-viewport">
+                <div class="ticker-track" id="ticker-track"></div>
+            </div>
+        </div>
 
         <!-- DYNAMIC STATS PANEL -->
         <div class="metrics-bar">
@@ -1148,6 +1164,42 @@
     <script src="admin-with-upload.js"></script>
     <script>
         lucide.createIcons();
+    </script>
+    <script>
+        // Bias ticker tape: pull live headlines into the marquee (duplicated for a
+        // seamless loop). Pauses on hover; respects prefers-reduced-motion.
+        (function () {
+            var track = document.getElementById('ticker-track');
+            if (!track) return;
+            var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var fallback = [{ aiheadline: 'No publishable chronicles yet — draft the first from the dispatch column.' }];
+            function build(list) {
+                var items = (list && list.length) ? list : fallback;
+                track.innerHTML = '';
+                var feed = items.concat(items); // duplicate for -50% loop
+                feed.forEach(function (t) {
+                    var it = document.createElement('span');
+                    it.className = 'ticker-item';
+                    var stamp = document.createElement('span');
+                    stamp.className = 'stamp';
+                    stamp.textContent = 'AUDIT \u25B8';
+                    var txt = document.createElement('span');
+                    txt.textContent = t.aiheadline || t;
+                    it.appendChild(stamp);
+                    it.appendChild(txt);
+                    track.appendChild(it);
+                });
+                if (!reduce) track.classList.add('playing');
+            }
+            fetch('/api/admin/articles?limit=46&_t=' + Date.now())
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    if (d && d.articles) return build(d.articles);
+                    if (Array.isArray(d)) return build(d);
+                    build([]);
+                })
+                .catch(function () { build([]); });
+        })();
     </script>
 </body>
 </html>
