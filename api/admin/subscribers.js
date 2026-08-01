@@ -45,7 +45,18 @@ module.exports = async (req, res) => {
         .select('email, subscribed_at, source')
         .order('subscribed_at', { ascending: false });
 
-      if (error) throw error;
+      // Handle missing table gracefully
+      if (error) {
+        if (error.code === '42P01' || error.message?.includes('relation') && error.message?.includes('does not exist')) {
+          console.warn('Subscribers table does not exist, returning empty result');
+          const csvHeader = 'Email,Subscribed At (UTC),Subscribed At (IST),Source\n';
+          res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="honestlybiased-subscribers-${new Date().toISOString().split('T')[0]}.csv"`);
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          return res.send(csvHeader);
+        }
+        throw error;
+      }
 
       // Generate CSV
       const csvHeader = 'Email,Subscribed At (UTC),Subscribed At (IST),Source\n';
@@ -78,7 +89,17 @@ module.exports = async (req, res) => {
       .order('subscribed_at', { ascending: false })
       .range(from, to);
 
-    if (error) throw error;
+    // Handle missing table gracefully
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('relation') && error.message?.includes('does not exist')) {
+        console.warn('Subscribers table does not exist, returning empty result');
+        return res.json({
+          subscribers: [],
+          pagination: { page, limit, total: 0, totalPages: 0 }
+        });
+      }
+      throw error;
+    }
 
     return res.json({
       subscribers: data || [],

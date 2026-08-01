@@ -10,7 +10,10 @@ const DEFAULT_HIGHLIGHTS = [
 async function getCustomArticles() {
   const { data } = await supabase
     .from('articles')
-    .select('*');
+    .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+    .eq('archived', false)
+    .order('publishdate', { ascending: false })
+    .limit(100);
   return data || [];
 }
 

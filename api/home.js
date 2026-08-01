@@ -239,7 +239,7 @@ async function fetchLatestArticles(limit = 22) {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('*')
+      .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(limit);

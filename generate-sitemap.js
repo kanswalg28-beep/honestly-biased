@@ -68,7 +68,7 @@ async function fetchArticlesFromSupabase() {
       .select('id, aiheadline, aisummary, biasaudit, category, region, author, originalsource, imageurl, publishdate, updatedat, archived')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
-      .limit(2000);
+      .limit(1000);
 
     if (error) {
       console.error('Supabase error:', error.message);

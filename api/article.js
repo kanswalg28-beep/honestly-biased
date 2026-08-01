@@ -122,7 +122,7 @@ async function resolveArticleBySlug(slug) {
   if (/^[a-f0-9-]{36}$/.test(slug)) {
     const { data } = await supabase
       .from('articles')
-      .select('*')
+      .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originaltitle, originalurl, readtime, byline, byline_role, cta, eyebrow')
       .eq('id', slug)
       .eq('archived', false)
       .maybeSingle();
@@ -137,10 +137,10 @@ async function resolveArticleBySlug(slug) {
   //    For better perf with large tables, switch to a `slug` text column.
   const { data: list } = await supabase
     .from('articles')
-    .select('*')
+    .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originaltitle, originalurl, readtime, byline, byline_role, cta, eyebrow')
     .eq('archived', false)
     .order('publishdate', { ascending: false })
-    .limit(500);
+    .limit(100);
 
   if (!list) return null;
   const match = list.find(a => shortIdFromUuid(a.id) === slug.toLowerCase());

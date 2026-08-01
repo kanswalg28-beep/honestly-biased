@@ -362,8 +362,8 @@ async function fetchAndAuditGNews() {
     const GNEWS_ENABLED = false; // Set to true to re-enable in future
 
     if (!GNEWS_ENABLED) {
-        console.log("🔕 GNews API fetch is disabled. Serving custom/cached articles only.");
-        return cacheData.articles.filter(a => a.authorType === 'admin' || a.authorType === 'instagram');
+        console.log("🔕 GNews API fetch is disabled. Serving ALL cached articles for local development.");
+        return cacheData.articles;
     }
 
     // B. Check if cache is still fresh (within 12 hours)
