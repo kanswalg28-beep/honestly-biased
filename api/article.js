@@ -122,7 +122,7 @@ async function resolveArticleBySlug(slug) {
   if (/^[a-f0-9-]{36}$/.test(slug)) {
     const { data } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originaltitle, originalurl, readtime, byline, byline_role, cta, eyebrow')
+      .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat')
       .eq('id', slug)
       .eq('archived', false)
       .maybeSingle();
@@ -137,7 +137,7 @@ async function resolveArticleBySlug(slug) {
   //    For better perf with large tables, switch to a `slug` text column.
   const { data: list } = await supabase
     .from('articles')
-    .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originaltitle, originalurl, readtime, byline, byline_role, cta, eyebrow')
+    .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat')
     .eq('archived', false)
     .order('publishdate', { ascending: false })
     .limit(100);
