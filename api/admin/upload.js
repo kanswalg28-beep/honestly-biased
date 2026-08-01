@@ -220,7 +220,7 @@ module.exports = async (req, res) => {
     const primaryUrl = variantUrls.preview || variantUrls.full || variantUrls.thumb || variantUrls.avif;
     
     // Calculate savings
-    const totalOptimized = Object.values(optimized.results.variants).reduce((sum, v) => sum + v.buffer.length, 0);
+    let totalOptimized = Object.values(optimized.results.variants).reduce((sum, v) => sum + v.buffer.length, 0);
     if (optimized.results.avif) totalOptimized += optimized.results.avif.buffer.length;
     const savings = ((1 - totalOptimized / fileBuffer.length) * 100).toFixed(1);
     
