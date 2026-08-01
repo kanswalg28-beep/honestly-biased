@@ -217,7 +217,8 @@ module.exports = async (req, res) => {
     }
 
     // Primary URL is the preview (1200w) WebP
-    
+    const primaryUrl = variantUrls.preview || variantUrls.full || variantUrls.thumb || variantUrls.avif;
+
     // Calculate savings
     let totalOptimized = Object.values(optimized.results.variants).reduce((sum, v) => sum + v.buffer.length, 0);
     if (optimized.results.avif) totalOptimized += optimized.results.avif.buffer.length;
