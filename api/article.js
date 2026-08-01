@@ -162,20 +162,30 @@ async function resolveArticleBySlug(slug) {
   // 3. Fallback: shortId suffix (last 8 hex of uuid). Paginate through ALL
   //    non-archived articles (newest first) until matched — no arbitrary cap,
   //    so every published article resolves regardless of catalog size.
+  //    EGRESS: scan only tiny (id, publishdate) rows; fetch the full row just
+  //    for the single match. Avoids pulling every article's fullblog just to
+  //    do an 8-char suffix match.
   const PAGE = 1000;
   let from = 0;
   while (true) {
     const { data: list, error } = await supabase
       .from('articles')
-      .select(ARTICLE_SELECT)
+      .select('id, publishdate')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .range(from, from + PAGE - 1);
     if (error || !list || list.length === 0) return null;
     const match = list.find(a => shortIdFromUuid(a.id) === slug.toLowerCase());
     if (match) {
-      articleCache.set(cacheKey, { article: match, time: Date.now() });
-      return match;
+      const { data: full } = await supabase
+        .from('articles')
+        .select(ARTICLE_SELECT)
+        .eq('id', match.id)
+        .eq('archived', false)
+        .maybeSingle();
+      const article = full || match;
+      articleCache.set(cacheKey, { article, time: Date.now() });
+      return article;
     }
     if (list.length < PAGE) return null; // last page, no match
     from += PAGE;

@@ -93,7 +93,7 @@ module.exports = async (req, res) => {
     if (method === 'GET') {
       // Support pagination and sorting
       const page = Math.max(1, parseInt(query.page) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 50));
+      const limit = Math.min(2000, Math.max(1, parseInt(query.limit) || 50));
       const from = (page - 1) * limit;
       const to = from + limit - 1;
       const sortBy = query.sortBy || 'publishdate';

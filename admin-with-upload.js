@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-                const response = await fetch('/api/admin/articles?_t=' + Date.now(), {
+                const response = await fetch('/api/admin/articles?limit=2000&_t=' + Date.now(), {
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
