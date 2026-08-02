@@ -16,6 +16,13 @@ CREATE TABLE IF NOT EXISTS public.subscribers (
 
 ALTER TABLE public.subscribers ENABLE ROW LEVEL SECURITY;
 
+-- CRITICAL: raw-SQL table creation does NOT auto-grant privileges the way the
+-- dashboard table editor does. Without these grants, service_role / anon /
+-- authenticated all get 42501 (permission denied) and the newsletter signup fails.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.subscribers TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.subscribers TO authenticated;
+GRANT INSERT, SELECT ON public.subscribers TO anon;
+
 -- public can INSERT (newsletter form); service role can read/write (admin)
 DROP POLICY IF EXISTS "public insert subscribers" ON public.subscribers;
 CREATE POLICY "public insert subscribers" ON public.subscribers
