@@ -73,10 +73,13 @@ ALTER TABLE public.articles
   CHECK (imageurl IS NULL OR imageurl NOT LIKE 'data:image%');
 
 -- ============================================================================
--- 5) Let the planner see the new indexes
+-- 5) Let the planner see the new indexes.
+--    NOTE: plain ANALYZE (not VACUUM) so this runs inside the SQL editor's
+--    implicit transaction. VACUUM cannot run inside a transaction block
+--    (ERROR 25001), so it's intentionally omitted here.
 -- ============================================================================
-VACUUM ANALYZE public.articles;
-VACUUM ANALYZE public.subscribers;
+ANALYZE public.articles;
+ANALYZE public.subscribers;
 
 -- ============================================================================
 -- 6) SANITY CHECK
