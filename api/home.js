@@ -342,13 +342,12 @@ async function renderHomepageHtml(articles) {
 <!-- Preconnect to critical external resources -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
 <!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<!-- Lucide Icons -->
-<script src="https://unpkg.com/lucide@0.453.0"></script>
+<!-- Lucide Icons (bundled locally — no CDN dependency) -->
+<script src="/assets/lucide-local.js" defer></script>
 
 <!-- Preload hero image for LCP -->
 <link rel="preload" as="image" href="${escapeAttr(heroImage)}" type="image/webp">
@@ -577,8 +576,7 @@ async function renderHomepageHtml(articles) {
 <!-- Pre-hydration data for instant SSR → SPA transition -->
 <script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
 
-<!-- Three.js Library CDN — deferred (non-critical for first paint) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<!-- Three.js is vendored locally and lazy-loaded by lens-effect.js when the hero scrolls into view -->
 
 <!-- Dynamic Theme and Page Logic -->
 <script src="/app.js" defer></script>

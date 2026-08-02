@@ -395,7 +395,7 @@ function renderArticleHtml(article) {
   </div>
 </footer>
 
-<script src="https://unpkg.com/lucide@0.453.0"></script>
+<script src="/assets/lucide-local.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>`;

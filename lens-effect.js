@@ -303,10 +303,78 @@ const PerspectiveLens = {
     }
 };
 
-// Start upon DOM readiness
-document.addEventListener('DOMContentLoaded', () => {
-    PerspectiveLens.init();
-});
+// ============================================================
+// LAZY BOOTSTRAP — load three.js only when actually needed
+// ------------------------------------------------------------
+// The Perspective Lens is a decorative hero effect. We don't want to
+// download + parse 600KB of three.js on every page load, so we:
+//   1. Skip entirely when the user prefers reduced motion.
+//   2. Only run on pages that have the #lens-canvas-container hero.
+//   3. Defer the three.js download until the hero nears the viewport.
+// ============================================================
+(function () {
+    'use strict';
+
+    let started = false;
+    let observing = false;
+
+    function startLens() {
+        if (started) return;
+        started = true;
+        PerspectiveLens.init();
+    }
+
+    function loadThree() {
+        // three.min.js is vendored locally (UMD -> window.THREE)
+        var script = document.createElement('script');
+        script.src = '/assets/three.min.js';
+        script.async = true;
+        script.onload = startLens;
+        script.onerror = function () {
+            // WebGL blocked or fetch failed: keep the static hero fallback visible
+            started = false;
+            console.warn('[PerspectiveLens] three.js failed to load — using static hero fallback');
+        };
+        document.head.appendChild(script);
+    }
+
+    function registerObserver() {
+        if (observing || started) return;
+        observing = true;
+        var container = document.getElementById('lens-canvas-container');
+        if (!container) return;
+
+        if ('IntersectionObserver' in window) {
+            var io = new IntersectionObserver(function (entries, observer) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        observer.disconnect();
+                        loadThree();
+                    }
+                });
+            }, { rootMargin: '600px 0px' }); // start loading just before it scrolls in
+            io.observe(container);
+        } else {
+            // No IO support: load after idle without blocking first paint.
+            if (window.requestIdleCallback) {
+                window.requestIdleCallback(loadThree, { timeout: 3000 });
+            } else {
+                setTimeout(loadThree, 1500);
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Respect prefers-reduced-motion: the lens is a decorative animation.
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return; // static hero fallback stays visible; no three.js, no shader
+        }
+        if (!document.getElementById('lens-canvas-container')) {
+            return; // not the homepage — nothing to do
+        }
+        registerObserver();
+    });
+})();
 
 // Expose for CMS hero image updates
 window.PerspectiveLens = PerspectiveLens;
