@@ -155,3 +155,18 @@
 }
 
 /* Hero / IG / Highlights / Audience inner labels override inline txt colors elsewhere */
+
+/* ---- Mobile ---- */
+@media (max-width: 720px) {
+  .cms-grid { gap: 20px; }
+  .cms-panel-card { padding: 22px 18px 24px; }
+  .cms-input, .cms-textarea, .cms-select { padding: 12px 13px; font-size: 0.85rem; }
+  .file-upload-btn { justify-content: center; padding: 12px 14px; }
+  .btn, .btn-primary, .btn-secondary, .btn-live-feed { min-height: 44px; } /* comfortable touch target */
+}
+@media (max-width: 460px) {
+  .cms-panel-card { padding: 20px 16px 22px; }
+  .form-header-row h2, .form-header-row .modal-title { font-size: 1.2rem; }
+  .cms-form-footer { flex-direction: column; }
+  .cms-form-footer .btn { width: 100%; }
+}
