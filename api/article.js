@@ -298,6 +298,7 @@ function renderArticleHtml(article) {
 <meta name="theme-color" content="#0a0e1a">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/logo.png">
+<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

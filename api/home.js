@@ -336,6 +336,7 @@ async function renderHomepageHtml(articles) {
 <meta name="theme-color" content="#0a0e1a">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/logo.png">
+<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
 <script type="application/ld+json">${siteJsonLd}</script>
 <script type="application/ld+json">${listJsonLd}</script>
 
