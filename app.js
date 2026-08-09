@@ -652,9 +652,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Store dynamic articles globally and clean headlines from "Refracted: " prefix
             allArticles = (data.articles || []).map(art => {
-                if (art.aiheadline) {
-                    art.aiheadline = art.aiheadline.replace(/^Refracted:\s*/i, '');
-                }
+                const headline = (art.aiheadline || art.aiHeadline || art.title || '').replace(/^Refracted:\s*/i, '');
+                const summary = art.aisummary || art.aiSummary || art.description || art.summary || '';
+                art.aiheadline = headline;
+                art.aiHeadline = headline;
+                art.title = headline;
+                art.aisummary = summary;
+                art.aiSummary = summary;
+                art.description = summary;
+                art.imageurl = art.imageurl || art.imageUrl || './assets/hero-bg.png';
+                art.imageUrl = art.imageurl;
                 return art;
             });
 
@@ -662,7 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let highlightsToRender = data.highlights || [];
             if (highlightsToRender.length === 0 && allArticles.length > 0) {
                 // Automatically fall back to top 4 article headlines if highlights list is empty
-                highlightsToRender = allArticles.slice(0, 4).map(a => a.aiheadline);
+                highlightsToRender = allArticles.slice(0, 4).map(a => a.aiheadline || a.title);
             }
             if (highlightsToRender.length > 0) {
                 const tickerTrack = document.querySelector('.ticker-track');
@@ -1484,7 +1491,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailOriginalLink = document.getElementById('detail-original-link');
 
             // Strip "Refracted: " prefix from headline when displaying
-            const cleanedHeadline = article.aiheadline.replace(/^Refracted:\s*/i, '');
+            const rawHeadline = article.aiheadline || article.aiHeadline || article.title || '';
+            const cleanedHeadline = rawHeadline.replace(/^Refracted:\s*/i, '');
 
             if (detailCategory) {
                 detailCategory.textContent = article.category;
@@ -1567,7 +1575,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function generateFallbackBlog(article) {
-        const cleanedHeadline = article.aiheadline.replace(/^Refracted:\s*/i, '');
+        const rawHeadline = article.aiheadline || article.aiHeadline || article.title || '';
+        const cleanedHeadline = rawHeadline.replace(/^Refracted:\s*/i, '');
         return `
             <p class="blog-lead">In a media landscape dominated by corporate spin and sanitised press releases, the core facts of this event deserve an uncompromised audit. Let's peel back the narrative layers surrounding the headline: <strong>"${cleanedHeadline}"</strong>.</p>
             

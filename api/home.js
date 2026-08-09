@@ -137,12 +137,14 @@ function cardLinkHtml(article) {
 function buildBentoCard(article, index) {
   const isInstagram = article.authortype === 'instagram';
   const shortId = shortIdFromUuid(article.id);
-  const cardLink = `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
+  const rawHeadline = article.aiheadline || article.aiHeadline || article.title || 'Untitled Chronicle';
+  const rawSummary = article.aisummary || article.aiSummary || article.description || article.summary || '';
+  const cardLink = `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(rawHeadline)}</a>`;
   const badgeHtml = authorBadgeHtml(article.authortype);
   const catTag = categoryTagHtml(article.category);
   const timeHtml = cardTimeHtml(article);
-  const biasHtml = biasAuditHtml(article.biasaudit);
-  const summary = escapeHtml(article.aisummary);
+  const biasHtml = biasAuditHtml(article.biasaudit || article.biasAudit);
+  const summary = escapeHtml(rawSummary);
   // Strip base64 data URIs from SSR — they bloat HTML by ~1MB
   // Use gradient placeholder; app.js will restore from real Supabase URL on hydration
   const rawImg = article.imageurl || '/assets/hero-bg.png';
@@ -257,10 +259,10 @@ async function fetchLatestArticles(limit = 22) {
 async function renderHomepageHtml(articles) {
   // Hero section is dynamically driven by the latest published article (articles[0])
   const heroArticle = articles[0] || null;
-  const heroHeadline = heroArticle ? (heroArticle.aiheadline || heroArticle.title || 'Deep Perspective') : 'Deep Perspective';
+  const heroHeadline = heroArticle ? (heroArticle.aiheadline || heroArticle.aiHeadline || heroArticle.title || 'Deep Perspective') : 'Deep Perspective';
   // Use ONLY the audited critical summary (aisummary) for the Hero Description
-  const heroSummary = heroArticle ? stripTags(heroArticle.aisummary || heroArticle.summary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
-  const heroImage = heroArticle ? (heroArticle.imageurl || '/assets/hero-bg.png') : '/assets/hero-bg.png';
+  const heroSummary = heroArticle ? stripTags(heroArticle.aisummary || heroArticle.aiSummary || heroArticle.description || heroArticle.summary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
+  const heroImage = heroArticle ? (heroArticle.imageurl || heroArticle.imageUrl || '/assets/hero-bg.png') : '/assets/hero-bg.png';
   const heroByline = heroArticle ? (heroArticle.author || 'Honestly Biased Team') : 'Honestly Biased Team';
   const heroRole = heroArticle ? (heroArticle.authortype === 'admin' ? 'Editorial' : 'Senior Bias Analyst') : 'Senior Bias Analyst';
   const heroReadTime = heroArticle ? (heroArticle.readtime || '5 Min Read') : '5 Min Read';
@@ -269,7 +271,7 @@ async function renderHomepageHtml(articles) {
   const heroTimeAgo = heroArticle ? (heroArticle.timeago || formatTimeAgo(heroPublishDate)) : formatTimeAgo(new Date().toISOString());
 
   // Ticker highlights derived from top 10 articles
-  const tickerItemsHtml = articles.slice(0, 10).map(a => `<span>${escapeHtml(a.aiheadline || a.title)}</span>`).join('');
+  const tickerItemsHtml = articles.slice(0, 10).map(a => `<span>${escapeHtml(a.aiheadline || a.aiHeadline || a.title)}</span>`).join('');
 
   // Bento grid cards (first 22 articles from Supabase)
   const bentoCards = articles.map((a, i) => buildBentoCard(a, i)).join('\n');
@@ -337,7 +339,7 @@ async function renderHomepageHtml(articles) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
 <!-- Google Fonts (UI/UX Pro Max Tri-Stack) -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 
 <!-- Lucide Icons (bundled locally — no CDN dependency) -->
 <script src="/assets/lucide-local.js" defer></script>

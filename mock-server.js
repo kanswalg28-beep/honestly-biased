@@ -652,7 +652,8 @@ app.put('/api/admin/articles/:id', adminAuthLimiter, basicAuth, (req, res) => {
     try {
         const { id } = req.params;
         console.log(`📥 Incoming PUT request to update article ID: ${id}...`);
-        const { category, region, aiHeadline, aiSummary, biasAudit, originalSource, imageUrl, originalUrl, instagramShortcode, authorType, fullBlog, publishdate } = req.body;
+        const body = req.body || {};
+        const { category, region, aiHeadline, aiheadline, aiSummary, aisummary, biasAudit, biasaudit, originalSource, originalsource, imageUrl, imageurl, originalUrl, originalurl, instagramShortcode, authorType, authortype, fullBlog, fullblog, publishdate } = body;
 
         if (!fs.existsSync(CACHE_FILE_PATH)) {
             return res.status(404).json({ error: "No article database found." });
@@ -665,23 +666,61 @@ app.put('/api/admin/articles/:id', adminAuthLimiter, basicAuth, (req, res) => {
             return res.status(404).json({ error: "Article not found in database." });
         }
 
-        // Update matching fields
         const target = cacheData.articles[articleIndex];
-        target.category = category || target.category;
-        target.region = region || target.region;
-        target.aiheadline = aiHeadline || target.aiheadline || target.aiHeadline;
-        target.aisummary = aiSummary || target.aisummary || target.aiSummary;
-        target.biasaudit = biasAudit !== undefined ? biasAudit : (target.biasaudit || target.biasAudit);
-        target.fullblog = fullBlog !== undefined ? fullBlog : (target.fullblog || target.fullBlog);
-        target.originalsource = originalSource || target.originalsource || target.originalSource;
-        target.imageurl = imageUrl || target.imageurl || target.imageUrl;
-        target.originalurl = originalUrl || target.originalurl || target.originalUrl;
-        target.instagramShortcode = instagramShortcode !== undefined ? instagramShortcode : target.instagramShortcode;
-        target.authortype = authorType || target.authortype || target.authorType;
+        const newHeadline = aiHeadline || aiheadline || body.title;
+        const newSummary = aiSummary || aisummary || body.description;
+        const newSource = originalSource || originalsource;
+        const newImage = imageUrl || imageurl;
+        const newOriginalUrl = originalUrl || originalurl;
+        const newBiasAudit = biasAudit !== undefined ? biasAudit : biasaudit;
+        const newFullBlog = fullBlog !== undefined ? fullBlog : fullblog;
+        const newAuthorType = authorType || authortype;
+
+        if (category) target.category = category;
+        if (region) target.region = region;
+        if (newHeadline) {
+            target.aiheadline = newHeadline;
+            target.aiHeadline = newHeadline;
+            target.title = newHeadline;
+            target.originaltitle = newHeadline;
+            target.originalTitle = newHeadline;
+        }
+        if (newSummary) {
+            target.aisummary = newSummary;
+            target.aiSummary = newSummary;
+            target.description = newSummary;
+        }
+        if (newBiasAudit !== undefined) {
+            target.biasaudit = newBiasAudit;
+            target.biasAudit = newBiasAudit;
+        }
+        if (newFullBlog !== undefined) {
+            target.fullblog = newFullBlog;
+            target.fullBlog = newFullBlog;
+        }
+        if (newSource) {
+            target.originalsource = newSource;
+            target.originalSource = newSource;
+        }
+        if (newImage) {
+            target.imageurl = newImage;
+            target.imageUrl = newImage;
+        }
+        if (newOriginalUrl) {
+            target.originalurl = newOriginalUrl;
+            target.originalUrl = newOriginalUrl;
+        }
+        if (instagramShortcode !== undefined) target.instagramShortcode = instagramShortcode;
+        if (newAuthorType) {
+            target.authortype = newAuthorType;
+            target.authorType = newAuthorType;
+        }
+
         if (publishdate !== undefined) {
             target.publishdate = publishdate ? new Date(publishdate).toISOString() : null;
             if (target.publishdate) {
                 target.timeago = new Date(target.publishdate).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) + " IST";
+                target.timeAgo = target.timeago;
             }
         }
         if (target.authortype === "instagram") {
@@ -690,7 +729,7 @@ app.put('/api/admin/articles/:id', adminAuthLimiter, basicAuth, (req, res) => {
 
         fs.writeFileSync(CACHE_FILE_PATH, JSON.stringify(cacheData, null, 2), 'utf-8');
         
-        console.log(`💾 Successfully updated article ID: ${id} ("${target.aiHeadline}")`);
+        console.log(`💾 Successfully updated article ID: ${id} ("${newHeadline || target.aiheadline}")`);
         res.json(target);
     } catch (err) {
         console.error("❌ Failed to update article:", err);

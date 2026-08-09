@@ -451,7 +451,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 badgeText = '🎥 IG Video';
             }
 
-            const cardImageUrl = article.imageurl || "./assets/hero-bg.png";
+            const cardImageUrl = article.imageurl || article.imageUrl || "./assets/hero-bg.png";
+            const headline = article.aiheadline || article.aiHeadline || article.title || "Untitled Chronicle";
 
             let regionBadge = '🇮🇳 Indian';
             if (article.region === 'world') regionBadge = '🌐 World';
@@ -461,35 +462,37 @@ document.addEventListener('DOMContentLoaded', () => {
             card.innerHTML = `
                 <!-- Thumbnail Cover Preview -->
                 <div class="admin-row-thumb" style="background-image: url('${escapeHtml(cardImageUrl)}')">
-                    <span class="admin-row-tag">${escapeHtml(article.category)}</span>
+                    <span class="admin-row-tag">${escapeHtml(article.category || 'General')}</span>
                 </div>
                 
                 <!-- Card content meta -->
                 <div class="admin-row-body">
-                    <h3 class="admin-row-title">${escapeHtml(article.aiheadline)}</h3>
+                    <h3 class="admin-row-title">${escapeHtml(headline)}</h3>
                     
                     <div class="admin-row-meta">
                         <span class="author-type-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
                         <span class="author-type-badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-glass);">${escapeHtml(regionBadge)}</span>
-                        <span><i data-lucide="globe"></i> ${escapeHtml(article.originalsource || 'Honestly Biased')}</span>
-                        <span><i data-lucide="clock"></i> ${escapeHtml(article.timeago)}</span>
+                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> ${escapeHtml(article.originalsource || article.originalSource || 'Honestly Biased')}</span>
+                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${escapeHtml(article.timeago || article.timeAgo || 'Just now')}</span>
                     </div>
                 </div>
                 
-                <!-- Action triggers -->
+                <!-- Action triggers with built-in SVG icons -->
                 <div class="admin-row-actions">
                     <button class="btn-action act-edit" data-id="${escapeHtml(article.id)}" title="Refine Satirical Text">
-                        <i data-lucide="edit-3"></i>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                     </button>
                     <button class="btn-action act-delete" data-id="${escapeHtml(article.id)}" title="Permanently Scrub News Card">
-                        <i data-lucide="trash-2"></i>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                     </button>
                 </div>
             `;
             adminArticlesList.appendChild(card);
         });
 
-        lucide.createIcons();
+        if (window.lucide && window.lucide.createIcons) {
+            lucide.createIcons();
+        }
 
         // Bind Edit buttons
         adminArticlesList.querySelectorAll('.act-edit').forEach(btn => {
@@ -497,73 +500,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 const id = btn.getAttribute('data-id');
                 const article = allArticles.find(a => String(a.id) === String(id));
                 if (article) {
-                    cmsArticleId.value = article.id;
-                    cmsCategory.value = article.category;
-                    cmsRegion.value = article.region || 'indian';
-                    cmsSource.value = article.originalsource || '';
-                    cmsHeadline.value = article.aiheadline;
-                    cmsBiasAudit.value = article.biasaudit;
-                    cmsSummary.value = article.aisummary;
-                    if (cmsFullBlog) cmsFullBlog.value = article.fullblog || '';
-                    cmsImageUrl.value = article.imageurl || '';
-                    cmsOriginalUrl.value = article.originalurl || '';
-                    if (cmsPublishDate) {
-                        if (article.publishdate) {
-                            const d = new Date(article.publishdate);
-                            const pad = num => String(num).padStart(2, '0');
-                            const localString = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-                            cmsPublishDate.value = localString;
-                        } else {
-                            cmsPublishDate.value = '';
-                        }
-                    }
-
-                    // Trigger live preview reload
-                    cmsPreviewImg.src = article.imageurl || "./assets/hero-bg.png";
-
-                    // Show edit mode headers
-                    cmsFormTitle.textContent = "Refine News Chronicle";
-                    cmsFormSubtitle.textContent = "Refine satirical headlines, critical summaries or narrative bias audits.";
-                    btnCmsSubmit.textContent = "Save Changes";
-                    btnCmsReset.style.display = "inline-flex";
-
-                    // Smoothly scroll the creator form into view on mobile screens
-                    document.querySelector('.cms-grid').scrollIntoView({ behavior: 'smooth' });
+                    loadArticleForEdit(id);
                 }
             });
         });
 
-        // Bind Delete buttons
+        // Bind Delete buttons with CSRF authentication
         adminArticlesList.querySelectorAll('.act-delete').forEach(btn => {
-            btn.addEventListener('click', async () => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
                 const id = btn.getAttribute('data-id');
                 const article = allArticles.find(a => String(a.id) === String(id));
                 if (!article) return;
 
-                if (confirm(`Scrub and erase "${article.aiheadline}" permanently from the database cache?`)) {
+                const articleTitle = article.aiheadline || article.aiHeadline || article.title || "this article";
+                if (confirm(`Scrub and erase "${articleTitle}" permanently from the database cache?`)) {
                     try {
-                        const response = await fetch(`/api/admin/articles/${id}`, {
+                        const response = await apiRequest(`/api/admin/articles/${id}`, {
                             method: 'DELETE'
                         });
 
                         if (response.ok) {
                             console.log(`🗑️ Successfully deleted article ID: ${id}`);
-                            // Update local state instantly (0ms)
                             allArticles = allArticles.filter(a => String(a.id) !== String(id));
-
                             updateStatsMetrics();
                             populateManagerList();
+                            showToast('Article erased from inventory', 'success');
 
-                            // Reset form if we were currently editing the deleted article
-                            if (cmsArticleId.value === String(id)) {
+                            if (cmsArticleId && cmsArticleId.value === String(id)) {
                                 cancelEditMode();
                             }
                         } else {
-                            alert("Failed to delete the article from Express database cache.");
+                            const errData = await response.json().catch(() => ({}));
+                            showToast(`Failed to delete: ${errData.error || 'Server error'}`, 'error');
                         }
                     } catch (err) {
-                        console.error("Delete CMS request failed:", err);
-                        alert("Cannot connect to honestlybiasedOfficial backend server.");
+                        if (err.message !== 'Unauthorized') {
+                            console.error("Delete CMS request failed:", err);
+                            showToast("Cannot connect to backend server.", 'error');
+                        }
                     }
                 }
             });

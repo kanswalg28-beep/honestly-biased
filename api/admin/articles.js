@@ -162,6 +162,17 @@ module.exports = async (req, res) => {
       }
       
       const updatePayload = { ...body, fullblog: sanitizeHtml(body.fullblog || '') };
+      const headline = body.aiheadline || body.aiHeadline || body.title;
+      const summary = body.aisummary || body.aiSummary || body.description;
+      if (headline) {
+        updatePayload.aiheadline = headline;
+        updatePayload.aiHeadline = headline;
+        updatePayload.title = headline;
+      }
+      if (summary) {
+        updatePayload.aisummary = summary;
+        updatePayload.aiSummary = summary;
+      }
       if (updatePayload.publishdate) {
         updatePayload.publishdate = resolvePublishDate(updatePayload.publishdate);
         updatePayload.timeago = formatTimeAgo(updatePayload.publishdate);
