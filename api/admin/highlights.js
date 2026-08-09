@@ -1,34 +1,17 @@
 // api/admin/highlights.js - Ticker highlights management
 
 const { supabase } = require('../../db/client');
+const { requireAuth, setAdminCors } = require('./_auth');
 const TABLE = 'site_content';
 const KEY = 'highlights';
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
-  
+  setAdminCors(req, res);
+
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
 
-  // Auth check
-  if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD) {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader) {
-      res.setHeader('WWW-Authenticate', 'Basic realm="CMS Admin"');
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    try {
-      const decoded = Buffer.from(authHeader.split(' ')[1], 'base64').toString();
-      const [user, pass] = decoded.split(':');
-      if (user !== process.env.ADMIN_USERNAME || pass !== process.env.ADMIN_PASSWORD) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-    } catch (e) {
-      return res.status(401).json({ error: 'Invalid auth header' });
-    }
-  }
+  if (!requireAuth(req, res)) return;
 
   if (!supabase) {
     return res.status(503).json({ error: 'Database not configured' });

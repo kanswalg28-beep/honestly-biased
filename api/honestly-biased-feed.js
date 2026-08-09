@@ -56,6 +56,10 @@ module.exports = async (req, res) => {
       res.setHeader('X-Cache', 'MISS');
     }
 
+    const dynamicHighlights = (customArticles && customArticles.length > 0)
+      ? customArticles.slice(0, 10).map(a => a.aiheadline || a.title).filter(Boolean)
+      : DEFAULT_HIGHLIGHTS;
+
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
     return res.json({
       rhetoricMeter: {
@@ -64,7 +68,7 @@ module.exports = async (req, res) => {
         aiAnalysis: "Prime-time coverage monitored today reveals a severe spike in hyperbolic sensationalism as legacy newsrooms attempt to mask policy concessions behind corporate volume."
       },
       articles: customArticles,
-      highlights: DEFAULT_HIGHLIGHTS
+      highlights: dynamicHighlights
     });
   } catch (err) {
     console.error('Endpoint error:', err);

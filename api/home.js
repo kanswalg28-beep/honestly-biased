@@ -255,29 +255,21 @@ async function fetchLatestArticles(limit = 22) {
 // Full HTML renderer
 // --------------------------------------------------------------------------
 async function renderHomepageHtml(articles) {
-  // Fetch CMS hero for the hero section
-  const cmsHero = await fetchHeroFromCMS();
-  const heroArticle = cmsHero ? {
-    aiheadline: cmsHero.headline,
-    aisummary: cmsHero.summary,
-    imageurl: cmsHero.imageUrl || '/assets/hero-bg.png',
-    author: cmsHero.byline || 'Honestly Biased Team',
-    authortype: 'admin',
-    readtime: cmsHero.readTime || '9 Min Read',
-    region: 'indian',
-    publishdate: cmsHero.publishDate || new Date().toISOString(),
-    id: cmsHero.id || articles[0]?.id
-  } : articles[0] || null;
-  const heroHeadline = heroArticle ? heroArticle.aiheadline : 'Deep Perspective';
-  const heroSummary = heroArticle ? stripTags(heroArticle.aisummary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
+  // Hero section is dynamically driven by the latest published article (articles[0])
+  const heroArticle = articles[0] || null;
+  const heroHeadline = heroArticle ? (heroArticle.aiheadline || heroArticle.title || 'Deep Perspective') : 'Deep Perspective';
+  // Use ONLY the audited critical summary (aisummary) for the Hero Description
+  const heroSummary = heroArticle ? stripTags(heroArticle.aisummary || heroArticle.summary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
   const heroImage = heroArticle ? (heroArticle.imageurl || '/assets/hero-bg.png') : '/assets/hero-bg.png';
-  const heroByline = heroArticle ? heroArticle.author : 'Honestly Biased Team';
+  const heroByline = heroArticle ? (heroArticle.author || 'Honestly Biased Team') : 'Honestly Biased Team';
   const heroRole = heroArticle ? (heroArticle.authortype === 'admin' ? 'Editorial' : 'Senior Bias Analyst') : 'Senior Bias Analyst';
-  const heroReadTime = heroArticle ? heroArticle.readtime || '9 Min Read' : '9 Min Read';
-  const heroRegion = heroArticle ? heroArticle.region || 'indian' : 'indian';
-  const heroRegionLabel = heroRegion === 'indian' ? 'Indian Edition' : (heroRegion.charAt(0).toUpperCase() + heroRegion.slice(1) + ' Edition');
+  const heroReadTime = heroArticle ? (heroArticle.readtime || '5 Min Read') : '5 Min Read';
+  const heroCategory = heroArticle ? (heroArticle.category || 'DEEP PERSPECTIVE') : 'DEEP PERSPECTIVE';
   const heroPublishDate = heroArticle ? heroArticle.publishdate : new Date().toISOString();
-  const heroTimeAgo = heroArticle ? formatTimeAgo(heroPublishDate) : formatTimeAgo(new Date().toISOString());
+  const heroTimeAgo = heroArticle ? (heroArticle.timeago || formatTimeAgo(heroPublishDate)) : formatTimeAgo(new Date().toISOString());
+
+  // Ticker highlights derived from top 10 articles
+  const tickerItemsHtml = articles.slice(0, 10).map(a => `<span>${escapeHtml(a.aiheadline || a.title)}</span>`).join('');
 
   // Bento grid cards (first 22 articles from Supabase)
   const bentoCards = articles.map((a, i) => buildBentoCard(a, i)).join('\n');
@@ -344,8 +336,8 @@ async function renderHomepageHtml(articles) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-<!-- Google Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Google Fonts (UI/UX Pro Max Tri-Stack) -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 
 <!-- Lucide Icons (bundled locally — no CDN dependency) -->
 <script src="/assets/lucide-local.js" defer></script>
@@ -358,6 +350,7 @@ async function renderHomepageHtml(articles) {
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="dark-theme">
+<div id="read-progress-bar"></div>
 <a href="#main-content" class="skip-to-content">Skip to main content</a>
 
 <!-- STICKY GLASSMORPHIC HEADER -->
@@ -374,7 +367,7 @@ async function renderHomepageHtml(articles) {
           <span class="live-dot saffron-pulse"></span> HIGHLIGHTS
         </span>
         <div class="ticker-scroll">
-          <div class="ticker-track"></div>
+          <div class="ticker-track">${tickerItemsHtml}</div>
         </div>
       </div>
     </div>
@@ -417,7 +410,7 @@ async function renderHomepageHtml(articles) {
     <div class="hero-content-wrapper">
       <div class="hero-text-block glass-element">
         <div class="category-tag-wrapper">
-          <span class="live-indicator"><span class="live-dot saffron-pulse"></span> <span data-bind="eyebrow">DEEP PERSPECTIVE</span></span>
+          <span class="live-indicator"><span class="live-dot saffron-pulse"></span> <span data-bind="eyebrow">${escapeHtml(heroCategory.toUpperCase())}</span></span>
           <span class="read-time"><i data-lucide="clock"></i> <span data-bind="readtime">${escapeHtml(heroReadTime)}</span></span>
         </div>
 
@@ -438,7 +431,7 @@ async function renderHomepageHtml(articles) {
             </div>
           </div>
           <a href="/article/${escapeAttr(shortIdFromUuid(heroArticle ? heroArticle.id : ''))}" class="btn btn-primary" aria-label="Read full analysis">
-            <span data-bind="cta">Expose The Script</span>
+            <span data-bind="cta">Read Audit</span>
             <i data-lucide="arrow-up-right"></i>
           </a>
         </div>

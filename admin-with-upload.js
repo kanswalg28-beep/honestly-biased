@@ -12,30 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (meta) meta.content = token;
     }
 
-    // Store Basic Auth credentials
-    let adminCredentials = null;
-
-    // Fetch Basic Auth credentials from server (chicken-egg fix)
-    async function fetchCredentials() {
-        try {
-            const res = await fetch('/api/admin/auth?type=credentials');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.username && data.password) {
-                    adminCredentials = btoa(`${data.username}:${data.password}`);
-                    console.log('✅ Admin credentials loaded');
-                }
-            }
-        } catch (e) {
-            console.warn('Credentials fetch failed (auth endpoint may not exist):', e);
-        }
-    }
-
-    function getAuthHeader() {
-        return adminCredentials ? `Basic ${adminCredentials}` : '';
-    }
-
-    // Fetch CSRF token from auth endpoint
+    // Fetch CSRF token from auth endpoint (requires Basic Auth - browser handles natively)
     async function fetchCsrfToken() {
         try {
             const res = await fetch('/api/admin/auth?type=csrf');
@@ -235,8 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/admin/upload', {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-Token': getCsrfToken(),
-                    ...(getAuthHeader() ? { 'Authorization': getAuthHeader() } : {})
+                    'X-CSRF-Token': getCsrfToken()
+                    // Basic Auth handled by browser natively
                 },
                 body: formData
             });
@@ -351,8 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ...options.headers
         };
         if (csrf) headers['X-CSRF-Token'] = csrf;
-        const authHeader = getAuthHeader();
-        if (authHeader) headers['Authorization'] = authHeader;
+        // Basic Auth handled by browser natively after 401 challenge
 
         const res = await fetch(path, {
             ...options,
@@ -994,7 +970,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // INIT
     // ==========================================================================
     (async function init() {
-        await fetchCredentials();
         await fetchCsrfToken();
         await loadHeroContent();
         await loadHighlightsConfig();

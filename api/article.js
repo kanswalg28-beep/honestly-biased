@@ -202,7 +202,7 @@ function renderArticleHtml(article) {
   const body      = article.fullblog || article.content || '';
   const image     = article.imageurl || '/assets/hero-bg.png';
   const absImage  = image.startsWith('http') ? image : (SITE + image);
-  const author    = article.author || 'CMS Admin';
+  const author    = article.author || 'Honestly Biased Team';
   const byline    = article.authortype === 'admin' ? 'Editorial · ' + SITE_NAME : 'Audited by ' + SITE_NAME + ' AI Engine';
   const category  = article.category || 'Editorial';
   const region    = normalizeRegion(article.region);
@@ -302,10 +302,11 @@ function renderArticleHtml(article) {
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="dark-theme">
+<div id="read-progress-bar"></div>
 <a href="#main-content" class="skip-to-content">Skip to main content</a>
 <header class="main-header glass-element" id="main-header">
   <div class="header-container">
@@ -333,8 +334,8 @@ function renderArticleHtml(article) {
     <header style="margin-bottom: 32px;">
       <meta itemprop="mainEntityOfPage" content="${escapeAttr(canonical)}">
       <meta itemprop="inLanguage" content="en-IN">
-      <h1 itemprop="headline" style="font-family: var(--font-editorial); font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: var(--text-primary);">${escapeAttr(headline)}</h1>
-      <p itemprop="description" style="font-size: 1.05rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6;">${escapeAttr(seoDesc)}</p>
+      <h1 itemprop="headline" style="font-family: var(--font-display), 'Syne', sans-serif; font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: var(--text-primary); letter-spacing: -0.5px;">${escapeAttr(headline)}</h1>
+      <p itemprop="description" style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; font-family: var(--font-serif); font-style: italic;">${escapeAttr(seoDesc)}</p>
       <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1.5px solid var(--border-glass); font-size: 0.78rem;">
         <span class="article-category" itemprop="articleSection" style="font-size: 0.65rem; padding: 4px 10px; border-radius: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; background: var(--accent-saffron); color: var(--text-primary);">${escapeAttr(category)}</span>
         <span style="color: var(--text-muted); white-space: nowrap;">${escapeAttr(regionLabel)}</span>
@@ -343,15 +344,15 @@ function renderArticleHtml(article) {
         <meta itemprop="dateModified" content="${escapeAttr(dateModified)}">
       </div>
     </header>
-    <figure style="margin-bottom: 36px; width: 100%; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--border-color);">
+    <figure style="margin-bottom: 36px; width: 100%; border-radius: 16px; overflow: hidden; border: 1.5px solid var(--border-color); box-shadow: var(--glass-shadow);">
       <img src="${escapeAttr(absImage)}" alt="${escapeAttr(headline)}" itemprop="image" style="width: 100%; height: auto; display: block;">
       <figcaption style="padding: 16px; background: var(--bg-card); font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border-color);">Source: ${escapeAttr(source)}</figcaption>
     </figure>
-    ${biasAudit ? `<div class="bias-audit-callout" style="background: rgba(178, 41, 46, 0.08); border: 1px solid var(--accent-saffron); border-radius: 12px; padding: 20px 24px; margin-bottom: 32px;">
-      <h2 style="font-family: var(--font-editorial); font-size: 1rem; margin-bottom: 8px; color: var(--accent-saffron); display: flex; align-items: center; gap: 8px;">🕵 AI Narrative Audit</h2>
-      <p style="color: var(--text-secondary); line-height: 1.7; margin: 0;">${escapeAttr(biasAudit)}</p>
+    ${biasAudit ? `<div class="bias-audit-callout" style="background: rgba(178, 41, 46, 0.08); border: 1px solid var(--accent-saffron); border-radius: 16px; padding: 22px 26px; margin-bottom: 36px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+      <h2 style="font-family: var(--font-display), sans-serif; font-size: 1.05rem; margin-bottom: 8px; color: var(--accent-saffron); display: flex; align-items: center; gap: 8px;"><span class="pulse-beacon"></span> 🕵 AI Narrative Audit</h2>
+      <p style="color: var(--text-secondary); line-height: 1.7; margin: 0; font-size: 0.98rem;">${escapeAttr(biasAudit)}</p>
     </div>` : ''}
-    <div itemprop="articleBody" class="blog-post-content" style="font-size: 1.15rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 40px;">
+    <div itemprop="articleBody" class="blog-post-content article-content" style="font-size: 1.15rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 40px;">
       ${body}
     </div>
     <div style="padding-top: 28px; border-top: 1.5px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">

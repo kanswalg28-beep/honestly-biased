@@ -1666,6 +1666,17 @@ document.addEventListener('DOMContentLoaded', () => {
         handleRouting(true);
     })();
 
+    // Initialize reading progress bar scroll listener
+    window.addEventListener('scroll', function() {
+        const progressBar = document.getElementById('read-progress-bar');
+        if (progressBar) {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+            progressBar.style.width = scrolled + '%';
+        }
+    }, { passive: true });
+
     // Initialize fetching routine
     loadDynamicArticles();
 

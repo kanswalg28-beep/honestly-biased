@@ -88,9 +88,44 @@ app.get('/admin', adminAuthLimiter, basicAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
+// Import serverless page handlers for local parity with Vercel deployment
+const homeApi = require('./api/home');
+const articleApi = require('./api/article');
+const rssApi = require('./api/rss');
+const sitemapApi = require('./api/sitemap');
+
+// Clean category & static page route rewrites (matching vercel.json)
+const staticPages = [
+    '/politics', '/tech', '/finance', '/entertainment', '/health',
+    '/manifesto', '/standards', '/funding', '/finances', '/collective'
+];
+staticPages.forEach(route => {
+    app.get(route, (req, res) => {
+        res.sendFile(path.join(__dirname, `${route.slice(1)}.html`));
+    });
+});
+
+// Route SSR pages
+app.get('/', homeApi);
+app.get('/index.html', homeApi);
+app.get('/api/home', homeApi);
+
+app.get('/article/:slug', (req, res) => {
+    req.query.slug = req.params.slug;
+    return articleApi(req, res);
+});
+app.get('/api/article', articleApi);
+
+app.get('/rss.xml', rssApi);
+app.get('/feed.xml', rssApi);
+app.get('/api/rss', rssApi);
+
+app.get('/sitemap.xml', sitemapApi);
+app.get('/api/sitemap', sitemapApi);
+
 // Serve static frontend template files directly from the Express server!
 // This solves local browser CORS blocks when loading WebGL image textures.
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, { extensions: ['html'] }));
 
 // Gracefully redirect any accidental or malformed subdirectory requests for index.html back to the root
 app.use((req, res, next) => {
@@ -534,25 +569,16 @@ app.get('/api/honestly-biased-feed', publicApiLimiter, async (req, res) => {
             aiAnalysis: "Prime-time coverage monitored today reveals a severe spike in hyperbolic sensationalism as legacy newsrooms attempt to mask policy concessions behind corporate volume."
         };
 
-        // Load ticker highlights
-        let highlights = defaultHighlights;
-        if (fs.existsSync(CACHE_FILE_PATH)) {
-            try {
-                const cacheData = JSON.parse(fs.readFileSync(CACHE_FILE_PATH, 'utf-8'));
-                if (cacheData.highlights && cacheData.highlights.length > 0) {
-                    highlights = cacheData.highlights;
-                }
-            } catch (e) {
-                console.error("❌ Failed to parse cache for highlights feed response:", e);
-            }
-        }
-
         const cleanedArticles = processedArticles.map(art => {
             if (art.aiHeadline) {
                 art.aiHeadline = art.aiHeadline.replace(/^Refracted:\s*/i, '');
             }
             return art;
         });
+
+        // Ticker highlights dynamically derived from top 10 latest articles
+        let highlights = cleanedArticles.slice(0, 10).map(a => a.aiHeadline || a.title).filter(Boolean);
+        if (highlights.length === 0) highlights = defaultHighlights;
 
         res.json({
             rhetoricMeter: rhetoricMeterData,

@@ -6,6 +6,7 @@
 // HTML sanitization on fullblog field
 
 const { supabase } = require('../../db/client');
+const { requireAuth, checkCsrfToken, setAdminCors } = require('./_auth');
 
 // Simple Basic Auth helper (optional)
 function basicAuth(req) {
@@ -77,10 +78,7 @@ module.exports = async (req, res) => {
   // Optional auth – if env vars are set, enforce auth for mutating operations only
   const isMutating = ['POST', 'PUT', 'DELETE'].includes(req.method);
   if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && isMutating) {
-    if (!basicAuth(req)) {
-      res.setHeader('WWW-Authenticate', 'Basic realm="CMS Admin"');
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    if (!requireAuth(req, res)) return;
   }
 
   const { method, query, body, url } = req;

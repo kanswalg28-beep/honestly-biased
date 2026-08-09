@@ -4,6 +4,7 @@
     <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Honestly Biased Editorial Control Center — Publish editorials, manage hero content, edit ticker highlights, and oversee newsletter subscribers.">
     <title>Honestly Biased | Editorial Control Center</title>
     
     <!-- Google Fonts: Outfit (Body/UI) & Space Grotesk (Titles) -->
@@ -703,9 +704,99 @@
         .file-upload-btn:focus-visible,
         .btn-live-feed:focus-visible,
         .btn-primary:focus-visible,
-        .btn-secondary:focus-visible {
+        .btn-secondary:focus-visible,
+        .cms-input:focus-visible,
+        .cms-textarea:focus-visible,
+        .cms-select:focus-visible,
+        .admin-card-row:focus-visible,
+        .btn-action:focus-visible {
             outline: 3px solid var(--accent-saffron);
             outline-offset: 2px;
+        }
+
+        /* High contrast focus for dark mode - WCAG AAA */
+        @media (prefers-contrast: high) {
+            .btn-action:focus-visible,
+            .file-upload-btn:focus-visible,
+            .btn-live-feed:focus-visible,
+            .btn-primary:focus-visible,
+            .btn-secondary:focus-visible,
+            .cms-input:focus-visible,
+            .cms-textarea:focus-visible,
+            .cms-select:focus-visible {
+                outline: 4px solid #fff;
+                outline-offset: 3px;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .cms-grid {
+                grid-template-columns: 1fr;
+            }
+            .metrics-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            .cms-header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+            .metrics-bar {
+                grid-template-columns: 1fr;
+            }
+            .cms-panel-card {
+                padding: 20px;
+            }
+            .admin-card-row {
+                flex-direction: column;
+            }
+            .admin-row-thumb {
+                width: 100%;
+                height: 120px;
+                border-right: none;
+                border-bottom: 1.5px solid var(--border-glass);
+            }
+            .admin-row-actions {
+                border-left: none;
+                border-top: 1.5px solid var(--border-glass);
+                padding: 16px;
+                margin: 0;
+                justify-content: flex-end;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .cms-header h1 {
+                font-size: 1.25rem;
+            }
+            .metric-number {
+                font-size: 1.5rem;
+            }
+            .btn-live-feed {
+                width: 100%;
+                justify-content: center;
+            }
+            .file-upload-row {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 
@@ -883,93 +974,9 @@
                     </form>
                 </section>
 
-                <!-- Hero Article Customizer Panel -->
-                <section class="cms-panel-card glass-element" id="hero-customizer-section">
-                    <div class="form-header-row" style="border-bottom: 1.5px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px;">
-                        <h2 style="font-size: 1.35rem; font-weight:800; font-family:var(--font-heading); margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
-                            <i data-lucide="crown" style="color: var(--accent-gold); width: 20px; height: 20px;"></i> Editable Hero Article
-                        </h2>
-                        <p style="color:var(--text-muted); font-size:0.78rem; font-weight:600; margin:0;">Edit the main featured hero article displayed at the top of the homepage.</p>
-                    </div>
-                    <form id="cms-hero-form" style="display:flex; flex-direction:column; gap:16px;">
-                        <div class="form-group">
-                            <label for="hero-eyebrow" class="cms-label">Hero Eyebrow (e.g. DEEP PERSPECTIVE)</label>
-                            <input type="text" id="hero-eyebrow" class="cms-input glass-element" placeholder="DEEP PERSPECTIVE" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="hero-readtime" class="cms-label">Read Time (e.g. 9 Min Read)</label>
-                            <input type="text" id="hero-readtime" class="cms-input glass-element" placeholder="9 Min Read" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="hero-headline" class="cms-label">Hero Headline</label>
-                            <input type="text" id="hero-headline" class="cms-input glass-element" placeholder="Enter hero article title..." required>
-                        </div>
-                        <div class="form-group">
-                            <label for="hero-body" class="cms-label">Hero Summary Description</label>
-                            <textarea id="hero-body" class="cms-textarea glass-element" rows="3" placeholder="Enter summary description..." required></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="hero-byline" class="cms-label">Byline / Author Name</label>
-                            <input type="text" id="hero-byline" class="cms-input glass-element" placeholder="Aniket Verma" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="hero-byline-role" class="cms-label">Author Role / Title</label>
-                            <input type="text" id="hero-byline-role" class="cms-input glass-element" placeholder="Senior Bias Analyst" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="hero-cta" class="cms-label">CTA Button Label</label>
-                            <input type="text" id="hero-cta" class="cms-input glass-element" placeholder="Expose The Script" required>
-                        </div>
 
-                        <!-- Hero Image Upload -->
-                        <div class="form-group hero-image-upload">
-                            <label class="cms-label">Hero Background Image</label>
-                            <div class="image-preview-wrapper" style="height: 160px;">
-                                <img id="hero-preview-img" src="./assets/hero-bg.png" alt="Hero Preview Visual">
-                                <div class="image-preview-placeholder" id="hero-preview-placeholder" style="display: none;">
-                                    <i data-lucide="image" style="width: 24px; height: 24px;"></i>
-                                    <span>Preview visual loaded dynamically</span>
-                                </div>
-                            </div>
-                            <div class="file-upload-group" style="margin-top: 12px;">
-                                <div class="file-upload-row">
-                                    <div class="file-upload-input-wrapper">
-                                        <input type="text" id="hero-image-url" class="cms-input glass-element" placeholder="./assets/hero-bg.png or paste image URL..." style="background: rgba(255,255,255,0.01);">
-                                        <input type="file" id="hero-image-upload" class="file-upload-input" accept="image/*" aria-label="Upload hero background image">
-                                    </div>
-                                    <button type="button" class="file-upload-btn" id="hero-image-upload-btn" aria-label="Upload hero image file">
-                                        <i data-lucide="upload"></i>
-                                        <span>Upload</span>
-                                    </button>
-                                </div>
-                                <div class="file-upload-status" id="hero-image-upload-status"></div>
-                            </div>
-                        </div>
 
-                        <div class="cms-form-footer" style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px; padding-top:16px; border-top:1px solid var(--border-color);">
-                            <button type="submit" class="btn btn-primary" id="btn-hero-submit" style="padding: 12px 24px; font-size: 0.78rem; font-weight:700;">Save Hero Content</button>
-                        </div>
-                    </form>
-                </section>
 
-                <!-- Highlights Editor Panel -->
-                <section class="cms-panel-card glass-element" id="highlights-editor-section">
-                    <div class="form-header-row" style="border-bottom: 1.5px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px;">
-                        <h2 style="font-size: 1.35rem; font-weight:800; font-family:var(--font-heading); margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
-                            <i data-lucide="bell" style="color: var(--accent-saffron); width: 20px; height: 20px;"></i> Ticker Highlights
-                        </h2>
-                        <p style="color:var(--text-muted); font-size:0.78rem; font-weight:600; margin:0;">Edit the live scrolling announcement headlines displayed in the header ticker banner.</p>
-                    </div>
-                    <form id="cms-highlights-form" style="display:flex; flex-direction:column; gap:16px;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="cms-highlights-input" class="cms-label">Highlight Items (One per line)</label>
-                            <textarea id="cms-highlights-input" class="cms-textarea glass-element" rows="4" placeholder="Enter each announcement headline on a new line..." required></textarea>
-                        </div>
-                        <div class="cms-form-footer" style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px; padding-top:16px; border-top:1px solid var(--border-color);">
-                            <button type="submit" class="btn btn-primary" id="btn-highlights-submit" style="padding: 12px 24px; font-size: 0.78rem; font-weight:700;">Save Highlights</button>
-                        </div>
-                    </form>
-                </section>
 
                 <!-- Audience Directory Panel -->
                 <section class="cms-panel-card glass-element" id="audience-directory-section">
