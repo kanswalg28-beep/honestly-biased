@@ -515,38 +515,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const ssrCards = gridContainer ? gridContainer.querySelectorAll('.bento-card') : [];
-        const hasSSRContent = ssrCards.length > 0;
-        
-        if (hasSSRContent) {
-            ssrCards.forEach(card => {
-                const id = card.id;
-                const link = card.querySelector('a.stretched-link');
-                const headline = link ? link.textContent : '';
-                const summary = card.querySelector('.card-summary')?.textContent || '';
-                const badge = card.querySelector('.author-type-badge');
-                const category = card.querySelector('.card-tag')?.textContent || '';
-                const timeEl = card.querySelector('.card-time')?.textContent || '';
-                const bias = card.querySelector('.card-author')?.textContent?.replace('Bias Audit: ', '') || '';
-                const imgEl = card.querySelector('.card-image-bg');
-                const bgMatch = imgEl?.style.backgroundImage?.match(/url\(['"]?([^'")]*)/);
-                const imgUrl = bgMatch ? bgMatch[1] : '';
-                const authortype = badge?.classList.contains('badge-admin') ? 'admin' :
-                                   badge?.classList.contains('badge-instagram') ? 'instagram' : 'ai';
-                
-                allArticles.push({
-                    id,
-                    aiheadline: headline,
-                    aisummary: summary,
-                    biasaudit: bias,
-                    category,
-                    timeago: timeEl,
-                    imageurl: imgUrl,
-                    authortype
-                });
-            });
-        }
-
         let lensReady = false;
         const maxWait = 5000;
         const startTime = Date.now();
@@ -579,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 art.aisummary = summary;
                 art.aiSummary = summary;
                 art.description = summary;
-                art.imageurl = art.imageurl || art.imageUrl || './assets/hero-bg.png';
+                art.imageurl = art.imageurl || art.imageUrl || '/assets/hero-bg.png';
                 art.imageUrl = art.imageurl;
                 return art;
             });
@@ -600,19 +568,6 @@ document.addEventListener('DOMContentLoaded', () => {
             handleRouting(true);
 
         } catch (error) {
-            const tickerTrack = document.querySelector('.ticker-track');
-            if (tickerTrack) {
-                const fallbackAlerts = [
-                    "[MEDIA AUDIT]: Manufactured consent monitored in prime-time transcript analyses.",
-                    "[FINANCIAL WATCH]: Shadow banking narrative expansion detected in central bank briefing notes.",
-                    "[TECH MONOPOLY]: Algorithmic platform surveillance frameworks under active critique.",
-                    "[HEALTH AUDIT]: Pharmaceutical lobbying budgets monitored in recent healthcare bills."
-                ];
-                let html = fallbackAlerts.map(text => `<span>• ${text}</span>`).join('');
-                html += `<span>• ${fallbackAlerts[0]}</span>`;
-                tickerTrack.innerHTML = html;
-            }
-
             allArticles = [];
             handleRouting(true);
         }
@@ -730,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const sortedArticles = [...allArticles].sort((a, b) => {
             const timeA = a.publishdate ? new Date(a.publishdate).getTime() : parseFloat(String(a.id).replace(/\D/g, '')) || 0;
-            const timeB = b.publishdate ? new Date(b.publishdate).getTime() : parseFloat(String(b.id).replace(/\D/g, '')) || 0;
+            const timeB = b.publishdate ? new Date(b.publishdate).getTime() : parseFloat(String(a.id).replace(/\D/g, '')) || 0;
             return timeB - timeA;
         });
 
@@ -770,11 +725,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         paginatedArticles.forEach((article, index) => {
             const articleUrl = getArticleUrl(article);
+            const rawHeadline = article.aiheadline || article.aiHeadline || article.title || 'Untitled Chronicle';
+            const rawSummary = article.aisummary || article.aiSummary || article.description || article.summary || '';
+            const imgUrl = (article.imageurl && !article.imageurl.startsWith('data:image')) ? article.imageurl : '/assets/hero-bg.png';
+
             if (index >= 0 && index <= 3) {
                 gridItems.push(`
                     <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
-                        <div class="card-visual">
-                            <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.7) contrast(1.1);"></div>
+                        <div class="card-visual" style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; background:var(--bg-secondary);">
+                            <img class="card-image-bg" src="${imgUrl}" alt="${escapeHtml(rawHeadline)}" loading="lazy" decoding="async" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.7) contrast(1.1);" onerror="this.onerror=null;this.src='/assets/hero-bg.png';">
                             <span class="card-tag saffron-bg">${article.category}</span>
                             ${article.authortype === 'instagram' ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
                         </div>
@@ -789,9 +748,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}
                             </span>
                             <h3 class="card-title" style="margin-top:10px;">
-                                <a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                                <a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${article.id}">${rawHeadline}</a>
                             </h3>
-                            <p class="card-summary">${article.aisummary}</p>
+                            <p class="card-summary">${rawSummary}</p>
                             <div class="card-footer-meta">
                                 <span class="card-author" style="font-size:0.75rem; color:var(--accent-green); font-weight:700;">Bias Audit: ${article.biasaudit}</span>
                             </div>
@@ -801,8 +760,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 gridItems.push(`
                     <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
-                        <div class="card-visual">
-                            <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.65) grayscale(0.15);"></div>
+                        <div class="card-visual" style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; background:var(--bg-secondary);">
+                            <img class="card-image-bg" src="${imgUrl}" alt="${escapeHtml(rawHeadline)}" loading="lazy" decoding="async" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.65) grayscale(0.15);" onerror="this.onerror=null;this.src='/assets/hero-bg.png';">
                             <span class="card-tag saffron-bg">${article.category}</span>
                         </div>
                         <div class="card-body">
@@ -819,9 +778,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </span>
                             </div>
                             <h3 class="card-title" style="margin-bottom:10px;">
-                                <a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                                <a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${article.id}">${rawHeadline}</a>
                             </h3>
-                            <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${article.aisummary}</p>
+                            <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${rawSummary}</p>
                             <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.03);">
                                 <span class="card-author" style="font-size:0.68rem; color:var(--accent-green); font-weight:700; line-height:1.35; display:block;">Bias Audit: ${article.biasaudit}</span>
                             </div>
@@ -913,52 +872,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     playBtn.style.background = 'rgba(255,255,255,0.05)';
                     playBtn.style.color = 'var(--text-primary)';
                 }
-                lucide.createIcons();
-            });
-        }
-
-        const videoElement = gridContainer.querySelector('#card-6-video');
-        const videoPlayBtn = gridContainer.querySelector('.video-play-overlay');
-
-        if (videoElement && videoPlayBtn) {
-            const videoIcon = videoPlayBtn.querySelector('i');
-            
-            videoPlayBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleVideoPlayback();
-            });
-
-            videoElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleVideoPlayback();
-            });
-
-            function toggleVideoPlayback() {
-                if (videoElement.paused) {
-                    videoElement.play().catch(err => console.log("Video play interrupted:", err));
-                    videoPlayBtn.classList.add('playing');
-                    if (videoIcon) {
-                        videoIcon.setAttribute('data-lucide', 'pause');
-                    }
-                } else {
-                    videoElement.pause();
-                    videoPlayBtn.classList.remove('playing');
-                    if (videoIcon) {
-                        videoIcon.setAttribute('data-lucide', 'play');
-                    }
-                }
-                lucide.createIcons();
-            }
-
-            videoElement.addEventListener('pause', () => {
-                videoPlayBtn.classList.remove('playing');
-                if (videoIcon) videoIcon.setAttribute('data-lucide', 'play');
-                lucide.createIcons();
-            });
-
-            videoElement.addEventListener('play', () => {
-                videoPlayBtn.classList.add('playing');
-                if (videoIcon) videoIcon.setAttribute('data-lucide', 'pause');
                 lucide.createIcons();
             });
         }
@@ -1255,34 +1168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', syncActiveIndicators);
 
     function showArticleDetailPage(articleId) {
-        let article;
-        if (articleId === 'featured-story') {
-            article = {
-                id: "featured-story",
-                category: "Politics",
-                aiheadline: "The Illusion of Consensus: Bending the Corporate News Narrative",
-                timeago: "Audited Today",
-                author: "Aniket Verma",
-                authortype: "admin",
-                imageurl: "./assets/hero-bg.png",
-                originalsource: "Honestly Biased Editorial Board",
-                originalurl: "#",
-                fullblog: `
-                    <p class="blog-lead">Traditional news chambers claim to deliver pure, unvarnished objective truth. We say that is a convenient myth. In a landscape structured by corporate sponsorship and administrative convenience, "neutrality" is rarely neutral.</p>
-                    
-                    <p>When major broadcast platforms present complex economic policies, they often deploy a performative balance—giving equal weight to corporate lobbyists and affected local communities as if their incentives were identical. This artificial consensus serves to obscure the deep structural inequalities, policy loopholes, and direct corporate influence that shape the legislative process. By framing political concessions as procedural adjustments, the mainstream media actively manufactures consent under the cover of objective reporting.</p>
-                    
-                    <p class="blog-analysis-heading"><strong>The Honestly Biased Narrative Audit:</strong></p>
-                    <blockquote>Media institutions frame corporate policy lobbying as public interest initiatives to protect high-revenue advertisers and preserve regulatory access.</blockquote>
-                    
-                    <p>To bend the narrative is to reject this performance. We believe in providing transparent, critical media analysis that highlights who benefits from policy shifts, which voices are excluded from the debate, and how legacy press releases are converted into public opinion. Our bias is not hidden; it is our primary lens of analysis.</p>
-                    
-                    <p>In subsequent editions, we will expand this audit to cover specific legislative files, mapping the flow of consulting capital to media committees and auditing the digital dashboards used by state ministries to frame operational overhead as structural efficiency. Decrypting the script is the first step toward reclaiming public consciousness.</p>
-                `
-            };
-        } else {
-            article = allArticles.find(a => String(a.id) === String(articleId));
-        }
+        let article = allArticles.find(a => String(a.id) === String(articleId));
 
         if (!article) {
             window.location.hash = '#/';
