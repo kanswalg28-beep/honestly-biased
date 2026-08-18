@@ -7,11 +7,11 @@
     },
     {
       "source": "/api/admin/:match*",
-      "destination": "/api/admin?route=:match*"
+      "destination": "/api/cms?route=:match*"
     },
     {
       "source": "/api/admin",
-      "destination": "/api/admin"
+      "destination": "/api/cms"
     },
     {
       "source": "/img-proxy/:path*",
