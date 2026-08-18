@@ -14,19 +14,10 @@ const SITE = 'https://www.honestlybiased.com';
 const SITE_NAME = 'Honestly Biased';
 const SITE_TAGLINE = 'Independent Commentary, Satire & Political Audit';
 
-// --------------------------------------------------------------------------
-// In-memory article cache — survives warm serverless invocations
-// Key: region:slug or slug or uuid; Value: { article, time }
-// TTL: 5 minutes (articles rarely change after publish)
-// --------------------------------------------------------------------------
 const articleCache = new Map();
 const ARTICLE_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat, slug';
-
-// --------------------------------------------------------------------------
-// Helpers
-// --------------------------------------------------------------------------
 
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
@@ -98,10 +89,6 @@ function getArticleUrl(article) {
   return `/${r}/${slug}`;
 }
 
-// --------------------------------------------------------------------------
-// Supabase resolution
-// --------------------------------------------------------------------------
-
 async function resolveArticle(slug, region) {
   if (!supabase) return null;
   if (!slug) return null;
@@ -115,7 +102,6 @@ async function resolveArticle(slug, region) {
     return cached.article;
   }
 
-  // 1. Try exact slug match with region if provided
   if (normalizedRegion) {
     try {
       const { data } = await supabase
@@ -135,7 +121,6 @@ async function resolveArticle(slug, region) {
     }
   }
 
-  // 2. Try exact slug match across all regions
   try {
     const { data } = await supabase
       .from('articles')
@@ -152,7 +137,6 @@ async function resolveArticle(slug, region) {
     console.warn('slug query error:', e.message);
   }
 
-  // 3. Try by exact uuid / column id
   if (/^[a-f0-9-]{36}$/.test(normalizedSlug)) {
     const { data } = await supabase
       .from('articles')
@@ -166,7 +150,6 @@ async function resolveArticle(slug, region) {
     }
   }
 
-  // 4. Fallback: shortId suffix (last 8 hex of uuid)
   const PAGE = 1000;
   let from = 0;
   while (true) {
@@ -193,10 +176,6 @@ async function resolveArticle(slug, region) {
     from += PAGE;
   }
 }
-
-// --------------------------------------------------------------------------
-// HTML rendering
-// --------------------------------------------------------------------------
 
 function renderArticleHtml(article) {
   const headline  = article.aiheadline || article.title || 'Untitled';
@@ -225,7 +204,6 @@ function renderArticleHtml(article) {
   const canonical = `${SITE}${articlePath}`;
   const seoDesc   = truncate(summary, 200);
 
-  // NewsArticle JSON-LD structured data
   const newsJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
@@ -246,7 +224,6 @@ function renderArticleHtml(article) {
     'isAccessibleForFree': true
   });
 
-  // WebSite + BreadcrumbList JSON-LD
   const breadcrumbJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -409,10 +386,6 @@ function renderArticleHtml(article) {
 </html>`;
 }
 
-// --------------------------------------------------------------------------
-// Handler
-// --------------------------------------------------------------------------
-
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -462,7 +435,6 @@ module.exports = async (req, res) => {
     );
   }
 
-  // 301 Permanent Redirect if accessed via legacy /article/:slug route
   const rawUrl = req.url || '';
   const isLegacyArticleRoute = !region && (rawUrl.includes('/article/') || rawUrl.startsWith('/api/article?slug='));
   if (isLegacyArticleRoute) {
@@ -474,7 +446,6 @@ module.exports = async (req, res) => {
     return res.end();
   }
 
-  // Cache control: serve fresh for humans, allow 5min CDN cache for crawlers
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Vary', 'User-Agent');
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');

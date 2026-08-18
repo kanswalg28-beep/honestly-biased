@@ -6,9 +6,6 @@
 // in the database. This is a fallback/complement to the build-time
 // sitemap.xml — letting crawlers always see the latest content even
 // before a redeploy. Vercel routes /sitemap.xml → /api/sitemap.
-//
-// To avoid hammering Supabase on every bot crawl, we apply a small
-// in-process cache (45 seconds) so concurrent crawlers share one fetch.
 
 const { supabase } = require('../db/client');
 
@@ -117,7 +114,7 @@ function buildXml(articles) {
         xml += `      <news:title><![CDATA[${hl}]]></news:title>\n`;
         xml += `      <news:keywords><![CDATA[${kw}]]></news:keywords>\n`;
         xml += '    </news:news>\n';
-      } catch (e) { /* skip article on bad date */ }
+      } catch (e) { }
     }
 
     xml += '  </url>\n';
