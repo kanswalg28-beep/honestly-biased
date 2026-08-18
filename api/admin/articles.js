@@ -1,28 +1,15 @@
-// admin/articles.js – Serverless API for CMS article CRUD operations
+// api/admin/articles.js – Serverless API for CMS article CRUD operations
 // Handles: GET (list), POST (create), PUT (update by ?id=), DELETE (delete by ?id=)
-// Uses Supabase client (db/client.js) for persistence
-// Basic Auth optional – configured via ADMIN_USERNAME and ADMIN_PASSWORD env vars
-// CSRF protection via X-CSRF-Token header for mutating operations
-// HTML sanitization on fullblog field
 
 const { supabase } = require('../../db/client');
 const { requireAuth, checkCsrfToken, setAdminCors } = require('./_auth');
 
-function basicAuth(req) {
-  const authHeader = req.headers['authorization'];
-  if (!authHeader) return false;
-  const token = authHeader.split(' ')[1] || '';
-  const decoded = Buffer.from(token, 'base64').toString();
-  const [user, pass] = decoded.split(':');
-  return (
-    user === process.env.ADMIN_USERNAME &&
-    pass === process.env.ADMIN_PASSWORD
-  );
-}
-
 function validateCsrf(req) {
   const csrf = req.headers['x-csrf-token'];
-  return !!csrf;
+  if (process.env.ADMIN_PASSWORD) {
+    return checkCsrfToken(csrf) || !!csrf;
+  }
+  return true;
 }
 
 function generateSlug(headline) {
@@ -46,7 +33,6 @@ function sanitizeHtml(html) {
   };
   
   let sanitized = html;
-  
   sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
   sanitized = sanitized.replace(/on\w+="[^"]*"/gi, '');
   sanitized = sanitized.replace(/on\w+='[^']*'/gi, '');
@@ -56,7 +42,9 @@ function sanitizeHtml(html) {
   sanitized = sanitized.replace(tagRegex, (match, tagName) => {
     if (allowedTags.includes(tagName.toLowerCase())) {
       return match.replace(/\s+\w+="[^"]*"/g, (attr) => {
-        const attrName = attr.match(/^\s+(\w+)=/)[1];
+        const m = attr.match(/^\s+(\w+)=/);
+        if (!m) return '';
+        const attrName = m[1];
         if (allowedAttrs[tagName.toLowerCase()]?.includes(attrName.toLowerCase())) {
           return attr;
         }
@@ -83,15 +71,21 @@ function formatTimeAgo(dateStr) {
 }
 
 module.exports = async (req, res) => {
+  setAdminCors(req, res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   const isMutating = ['POST', 'PUT', 'DELETE'].includes(req.method);
   if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && isMutating) {
     if (!requireAuth(req, res)) return;
   }
 
+  if (!supabase) {
+    return res.status(503).json({ error: 'Database service unavailable' });
+  }
+
   const { method, query, body, url } = req;
-  
   const pathMatch = url?.match(/\/api\/admin\/articles\/([^/?]+)/);
-  const articleId = pathMatch ? pathMatch[1] : query.id;
+  const articleId = query.id || (pathMatch ? pathMatch[1] : null) || body?.id;
 
   try {
     if (method === 'GET') {
@@ -110,7 +104,7 @@ module.exports = async (req, res) => {
       
       const { data, error } = await supabase
         .from('articles')
-        .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
+        .select('id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, slug')
         .eq('archived', false)
         .order(sortBy, sortOrder)
         .range(from, to);
@@ -132,17 +126,35 @@ module.exports = async (req, res) => {
         return res.status(403).json({ error: 'CSRF token missing or invalid' });
       }
       
+      const headline = body.aiheadline || body.aiHeadline || body.title || 'Untitled Chronicle';
+      const summary = body.aisummary || body.aiSummary || body.description || body.summary || '';
+      const fullblog = body.fullblog || body.content || '';
       const resolvedPublishDate = resolvePublishDate(body.publishdate);
-      const headline = body.aiheadline || body.aiHeadline || body.title || '';
+
       const payload = {
-        ...body,
+        aiheadline: headline,
+        title: headline,
+        aisummary: summary,
+        summary: summary,
+        fullblog: sanitizeHtml(fullblog),
+        content: sanitizeHtml(fullblog),
+        category: body.category || 'Politics',
+        region: (body.region || 'indian').toLowerCase(),
+        biasaudit: body.biasaudit || body.biasAudit || '',
+        originalsource: body.originalsource || body.originalSource || 'Honestly Biased Editorial Board',
+        originaltitle: body.originaltitle || body.originalTitle || headline,
+        originalurl: body.originalurl || body.originalUrl || '#',
+        imageurl: body.imageurl || body.imageUrl || '/assets/hero-bg.png',
         slug: body.slug || generateSlug(headline),
-        fullblog: sanitizeHtml(body.fullblog || ''),
         authortype: 'admin',
-        author: 'CMS Admin',
+        author: body.author || 'CMS Admin',
         publishdate: resolvedPublishDate,
-        timeago: formatTimeAgo(resolvedPublishDate)
+        timeago: formatTimeAgo(resolvedPublishDate),
+        archived: false,
+        createdat: new Date().toISOString(),
+        updatedat: new Date().toISOString()
       };
+
       const { data, error } = await supabase
         .from('articles')
         .insert(payload)
@@ -157,33 +169,54 @@ module.exports = async (req, res) => {
         return res.status(403).json({ error: 'CSRF token missing or invalid' });
       }
       
-      const id = articleId || body?.id;
+      const id = articleId;
       if (!id) {
         return res.status(400).json({ error: 'Missing article ID' });
       }
       
-      const updatePayload = { ...body, fullblog: sanitizeHtml(body.fullblog || '') };
+      const cleanPayload = {};
       const headline = body.aiheadline || body.aiHeadline || body.title;
-      const summary = body.aisummary || body.aiSummary || body.description;
-      if (headline) {
-        updatePayload.aiheadline = headline;
-        updatePayload.aiHeadline = headline;
-        updatePayload.title = headline;
-        if (!body.slug) {
-          updatePayload.slug = generateSlug(headline);
-        }
+      const summary = body.aisummary || body.aiSummary || body.description || body.summary;
+      const fullblog = body.fullblog !== undefined ? body.fullblog : body.content;
+      
+      if (headline !== undefined) {
+        cleanPayload.aiheadline = headline;
+        cleanPayload.title = headline;
       }
-      if (summary) {
-        updatePayload.aisummary = summary;
-        updatePayload.aiSummary = summary;
+      if (summary !== undefined) {
+        cleanPayload.aisummary = summary;
+        cleanPayload.summary = summary;
       }
-      if (updatePayload.publishdate) {
-        updatePayload.publishdate = resolvePublishDate(updatePayload.publishdate);
-        updatePayload.timeago = formatTimeAgo(updatePayload.publishdate);
+      if (fullblog !== undefined) {
+        cleanPayload.fullblog = sanitizeHtml(fullblog);
+        cleanPayload.content = cleanPayload.fullblog;
       }
+      if (body.category !== undefined) cleanPayload.category = body.category;
+      if (body.region !== undefined) cleanPayload.region = body.region.toLowerCase();
+      if (body.biasaudit !== undefined) cleanPayload.biasaudit = body.biasaudit;
+      if (body.originalsource !== undefined) cleanPayload.originalsource = body.originalsource;
+      if (body.originaltitle !== undefined) cleanPayload.originaltitle = body.originaltitle;
+      if (body.originalurl !== undefined) cleanPayload.originalurl = body.originalurl;
+      if (body.imageurl !== undefined) cleanPayload.imageurl = body.imageurl;
+      if (body.author !== undefined) cleanPayload.author = body.author;
+      if (body.authortype !== undefined) cleanPayload.authortype = body.authortype;
+      if (body.archived !== undefined) cleanPayload.archived = body.archived;
+      
+      if (body.slug) {
+        cleanPayload.slug = body.slug;
+      } else if (headline) {
+        cleanPayload.slug = generateSlug(headline);
+      }
+
+      if (body.publishdate) {
+        cleanPayload.publishdate = resolvePublishDate(body.publishdate);
+        cleanPayload.timeago = formatTimeAgo(cleanPayload.publishdate);
+      }
+      cleanPayload.updatedat = new Date().toISOString();
+
       const { data, error } = await supabase
         .from('articles')
-        .update(updatePayload)
+        .update(cleanPayload)
         .eq('id', id)
         .select()
         .single();
@@ -197,7 +230,7 @@ module.exports = async (req, res) => {
         return res.status(403).json({ error: 'CSRF token missing or invalid' });
       }
       
-      const id = articleId || body?.id;
+      const id = articleId;
       if (!id) {
         return res.status(400).json({ error: 'Missing article ID' });
       }
@@ -218,6 +251,6 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     console.error('admin/articles API error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 };
