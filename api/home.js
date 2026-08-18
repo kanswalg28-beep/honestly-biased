@@ -1,9 +1,11 @@
 // api/home.js — Server-Side Rendered Homepage with 24h freshness
 const { supabase } = require('../db/client');
+const fs = require('fs');
+const path = require('path');
 
-const SITE = 'https://www.honestlybiased.com';
 const SITE_NAME = 'Honestly Biased';
-const SITE_TAGLINE = 'Independent Commentary, Satire & Political Audit';
+const SITE_DESC = 'AI-powered news bias auditor providing balanced perspectives on global, national, and local stories.';
+const BASE_URL = 'https://www.honestlybiased.com';
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -12,7 +14,7 @@ function shortIdFromUuid(uuid) {
 
 function getArticleSlug(article) {
   if (article.slug && article.slug.trim()) return article.slug.trim();
-  const headline = article.aiheadline || article.aiHeadline || article.title || '';
+  const headline = article.aiheadline || article.title || '';
   const words = headline
     .toLowerCase()
     .replace(/[^\w\s-]/g, '')
@@ -31,599 +33,415 @@ function getArticleUrl(article) {
   return `/${r}/${slug}`;
 }
 
-function escapeHtml(s) {
-  if (s === null || s === undefined) return '';
-  const E = {
-    amp:   String.fromCharCode(38),
-    lt:    String.fromCharCode(38, 108, 116, 59),
-    gt:    String.fromCharCode(38, 103, 116, 59),
-    quot:  String.fromCharCode(38, 113, 117, 111, 116, 59),
-    apos:  String.fromCharCode(38, 35, 51, 57, 59)
-  };
-  return String(s)
-    .replace(/&/g, E.amp)
-    .replace(/</g, E.lt)
-    .replace(/>/g, E.gt)
-    .replace(/"/g, E.quot)
-    .replace(/'/g, E.apos);
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
-function escapeAttr(s) {
-  return escapeHtml(s).replace(/[\u0000-\u001F\u007F]/g, '');
+function getBiasColor(bias) {
+  const b = (bias || '').toLowerCase();
+  if (b.includes('left') || b.includes('liberal')) return { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5', label: 'Left Bias' };
+  if (b.includes('right') || b.includes('conservative')) return { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd', label: 'Right Bias' };
+  if (b.includes('center') || b.includes('neutral') || b.includes('balanced')) return { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Balanced' };
+  return { bg: '#f3f4f6', text: '#374151', border: '#d1d5db', label: bias || 'Analyzed' };
 }
 
-function stripTags(s) {
-  if (!s) return '';
-  return String(s).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+function getProxiedImageUrl(originalUrl) {
+  if (!originalUrl) return '';
+  if (originalUrl.startsWith('data:image')) return originalUrl;
+  return `/img-proxy/${encodeURIComponent(originalUrl)}`;
 }
 
-function truncate(s, n) {
-  if (!s) return '';
-  s = String(s);
-  if (s.length <= n) return s;
-  return s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…';
-}
+module.exports = async (req, res) => {
+  const urlObj = new URL(req.url || '/', 'https://www.honestlybiased.com');
 
-function formatDate(isoString) {
-  if (!isoString) return '';
+  // 1. IMAGE PROXY ROUTE (Fallback for hotlinked external images)
+  if (urlObj.searchParams.get('__imgproxy') === '1' || urlObj.pathname.startsWith('/img-proxy/')) {
+    const rawPath = urlObj.searchParams.get('__path') || urlObj.pathname.replace(/^\/img-proxy\/?/, '');
+    const targetUrl = decodeURIComponent(rawPath);
+
+    if (!targetUrl || (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://'))) {
+      res.statusCode = 400;
+      return res.end('Invalid Image URL');
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+
+      const fetchRes = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'Referer': targetUrl
+        }
+      });
+      clearTimeout(timeout);
+
+      if (!fetchRes.ok) {
+        res.statusCode = fetchRes.status;
+        return res.end('Upstream image error');
+      }
+
+      const contentType = fetchRes.headers.get('content-type') || 'image/jpeg';
+      const arrayBuffer = await fetchRes.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400');
+      return res.status(200).send(buffer);
+    } catch (err) {
+      res.statusCode = 502;
+      return res.end('Failed to proxy image: ' + err.message);
+    }
+  }
+
+  // 2. SSR HOMEPAGE
   try {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  } catch (e) { return ''; }
-}
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-function formatTimeAgo(dateStr) {
-  if (!dateStr) return '';
-  try {
-    return new Date(dateStr).toLocaleTimeString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }) + ' IST';
-  } catch (e) { return ''; }
-}
-
-function authorBadgeHtml(authortype) {
-  if (authortype === 'admin') {
-    return '<span class="author-type-badge badge-admin"><i data-lucide="pen-tool" style="width:10px;height:10px;"></i> Editorial</span>';
-  }
-  if (authortype === 'instagram') {
-    return '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>';
-  }
-  return '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>';
-}
-
-function categoryTagHtml(category) {
-  return `<span class="card-tag saffron-bg">${escapeHtml(category)}</span>`;
-}
-
-function biasAuditHtml(biasaudit) {
-  return `<span class="card-author" style="font-size:0.75rem; color:var(--accent-green); font-weight:700;">Bias Audit: ${escapeHtml(biasaudit)}</span>`;
-}
-
-function cardTimeHtml(article) {
-  let html = '';
-  if (article.publishdate) {
-    html += `<i data-lucide="calendar" style="margin-left:8px;"></i> ${formatDate(article.publishdate)}`;
-  }
-  html += ` <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago || formatTimeAgo(article.publishdate)}`;
-  return html;
-}
-
-function buildBentoCard(article, index) {
-  const isInstagram = article.authortype === 'instagram';
-  const url = getArticleUrl(article);
-  const rawHeadline = article.aiheadline || article.aiHeadline || article.title || 'Untitled Chronicle';
-  const rawSummary = article.aisummary || article.aiSummary || article.description || article.summary || '';
-  const cardLink = `<a href="${escapeAttr(url)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(rawHeadline)}</a>`;
-  const badgeHtml = authorBadgeHtml(article.authortype);
-  const catTag = categoryTagHtml(article.category);
-  const timeHtml = cardTimeHtml(article);
-  const biasHtml = biasAuditHtml(article.biasaudit || article.biasAudit);
-  const summary = escapeHtml(rawSummary);
-  
-  const rawImg = article.imageurl || '/assets/hero-bg.png';
-  const isBase64 = rawImg.startsWith('data:image');
-  const imgUrl = isBase64 ? '/assets/hero-bg.png' : escapeAttr(rawImg);
-
-  if (index >= 0 && index <= 3) {
-    return `
-      <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
-        <div class="card-visual" style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; background:var(--bg-secondary);">
-          <img class="card-image-bg" src="${imgUrl}" alt="${escapeAttr(rawHeadline)}" loading="lazy" decoding="async" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.7) contrast(1.1);" onerror="this.onerror=null;this.src='/assets/hero-bg.png';">
-          ${catTag}
-          ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
-        </div>
-        <div class="card-body">
-          <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
-            ${badgeHtml}
-            ${timeHtml}
-          </span>
-          <h3 class="card-title" style="margin-top:10px;">
-            ${cardLink}
-          </h3>
-          <p class="card-summary">${summary}</p>
-          <div class="card-footer-meta">
-            ${biasHtml}
-          </div>
-        </div>
-      </article>
-    `;
-  }
-
-  return `
-    <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
-      <div class="card-visual" style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; background:var(--bg-secondary);">
-        <img class="card-image-bg" src="${imgUrl}" alt="${escapeAttr(rawHeadline)}" loading="lazy" decoding="async" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.65) grayscale(0.15);" onerror="this.onerror=null;this.src='/assets/hero-bg.png';">
-        ${catTag}
-      </div>
-      <div class="card-body">
-        <div class="card-tag-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-          ${catTag}
-          <span class="card-time" style="font-size:0.65rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:2px;">
-            ${badgeHtml}
-            ${timeHtml}
-          </span>
-        </div>
-        <h3 class="card-title" style="margin-bottom:10px;">
-          ${cardLink}
-        </h3>
-        <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${summary}</p>
-        <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.03);">
-          ${biasHtml}
-        </div>
-      </div>
-    </article>
-  `;
-}
-
-async function fetchLatestArticles(limit = 22) {
-  if (!supabase) return [];
-  try {
-    const { data, error } = await supabase
+    let { data: articles, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
+      .select('*')
       .eq('archived', false)
-      .order('publishdate', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    return data || [];
-  } catch (e) {
-    console.error('home fetch error:', e.message);
-    return [];
-  }
-}
+      .gte('publishdate', twentyFourHoursAgo)
+      .order('publishdate', { ascending: false });
 
-async function renderHomepageHtml(articles) {
-  const heroArticle = articles[0] || null;
-  const heroHeadline = heroArticle ? (heroArticle.aiheadline || heroArticle.aiHeadline || heroArticle.title || 'Deep Perspective') : 'Deep Perspective';
-  const heroSummary = heroArticle ? stripTags(heroArticle.aisummary || heroArticle.aiSummary || heroArticle.description || heroArticle.summary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
-  const heroImage = heroArticle ? (heroArticle.imageurl || heroArticle.imageUrl || '/assets/hero-bg.png') : '/assets/hero-bg.png';
-  const heroByline = heroArticle ? (heroArticle.author || 'Honestly Biased Team') : 'Honestly Biased Team';
-  const heroRole = heroArticle ? (heroArticle.authortype === 'admin' ? 'Editorial' : 'Senior Bias Analyst') : 'Senior Bias Analyst';
-  const heroReadTime = heroArticle ? (heroArticle.readtime || '5 Min Read') : '5 Min Read';
-  const heroCategory = heroArticle ? (heroArticle.category || 'DEEP PERSPECTIVE') : 'DEEP PERSPECTIVE';
-  const heroPublishDate = heroArticle ? heroArticle.publishdate : new Date().toISOString();
-  const heroTimeAgo = heroArticle ? (heroArticle.timeago || formatTimeAgo(heroPublishDate)) : formatTimeAgo(new Date().toISOString());
+    if (error || !articles || articles.length === 0) {
+      // Fallback to latest 20 articles if none in last 24h
+      const fallback = await supabase
+        .from('articles')
+        .select('*')
+        .eq('archived', false)
+        .order('publishdate', { ascending: false })
+        .limit(20);
+      articles = fallback.data || [];
+    }
 
-  const tickerItemsHtml = articles.slice(0, 10).map(a => `<span>${escapeHtml(a.aiheadline || a.aiHeadline || a.title)}</span>`).join('');
-  const bentoCards = articles.map((a, i) => buildBentoCard(a, i)).join('\n');
+    // Site content (highlights ticker, etc.)
+    const { data: contentData } = await supabase
+      .from('site_content')
+      .select('*');
+    const siteContent = {};
+    if (contentData) {
+      for (const row of contentData) siteContent[row.key] = row.value;
+    }
 
-  const siteJsonLd = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    'name': SITE_NAME,
-    'url': SITE,
-    'description': SITE_TAGLINE,
-    'publisher': { '@type': 'Organization', 'name': SITE_NAME, 'logo': { '@type': 'ImageObject', 'url': SITE + '/assets/logo.png' } }
-  });
+    const highlights = Array.isArray(siteContent.highlights) ? siteContent.highlights : [];
 
-  const listJsonLd = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    'itemListElement': articles.slice(0, 22).map((a, i) => {
-      let img = a.imageurl || SITE + '/assets/hero-bg.png';
-      if (img.startsWith('data:image')) img = SITE + '/assets/hero-bg.png';
-      return {
-        '@type': 'ListItem', 'position': i + 1,
-        'item': { '@type': 'NewsArticle', 'url': SITE + getArticleUrl(a), 'headline': a.aiheadline, 'image': img, 'datePublished': a.publishdate }
-      };
-    })
-  });
+    // Separate hero & grid
+    const heroArticle = articles.find(a => a.category === 'Hero' || a.is_hero) || articles[0] || null;
+    const feedArticles = heroArticle ? articles.filter(a => a.id !== heroArticle.id) : articles;
 
-  const heroAbsImage = heroImage.startsWith('http') ? heroImage : SITE + heroImage;
-  const ogDesc = truncate(heroSummary, 200);
+    // Structured Data JSON-LD
+    const siteJsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'NewsMediaOrganization',
+      'name': SITE_NAME,
+      'url': BASE_URL,
+      'logo': `${BASE_URL}/assets/logo.png`,
+      'description': SITE_DESC,
+      'sameAs': [
+        'https://twitter.com/honestlybiased',
+        'https://facebook.com/honestlybiased'
+      ]
+    });
 
-  return `<!DOCTYPE html>
+    const listJsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      'itemListElement': articles.slice(0, 10).map((a, i) => ({
+        '@type': 'ListItem',
+        'position': i + 1,
+        'url': `${BASE_URL}${getArticleUrl(a)}`,
+        'name': a.aiheadline || a.title || 'Honestly Biased News'
+      }))
+    });
+
+    // Render Highlights Ticker Items
+    let tickerHtml = '';
+    if (highlights.length > 0) {
+      tickerHtml = highlights.map((h, i) => {
+        const text = typeof h === 'string' ? h : (h.text || h.title || '');
+        const tag = h.tag || 'BREAKING';
+        return `
+          <div class="ticker-item inline-flex items-center gap-2 text-sm font-medium text-slate-700 mx-6">
+            <span class="px-2 py-0.5 text-xs font-bold uppercase rounded bg-red-100 text-red-700 tracking-wider">${escapeHtml(tag)}</span>
+            <span>${escapeHtml(text)}</span>
+          </div>
+        `;
+      }).join('');
+    } else if (articles.length > 0) {
+      tickerHtml = articles.slice(0, 5).map(a => `
+        <div class="ticker-item inline-flex items-center gap-2 text-sm font-medium text-slate-700 mx-6">
+          <span class="px-2 py-0.5 text-xs font-bold uppercase rounded bg-indigo-100 text-indigo-700 tracking-wider">${escapeHtml(a.category || 'NEWS')}</span>
+          <a href="${escapeHtml(getArticleUrl(a))}" class="hover:underline">${escapeHtml(a.aiheadline || a.title)}</a>
+        </div>
+      `).join('');
+    }
+
+    // Render Hero Article HTML
+    let heroHtml = '';
+    if (heroArticle) {
+      const heroUrl = getArticleUrl(heroArticle);
+      const heroImg = heroArticle.imageurl ? (heroArticle.imageurl.startsWith('data:image') ? '' : getProxiedImageUrl(heroArticle.imageurl)) : '/assets/placeholder-hero.webp';
+      const heroBias = getBiasColor(heroArticle.biasaudit);
+      heroHtml = `
+        <article class="relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-100 grid md:grid-cols-12 gap-0 group">
+          <div class="md:col-span-7 relative h-72 md:h-[420px] overflow-hidden bg-slate-900">
+            ${heroImg ? `<img src="${escapeHtml(heroImg)}" alt="${escapeHtml(heroArticle.aiheadline || heroArticle.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="eager" fetchpriority="high">` : '<div class="w-full h-full bg-slate-800 flex items-center justify-center text-slate-500 font-serif text-2xl">Honestly Biased</div>'}
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+            <div class="absolute top-4 left-4 flex gap-2">
+              <span class="px-3 py-1 bg-slate-900/80 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider rounded-full">${escapeHtml(heroArticle.category || 'Top Story')}</span>
+            </div>
+          </div>
+          <div class="md:col-span-5 p-6 md:p-8 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 mb-3">
+                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full border" style="background-color: ${heroBias.bg}; color: ${heroBias.text}; border-color: ${heroBias.border};">${escapeHtml(heroBias.label)}</span>
+                <span class="text-xs text-slate-400">•</span>
+                <span class="text-xs text-slate-500">${escapeHtml(heroArticle.timeago || 'Recent')}</span>
+              </div>
+              <h2 class="text-2xl md:text-3xl font-serif font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors mb-4">
+                <a href="${escapeHtml(heroUrl)}">${escapeHtml(heroArticle.aiheadline || heroArticle.title)}</a>
+              </h2>
+              <p class="text-slate-600 text-sm leading-relaxed line-clamp-4 mb-4">
+                ${escapeHtml(heroArticle.aisummary || heroArticle.summary || '')}
+              </p>
+            </div>
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-500">Source: <span class="text-slate-800 font-semibold">${escapeHtml(heroArticle.originalsource || 'Wire')}</span></span>
+              <a href="${escapeHtml(heroUrl)}" class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 group-hover:translate-x-0.5 transition-transform">
+                Read Analysis <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+              </a>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    // Render Feed Articles Grid HTML
+    const feedHtml = feedArticles.map(a => {
+      const articleUrl = getArticleUrl(a);
+      const imgUrl = a.imageurl ? (a.imageurl.startsWith('data:image') ? '' : getProxiedImageUrl(a.imageurl)) : '';
+      const bias = getBiasColor(a.biasaudit);
+      return `
+        <article class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-100 flex flex-col group h-full">
+          <div class="relative h-48 bg-slate-100 overflow-hidden">
+            ${imgUrl ? `<img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(a.aiheadline || a.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">` : '<div class="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 font-serif">HB</div>'}
+            <div class="absolute top-3 left-3">
+              <span class="px-2.5 py-0.5 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider rounded-md">${escapeHtml(a.category || 'News')}</span>
+            </div>
+          </div>
+          <div class="p-5 flex-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded border" style="background-color: ${bias.bg}; color: ${bias.text}; border-color: ${bias.border};">${escapeHtml(bias.label)}</span>
+                <span class="text-xs text-slate-400">•</span>
+                <span class="text-xs text-slate-400">${escapeHtml(a.timeago || 'Recent')}</span>
+              </div>
+              <h3 class="font-serif font-bold text-slate-900 text-lg leading-snug group-hover:text-indigo-600 transition-colors mb-2">
+                <a href="${escapeHtml(articleUrl)}">${escapeHtml(a.aiheadline || a.title)}</a>
+              </h3>
+              <p class="text-slate-600 text-xs leading-relaxed line-clamp-3 mb-4">
+                ${escapeHtml(a.aisummary || a.summary || '')}
+              </p>
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-[11px] text-slate-500 truncate max-w-[140px]">${escapeHtml(a.originalsource || 'HB Staff')}</span>
+              <a href="${escapeHtml(articleUrl)}" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                Audit &rarr;
+              </a>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Honestly Biased - ${escapeAttr(SITE_TAGLINE)}">
-<meta name="keywords" content="Honestly Biased, Indian political satire, independent journalism, news commentary, media critique">
-<meta name="author" content="Honestly Biased Team">
-<title>Honestly Biased | Independent Commentary, Satire & News Analysis</title>
-<link rel="canonical" href="${SITE}/">
-<meta property="og:title" content="Honestly Biased | Independent Commentary, Satire & News Analysis">
-<meta property="og:description" content="${escapeAttr(ogDesc)}">
-<meta property="og:image" content="${escapeAttr(heroAbsImage)}">
-<meta property="og:type" content="website">
-<meta property="og:url" content="${SITE}/">
-<meta property="og:site_name" content="${escapeAttr(SITE_NAME)}">
-<meta property="article:publisher" content="${SITE}">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Honestly Biased | Independent Commentary, Satire & News Analysis">
-<meta name="twitter:description" content="${escapeAttr(ogDesc)}">
-<meta name="twitter:image" content="${escapeAttr(heroAbsImage)}">
-<meta name="twitter:site" content="@honestlybiased">
+<title>${escapeHtml(SITE_NAME)} — Uncompromising Bias Audit & Balanced Perspectives</title>
+<meta name="description" content="${escapeHtml(SITE_DESC)}">
+<link rel="canonical" href="${BASE_URL}/">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-<meta name="theme-color" content="#0a0e1a">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/assets/logo.png">
 <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+
+<!-- OpenGraph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="${escapeHtml(SITE_NAME)}">
+<meta property="og:title" content="${escapeHtml(SITE_NAME)} — News Bias Audit">
+<meta property="og:description" content="${escapeHtml(SITE_DESC)}">
+<meta property="og:url" content="${BASE_URL}/">
+<meta property="og:image" content="${BASE_URL}/assets/og-image.png">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@honestlybiased">
+<meta name="twitter:title" content="${escapeHtml(SITE_NAME)}">
+<meta name="twitter:description" content="${escapeHtml(SITE_DESC)}">
+<meta name="twitter:image" content="${BASE_URL}/assets/og-image.png">
+
+<!-- Fonts & Tailwind -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/tailwind-built.css">
+
+<!-- Structured Data -->
 <script type="application/ld+json">${siteJsonLd}</script>
 <script type="application/ld+json">${listJsonLd}</script>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-
+<style>
+  .font-serif { font-family: 'Newsreader', serif; }
+  .font-brand { font-family: 'Cinzel', serif; }
+  .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
 <script src="/assets/lucide-local.js" defer></script>
 <script defer src="/_vercel/insights/script.js"></script>
-
-<link rel="preload" as="image" href="${escapeAttr(heroImage)}" type="image/webp">
-
-<link rel="preload" href="/style.css" as="style">
-<link rel="stylesheet" href="/style.css">
+<script defer src="/_vercel/speed-insights/script.js"></script>
 </head>
-<body class="dark-theme">
-<div id="read-progress-bar"></div>
-<a href="#main-content" class="skip-to-content">Skip to main content</a>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col justify-between">
 
-<header class="main-header glass-element" id="main-header">
-  <div class="header-container">
-    <div class="header-left">
-      <a href="/" class="brand-logo" aria-label="Honestly Biased Home">
-        <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
-      </a>
-    </div>
-    <div class="header-center">
-      <div class="header-highlights">
-        <span class="ticker-label">
-          <span class="live-dot saffron-pulse"></span> HIGHLIGHTS
-        </span>
-        <div class="ticker-scroll">
-          <div class="ticker-track">${tickerItemsHtml}</div>
+  <!-- Header / Navigation -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center gap-3">
+          <a href="/" class="flex items-center gap-2">
+            <span class="font-brand font-bold text-2xl tracking-tight text-slate-950">HONESTLY BIASED</span>
+          </a>
         </div>
-      </div>
-    </div>
-    <div class="header-right">
-      <button class="icon-btn search-trigger" aria-label="Search website"><i data-lucide="search"></i></button>
-      <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle color theme" title="Toggle between Dark and Light mode">
-        <span class="theme-toggle-track">
-          <span class="theme-toggle-thumb"><i data-lucide="moon" class="icon-dark"></i><i data-lucide="sun" class="icon-light"></i></span>
-        </span>
-      </button>
-    </div>
-  </div>
-</header>
-
-<main id="main-content">
-  <nav class="top-region-bar glass-element" aria-label="Edition selector">
-    <div class="top-region-container">
-      <div class="region-tabs-container" id="region-tabs-container">
-        <div class="active-indicator-pill" id="region-active-pill"></div>
-        <button class="region-tab-btn active" data-region="indian"><i data-lucide="map-pin"></i><span>Indian Edition</span></button>
-        <button class="region-tab-btn" data-region="world"><i data-lucide="globe"></i><span>World Edition</span></button>
-        <button class="region-tab-btn" data-region="uk"><i data-lucide="flag"></i><span>UK Edition</span></button>
-        <button class="region-tab-btn" data-region="berkshire"><i data-lucide="home"></i><span>Berkshire Local</span></button>
-      </div>
-    </div>
-  </nav>
-
-  <section class="hero-section" id="politics" data-site-content-block="hero">
-    <div class="lens-canvas-container" id="lens-canvas-container" data-src="${escapeAttr(heroImage)}">
-      <picture>
-        <source type="image/avif" srcset="${escapeAttr(heroImage.replace(/\.[^.]+$/, '.avif'))}">
-        <source type="image/webp" srcset="${escapeAttr(heroImage.replace(/\.[^.]+$/, '.webp'))}">
-        <img src="${escapeAttr(heroImage)}" alt="Featured Story Editorial Graphic" class="hero-fallback-img">
-      </picture>
-      <div class="lens-overlay"></div>
-    </div>
-
-    <div class="hero-content-wrapper">
-      <div class="hero-text-block glass-element">
-        <div class="category-tag-wrapper">
-          <span class="live-indicator"><span class="live-dot saffron-pulse"></span> <span data-bind="eyebrow">${escapeHtml(heroCategory.toUpperCase())}</span></span>
-          <span class="read-time"><i data-lucide="clock"></i> <span data-bind="readtime">${escapeHtml(heroReadTime)}</span></span>
-        </div>
-
-        <h1 class="hero-title">
-          <span data-bind="headline">${escapeHtml(heroHeadline)}</span>
-        </h1>
-
-        <p class="hero-summary">
-          <span data-bind="body">${escapeHtml(heroSummary)}</span>
-        </p>
-
-        <div class="hero-meta">
-          <div class="author-info">
-            <div class="author-avatar"><i data-lucide="user"></i></div>
-            <div>
-              <span class="author-name" data-bind="byline">${escapeHtml(heroByline)}</span>
-              <span class="author-title" data-bind="byline_role">${escapeHtml(heroRole)}</span>
-            </div>
-          </div>
-          <a href="${escapeAttr(heroArticle ? getArticleUrl(heroArticle) : '/')}" class="btn btn-primary" aria-label="Read full analysis">
-            <span data-bind="cta">Read Audit</span>
-            <i data-lucide="arrow-up-right"></i>
+        <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-700">
+          <a href="/politics" class="hover:text-indigo-600 transition-colors">Politics</a>
+          <a href="/tech" class="hover:text-indigo-600 transition-colors">Tech</a>
+          <a href="/finance" class="hover:text-indigo-600 transition-colors">Finance</a>
+          <a href="/entertainment" class="hover:text-indigo-600 transition-colors">Entertainment</a>
+          <a href="/health" class="hover:text-indigo-600 transition-colors">Health</a>
+          <a href="/manifesto" class="hover:text-indigo-600 transition-colors">Manifesto</a>
+          <a href="/standards" class="hover:text-indigo-600 transition-colors">Standards</a>
+        </nav>
+        <div class="flex items-center gap-3">
+          <a href="/rss.xml" class="p-2 text-slate-500 hover:text-amber-600 transition-colors" title="RSS Feed">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/></svg>
           </a>
         </div>
       </div>
     </div>
-  </section>
+  </header>
 
-  <section class="bento-section" id="satire">
-    <div class="section-header" data-site-content-block="ledger_intro">
-      <div class="title-with-accent">
-        <span class="tag-bar green-bar"></span>
-        <h2 class="section-title"><span data-bind="heading">The Ledger</span></h2>
+  <!-- Breaking Ticker -->
+  ${tickerHtml ? `
+  <div class="bg-slate-100 border-b border-slate-200 overflow-hidden py-2">
+    <div class="max-w-7xl mx-auto px-4 flex items-center">
+      <span class="text-xs font-bold tracking-wider text-slate-500 uppercase pr-3 border-r border-slate-300 flex-shrink-0">HIGHLIGHTS</span>
+      <div class="ticker-wrap flex-1 overflow-x-auto whitespace-nowrap pl-4 no-scrollbar">
+        ${tickerHtml}
       </div>
-      <p class="section-subtitle"><span data-bind="sub">Dismantling corporate bias and manufactured consent, systematically</span></p>
-    </div>
-
-    <div class="date-filters-container glass-element" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; width: 100%; max-width: 1400px; margin-left: auto; margin-right: auto;">
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Show:</span>
-        <select id="per-page-select" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; font-size: 0.8rem;">
-          <option value="10">10 per page</option>
-          <option value="22" selected>22 per page</option>
-          <option value="46">46 per page</option>
-        </select>
-      </div>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Page:</span>
-        <button class="pagination-btn" id="prev-page" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
-        <span id="page-indicator" style="min-width: 60px; text-align: center; font-weight: 600;">1 / 1</span>
-        <button class="pagination-btn" id="next-page" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
-      </div>
-    </div>
-
-    <div class="bento-layout-wrapper">
-      <aside class="bento-sidebar">
-        <div class="category-tabs-container" id="category-tabs-container">
-          <div class="active-indicator-pill" id="category-active-pill"></div>
-          <button class="category-tab-btn active" data-category="all"><i data-lucide="layout-grid"></i><span>All Chronicles</span></button>
-          <button class="category-tab-btn" data-category="Politics"><i data-lucide="landmark"></i><span>Politics</span></button>
-          <button class="category-tab-btn" data-category="Tech"><i data-lucide="cpu"></i><span>Tech</span></button>
-          <button class="category-tab-btn" data-category="Finance"><i data-lucide="circle-dollar-sign"></i><span>Finance</span></button>
-          <button class="category-tab-btn" data-category="Entertainment"><i data-lucide="clapperboard"></i><span>Entertainment</span></button>
-          <button class="category-tab-btn" data-category="Health"><i data-lucide="heart-pulse"></i><span>Health</span></button>
-        </div>
-      </aside>
-
-      <div class="bento-grid" id="dynamic-bento-grid">
-        ${bentoCards}
-      </div>
-    </div>
-  </section>
-
-  <section class="article-detail-section" id="article-detail-section" aria-hidden="true" style="display: none; padding: 120px 0 80px 0; min-height: 80vh;">
-    <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 24px;">
-      <div style="margin-bottom: 32px;">
-        <a href="#/" class="btn btn-secondary back-btn" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; text-decoration: none; padding: 10px 20px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-glass); color: var(--text-primary); transition: background 0.2s;">
-          <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
-          <span>Back to Chronicles</span>
-        </a>
-      </div>
-      <div class="article-detail-grid" style="max-width: 1050px; margin: 0 auto;">
-        <article class="article-detail-card glass-element" style="padding: 48px; border-radius: 16px; border: 1.5px solid var(--border-glass); box-shadow: var(--glass-shadow); position: relative; background: var(--bg-card); backdrop-filter: blur(20px);">
-          <h2 id="detail-title" style="font-family: var(--font-heading); font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: var(--text-primary); text-shadow: 0 2px 10px var(--shadow-color);"></h2>
-          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1.5px solid var(--border-glass); font-size: 0.7rem; color: var(--text-muted);">
-            <span class="modal-tag saffron-bg" id="detail-category" style="font-size: 0.65rem; padding: 4px 10px; border-radius: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; color: var(--text-primary); background-color: var(--accent-saffron);">Politics</span>
-            <span id="detail-time" style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;"><i data-lucide="clock" style="width: 11px; height: 11px;"></i> 12:25 am IST</span>
-            <span class="detail-author" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"><i data-lucide="shield-check" style="width: 11px; height: 11px;"></i> Audited by Honestly Biased AI Engine</span>
-          </div>
-          <div id="detail-media-container" style="margin-bottom: 36px; width: 100%; border-radius: 8px; overflow: hidden; display: none; border: 1.5px solid var(--border-glass);"></div>
-          <div class="blog-post-content" id="detail-content" style="font-size: 1.15rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 40px; font-weight: 400; letter-spacing: -0.003em;"></div>
-          <div style="padding-top: 28px; border-top: 1.5px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-            <span id="detail-source" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">Source: Reuters</span>
-            <a id="detail-original-link" href="#" target="_blank" style="font-size: 0.9rem; color: var(--accent-red); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: opacity 0.2s;"><span>Attribution Source</span><i data-lucide="external-link" style="width: 14px; height: 14px;"></i></a>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-</main>
-
-<footer class="editorial-footer">
-  <div class="footer-grid">
-    <div class="footer-brand-column">
-      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png-footer"></a>
-      <p class="mission-statement" data-site-content-block="footer"><span data-bind="mission">Honestly Biased is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We believe in providing transparent, analytical, and uncompromisingly honest perspectives on politics, satire, and media power structures in India.</span></p>
-    </div>
-    <div class="footer-links-column">
-      <h4 class="footer-heading">Sections</h4>
-      <ul class="footer-links-list"><li><a href="/politics">Politics</a></li><li><a href="/tech">Tech</a></li><li><a href="/finance">Finance</a></li><li><a href="/entertainment">Entertainment</a></li><li><a href="/health">Health</a></li></ul>
-    </div>
-    <div class="footer-links-column" data-site-content-block="standards">
-      <h4 class="footer-heading">Standards</h4>
-      <ul class="footer-links-list" id="standards-list"><li><a href="/standards">Editorial Standards</a></li><li><a href="/funding">Independent Funding Audit</a></li><li><a href="/finances">Financial Integrity Reports</a></li><li><a href="/collective">Join the Collective</a></li></ul>
-    </div>
-    <div class="footer-newsletter-column">
-      <h4 class="footer-heading">Subscribe to the Ledger</h4>
-      <p class="newsletter-subtext">Receive our daily, sharp analytical briefing direct to your inbox. No filters, no corporate jargon.</p>
-      <form class="newsletter-form" id="newsletter-form">
-        <div class="input-group">
-          <input type="email" placeholder="Enter your email address" required aria-label="Email address for newsletter subscription">
-          <button type="submit" class="newsletter-btn" aria-label="Submit email address"><i data-lucide="arrow-right"></i></button>
-        </div>
-        <label class="checkbox-label"><input type="checkbox" required><span class="checkbox-custom"></span><span class="label-text">I support transparent, reader-funded commentary.</span></label>
-      </form>
     </div>
   </div>
-  <div class="footer-bottom">
-    <p class="copyright">&copy; 2026 Honestly Biased Digital Media Trust. Reader supported, fiercely independent.</p>
-    <div class="social-links" aria-label="Social Media Connections">
-      <a href="https://www.facebook.com/honestlybiasedOfficial" target="_blank" rel="noopener noreferrer" aria-label="Facebook connection"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg></a>
-      <a href="https://twitter.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Twitter connection"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-      <a href="https://www.youtube.com/@honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="YouTube channel"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
-      <a href="https://www.instagram.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2c-3.31 0-6 2.69-6 6v5c0 3.31 2.69 6 6 6s6-2.69 6-6V8c0-3.31-2.69-6-6-6zm4 11c0 2.21-1.79 4-4 4s-4-1.79-4-4V8c0-2.21 1.79-4 4-4s4 1.79 4 4v5zm-4 7c-4.42 0-8-3.58-8-8H2c0 5.14 3.82 9.4 8.88 9.94v2.06h2.24v-2.06c5.06-.54 8.88-4.8 8.88-9.94h-2c0 4.42-3.58 8-8 8z"/></svg></a>
+  ` : ''}
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    
+    <!-- Hero Section -->
+    ${heroHtml ? `<section class="mb-12">${heroHtml}</section>` : ''}
+
+    <!-- Regional & Category Filters -->
+    <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-200">
+      <h2 class="font-serif font-bold text-2xl text-slate-900">Latest Dispatches</h2>
+      <div class="flex gap-2">
+        <span class="text-xs bg-slate-200 text-slate-700 px-3 py-1 rounded-full font-medium">Last 24 Hours</span>
+      </div>
     </div>
-  </div>
-</footer>
 
-<div class="audit-modal" id="audit-modal" aria-hidden="true" role="dialog">
-  <div class="modal-backdrop" id="modal-backdrop"></div>
-  <div class="modal-content glass-element">
-    <button class="modal-close-btn" id="modal-close-btn" aria-label="Close audit reader"><i data-lucide="x"></i></button>
-    <div class="modal-header"><span class="modal-tag saffron-bg" id="modal-category" style="color: var(--text-primary); background-color: var(--accent-saffron);">Politics</span><span class="modal-time" id="modal-time"><i data-lucide="clock"></i> Just Now</span></div>
-    <h2 class="modal-title" id="modal-title">FinMin Confirms New Tax Framework Remains Perfectly Logical to Precisely Three Statisticians</h2>
-    <div class="modal-meta"><span class="modal-author"><i data-lucide="shield-check"></i> Audited by Honestly Biased AI Engine</span><span class="modal-source" id="modal-source">Source: Economic Reporter</span></div>
-    <div id="modal-media-container" style="display: none; width: 100%; border-radius: var(--border-radius-sm); overflow: hidden; margin: 20px 0;"></div>
-    <div class="bias-audit-callout"><h4 class="callout-heading"><i data-lucide="search-code"></i> AI NARRATIVE AUDIT</h4><p class="callout-text" id="modal-bias-audit">Ministers frame procedural hurdles as 'efficiency improvements' to mask standard operational overhead.</p></div>
-    <div class="modal-body-content"><p id="modal-summary">The Ministry of Finance has successfully updated the national tax bureaucracy. The revised forms are designed to optimize reporting speeds, ensuring that only specialized algorithms can successfully file them.</p></div>
-    <div class="modal-footer"><a href="#" target="_blank" class="btn btn-secondary" id="modal-original-link"><span>Inspect Raw Corporate Spin</span><i data-lucide="external-link"></i></a></div>
-  </div>
-</div>
+    <!-- Feed Grid -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+      ${feedHtml || '<p class="text-slate-500 col-span-3 text-center py-12">No articles published in the last 24 hours.</p>'}
+    </section>
 
-<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id), slug: getArticleSlug(a), regionUrl: getArticleUrl(a) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
+    <!-- Mission Banner -->
+    <section class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-2xl p-8 md:p-12 text-white shadow-xl mb-12 flex flex-col md:flex-row items-center justify-between gap-8">
+      <div class="max-w-xl">
+        <span class="text-indigo-400 font-mono text-xs uppercase tracking-widest font-bold">Uncompromising Transparency</span>
+        <h3 class="font-serif text-2xl md:text-3xl font-bold mt-2 mb-3">AI-Audited Journalism for a Polarized World</h3>
+        <p class="text-slate-300 text-sm leading-relaxed">
+          Every story on Honestly Biased is cross-checked against multi-spectrum sources. We expose framing biases, highlight omissions, and present verifiable facts.
+        </p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <a href="/manifesto" class="px-6 py-3 bg-white text-slate-950 font-bold text-sm rounded-xl text-center hover:bg-slate-100 transition-colors">Our Manifesto</a>
+        <a href="/standards" class="px-6 py-3 bg-white/10 text-white font-semibold text-sm rounded-xl text-center hover:bg-white/20 transition-colors backdrop-blur-sm">Audit Standards</a>
+      </div>
+    </section>
 
-<script src="/app.js" defer></script>
-<script src="/lens-effect.js" defer></script>
-<script>window.addEventListener('DOMContentLoaded',()=>{if(window.lucide)lucide.createIcons();});</script>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-12 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div class="md:col-span-2">
+        <span class="font-brand font-bold text-xl text-slate-950 tracking-tight">HONESTLY BIASED</span>
+        <p class="text-slate-500 text-xs mt-2 max-w-sm leading-relaxed">
+          ${escapeHtml(SITE_DESC)}
+        </p>
+      </div>
+      <div>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3">Sections</h4>
+        <ul class="space-y-2 text-xs text-slate-600">
+          <li><a href="/politics" class="hover:text-indigo-600">Politics</a></li>
+          <li><a href="/tech" class="hover:text-indigo-600">Technology</a></li>
+          <li><a href="/finance" class="hover:text-indigo-600">Finance & Markets</a></li>
+          <li><a href="/entertainment" class="hover:text-indigo-600">Entertainment</a></li>
+          <li><a href="/health" class="hover:text-indigo-600">Health & Science</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3">Transparency</h4>
+        <ul class="space-y-2 text-xs text-slate-600">
+          <li><a href="/manifesto" class="hover:text-indigo-600">Manifesto</a></li>
+          <li><a href="/standards" class="hover:text-indigo-600">Standards & Ethics</a></li>
+          <li><a href="/funding" class="hover:text-indigo-600">Funding Model</a></li>
+          <li><a href="/finances" class="hover:text-indigo-600">Financial Reports</a></li>
+          <li><a href="/collective" class="hover:text-indigo-600">The HB Collective</a></li>
+          <li><a href="/rss.xml" class="hover:text-indigo-600">RSS 2.0 Feed</a></li>
+          <li><a href="/sitemap.xml" class="hover:text-indigo-600">XML Sitemap</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400">
+      <p>&copy; ${now.getFullYear()} Honestly Biased Media. All rights reserved.</p>
+      <p class="mt-2 sm:mt-0">Audited via Google Gemini 2.5 AI Pipeline</p>
+    </div>
+  </footer>
+
+  <!-- Pass SSR Data to Client Hydration -->
+  <script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id), slug: getArticleSlug(a), regionUrl: getArticleUrl(a) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
+
+  <script src="/app.js" defer></script>
+  <script src="/lens-effect.js" defer></script>
+  <script>window.addEventListener('DOMContentLoaded',()=>{if(window.lucide)lucide.createIcons();});</script>
 </body>
 </html>`;
-}
 
-const SUPABASE_STORAGE_HOSTS = [
-  'https://mprxrtesqgtznsinsezs.supabase.co',
-  'http://mprxrtesqgtznsinsezs.supabase.co',
-];
-const STORAGE_PATH = '/storage/v1/object/public/';
-
-function proxyImageUrls(text) {
-  if (!text || typeof text !== 'string') return text;
-  let out = text;
-  for (const host of SUPABASE_STORAGE_HOSTS) {
-    out = out.split(host + STORAGE_PATH).join('/img-proxy' + STORAGE_PATH);
-  }
-  return out;
-}
-
-let cachedHtml = null;
-let cachedJson = null;
-let cacheTime = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000;
-
-async function handleImgProxy(req, res) {
-  const supabasePath = (req.query && req.query.__path) || '';
-  if (!supabasePath || !supabasePath.startsWith('storage/v1/object/public/')) {
-    return res.status(403).json({ error: 'Forbidden: only public storage paths allowed' });
-  }
-
-  const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mprxrtesqgtznsinsezs.supabase.co';
-  if (!SUPABASE_URL) {
-    return res.status(503).json({ error: 'SUPABASE_URL env var not configured' });
-  }
-
-  const targetUrl = `${SUPABASE_URL.replace(/\/$/, '')}/${supabasePath}`;
-
-  try {
-    res.setHeader('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Vary', 'Accept');
-
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end();
-    }
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
-
-    const originRes = await fetch(targetUrl, {
-      method: req.method,
-      headers: { 'Accept': req.headers['accept'] || '*/*' },
-    });
-
-    if (!originRes.ok) {
-      return res.status(originRes.status).json({ error: `Origin returned ${originRes.status}` });
-    }
-
-    const contentType = originRes.headers.get('content-type');
-    if (contentType) res.setHeader('Content-Type', contentType);
-
-    if (req.method === 'HEAD') {
-      return res.status(200).end();
-    }
-
-    const buffer = await originRes.arrayBuffer();
-    return res.status(200).send(Buffer.from(buffer));
-  } catch (err) {
-    console.error('img-proxy error:', err.message);
-    return res.status(502).json({ error: 'Failed to fetch from origin', details: err.message });
-  }
-}
-
-module.exports = async (req, res) => {
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  if (req.query && req.query.__imgproxy) {
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
-    return handleImgProxy(req, res);
-  }
-
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-
-  const now = Date.now();
-  const cacheValid = cachedHtml && (now - cacheTime) < CACHE_TTL_MS;
-
-  if (req.url && req.url.includes('/feed.json')) {
-    if (cacheValid && cachedJson) {
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
-      res.setHeader('X-Cache', 'HIT');
-      return res.status(200).json(cachedJson);
-    }
-    const articles = await fetchLatestArticles(100);
-    const feed = articles.map(a => {
-      const stripped = { ...a, shortId: shortIdFromUuid(a.id), slug: getArticleSlug(a), regionUrl: getArticleUrl(a), timeago: formatTimeAgo(a.publishdate) };
-      if (a.imageurl && a.imageurl.startsWith('data:image')) {
-        stripped.hasBase64Image = true;
-        stripped.imageurl = '';
-      } else if (a.imageurl) {
-        stripped.imageurl = proxyImageUrls(a.imageurl);
-      }
-      return stripped;
-    });
-    cachedJson = { articles: feed };
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
-    res.setHeader('X-Cache', 'MISS');
-    return res.status(200).json(cachedJson);
-  }
-
-  if (cacheValid) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
-    res.setHeader('X-Cache', 'HIT');
-    return res.status(200).send(cachedHtml);
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=600');
+    return res.status(200).send(html);
+
+  } catch (err) {
+    console.error('Home SSR error:', err);
+    res.statusCode = 500;
+    return res.end('Internal Server Error rendering homepage');
   }
-
-  const articles = await fetchLatestArticles(22);
-  const html = proxyImageUrls(await renderHomepageHtml(articles));
-  cachedHtml = html;
-  cacheTime = now;
-
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
-  res.setHeader('Vary', 'User-Agent');
-  res.setHeader('X-Cache', 'MISS');
-
-  return res.status(200).send(html);
 };
