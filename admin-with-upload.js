@@ -1,24 +1,110 @@
+// admin-with-upload.js — Honestly Biased CMS Core Operations Controller
 document.addEventListener('DOMContentLoaded', () => {
-    function generateSlug(headline) {
-        if (!headline) return '';
-        return headline
-            .toLowerCase()
-            .replace(/[^\w\s-]/g, '')
-            .trim()
-            .split(/\s+/)
-            .slice(0, 4)
-            .join('-');
+    // ==========================================================================
+    // STATE & VARIABLES
+    // ==========================================================================
+    let allArticles = [];
+    let filteredArticles = [];
+    let currentPage = 1;
+    let itemsPerPage = 22;
+    let editingArticleId = null;
+    let csrfToken = null;
+
+    // DOM Elements - Metrics
+    const statTotal = document.getElementById('stat-total');
+    const statEditorial = document.getElementById('stat-editorial');
+    const statAi = document.getElementById('stat-ai');
+    const statCategories = document.getElementById('stat-categories');
+
+    // DOM Elements - Inventory List & Filters
+    const articlesContainer = document.getElementById('admin-articles-list');
+    const searchInput = document.getElementById('cms-search');
+    const sortBySelect = document.getElementById('cms-sort-by');
+    const sortOrderSelect = document.getElementById('cms-sort-order');
+
+    // DOM Elements - Pagination
+    const perPageSelect = document.getElementById('admin-per-page-select');
+    const prevPageBtn = document.getElementById('admin-prev-page');
+    const nextPageBtn = document.getElementById('admin-next-page');
+    const pageIndicator = document.getElementById('admin-page-indicator');
+
+    // DOM Elements - Article Editor Form
+    const articleForm = document.getElementById('cms-article-form');
+    const formTitle = document.getElementById('cms-form-title');
+    const formSubtitle = document.getElementById('cms-form-subtitle');
+    const articleIdInput = document.getElementById('cms-article-id');
+    const categoryInput = document.getElementById('cms-category');
+    const publishDateInput = document.getElementById('cms-publish-date');
+    const regionInput = document.getElementById('cms-region');
+    const sourceInput = document.getElementById('cms-source');
+    const headlineInput = document.getElementById('cms-headline');
+    const biasAuditInput = document.getElementById('cms-bias-audit');
+    const summaryInput = document.getElementById('cms-summary');
+    const fullBlogInput = document.getElementById('cms-full-blog');
+    const imageUrlInput = document.getElementById('cms-image-url');
+    const originalUrlInput = document.getElementById('cms-original-url');
+    const previewImg = document.getElementById('cms-preview-img');
+    const previewPlaceholder = document.getElementById('cms-preview-placeholder');
+    const btnSubmit = document.getElementById('btn-cms-submit');
+    const btnReset = document.getElementById('btn-cms-reset');
+
+    // DOM Elements - Image Upload
+    const imageUploadInput = document.getElementById('cms-image-upload');
+    const imageUploadBtn = document.getElementById('cms-image-upload-btn');
+    const imageUploadStatus = document.getElementById('cms-image-upload-status');
+
+    // DOM Elements - Subscribers
+    const subscribersList = document.getElementById('subscribers-list');
+    const subCountBadge = document.getElementById('sub-count-badge');
+    const btnExportSubscribers = document.getElementById('btn-export-subscribers');
+
+    // Toast Container
+    const toastContainer = document.getElementById('toast-container');
+
+    // ==========================================================================
+    // UTILITIES
+    // ==========================================================================
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function showToast(message, type = 'info') {
+        if (!toastContainer) {
+            alert(message);
+            return;
+        }
+        const toast = document.createElement('div');
+        toast.className = `cms-toast ${type}`;
+        toast.style.cssText = `
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 18px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            background: rgba(14, 22, 34, 0.95); border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(16px);
+            color: ${type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#00e5ff')};
+            animation: fadeIn 0.2s ease-out; margin-bottom: 8px;
+        `;
+        toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
     }
 
     // ==========================================================================
-    // CSRF TOKEN HANDLING
+    // CSRF & API CLIENT
     // ==========================================================================
-    let csrfToken = null;
-
     async function getCsrfToken() {
         if (csrfToken) return csrfToken;
         try {
-            const res = await fetch('/api/admin/csrf', { credentials: 'same-origin' });
+            const res = await fetch('/api/admin/csrf');
             if (res.ok) {
                 const data = await res.json();
                 csrfToken = data.csrfToken;
@@ -39,593 +125,364 @@ document.addEventListener('DOMContentLoaded', () => {
         if (token) {
             headers['X-CSRF-Token'] = token;
         }
-        const res = await fetch(url, {
+        return fetch(url, {
             ...options,
-            headers,
-            credentials: 'same-origin'
-        });
-        return res;
-    }
-
-    // ==========================================================================
-    // TOAST NOTIFICATION SYSTEM
-    // ==========================================================================
-    const toastContainer = document.getElementById('toast-container');
-
-    function showToast(message, type = 'info', title = '') {
-        if (!toastContainer) return;
-        const toast = document.createElement('div');
-        toast.className = `cms-toast ${type}`;
-        const icons = {
-            success: 'check-circle',
-            error: 'alert-circle',
-            warning: 'alert-triangle',
-            info: 'info'
-        };
-        const iconName = icons[type] || 'info';
-        const defaultTitles = {
-            success: 'Success',
-            error: 'Error',
-            warning: 'Warning',
-            info: 'Notice'
-        };
-        const toastTitle = title || defaultTitles[type] || '';
-        toast.innerHTML = `
-            <i data-lucide="${iconName}" class="toast-icon"></i>
-            <div class="toast-content">
-                ${toastTitle ? `<div class="toast-title">${escapeHtml(toastTitle)}</div>` : ''}
-                <div class="toast-message">${escapeHtml(message)}</div>
-            </div>
-            <button class="toast-close" aria-label="Close notification">&times;</button>
-        `;
-        toastContainer.appendChild(toast);
-        lucide.createIcons({ targets: [toast] });
-        const closeBtn = toast.querySelector('.toast-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => removeToast(toast));
-        }
-        setTimeout(() => removeToast(toast), 4500);
-    }
-
-    function removeToast(toast) {
-        if (!toast || !toast.parentNode) return;
-        toast.classList.add('fade-out');
-        setTimeout(() => {
-            if (toast.parentNode) toast.parentNode.removeChild(toast);
-        }, 300);
-    }
-
-    function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    // ==========================================================================
-    // DOM ELEMENTS
-    // ==========================================================================
-    const cmsArticleForm = document.getElementById('cms-article-form');
-    const cmsArticleId = document.getElementById('cms-article-id');
-    const cmsCategory = document.getElementById('cms-category');
-    const cmsPublishDate = document.getElementById('cms-publish-date');
-    const cmsRegion = document.getElementById('cms-region');
-    const cmsSource = document.getElementById('cms-source');
-    const cmsHeadline = document.getElementById('cms-headline');
-    const cmsBiasAudit = document.getElementById('cms-bias-audit');
-    const cmsSummary = document.getElementById('cms-summary');
-    const cmsFullBlog = document.getElementById('cms-full-blog');
-    const cmsImageUrl = document.getElementById('cms-image-url');
-    const cmsImageFile = document.getElementById('cms-image-file');
-    const cmsPreviewImg = document.getElementById('cms-preview-img');
-    const cmsOriginalUrl = document.getElementById('cms-original-url');
-    const cmsSlug = document.getElementById('cms-slug');
-    const btnCmsSubmit = document.getElementById('btn-cms-submit');
-    const btnCmsReset = document.getElementById('btn-cms-reset');
-    const cmsFormTitle = document.getElementById('cms-form-title');
-    const cmsFormSubtitle = document.getElementById('cms-form-subtitle');
-
-    // Stats Elements
-    const statTotalArticles = document.getElementById('stat-total-articles');
-    const statIndianEdition = document.getElementById('stat-indian-edition');
-    const statWorldEdition = document.getElementById('stat-world-edition');
-    const statUKEdition = document.getElementById('stat-uk-edition');
-    const statBerkshireEdition = document.getElementById('stat-berkshire-edition');
-    const statActiveEditions = document.getElementById('stat-active-editions');
-    const statTopCategory = document.getElementById('stat-top-category');
-
-    // Table & Filter Elements
-    const cmsArticlesList = document.getElementById('cms-articles-list');
-    const cmsSearch = document.getElementById('cms-search');
-    const cmsRegionFilter = document.getElementById('cms-region-filter');
-    const cmsCategoryFilter = document.getElementById('cms-category-filter');
-    const btnRefreshList = document.getElementById('btn-refresh-list');
-    const articlesCountBadge = document.getElementById('articles-count-badge');
-    const paginationInfo = document.getElementById('pagination-info');
-    const paginationControls = document.getElementById('pagination-controls');
-
-    // Hero & Highlights Editors
-    const heroEditorForm = document.getElementById('hero-editor-form');
-    const heroRegion = document.getElementById('hero-region');
-    const heroHeadline = document.getElementById('hero-headline');
-    const heroSummary = document.getElementById('hero-summary');
-    const heroCategory = document.getElementById('hero-category');
-    const heroImageUrl = document.getElementById('hero-image-url');
-    const heroImageFile = document.getElementById('hero-image-file');
-    const heroPreviewImg = document.getElementById('hero-preview-img');
-    const heroOriginalUrl = document.getElementById('hero-original-url');
-    const heroArticleSelect = document.getElementById('hero-article-select');
-
-    const highlightsConfigForm = document.getElementById('highlights-config-form');
-    const highlightsRegion = document.getElementById('highlights-region');
-    const highlight1Select = document.getElementById('highlight-1-select');
-    const highlight2Select = document.getElementById('highlight-2-select');
-    const highlight3Select = document.getElementById('highlight-3-select');
-
-    // State
-    let allArticles = [];
-    let filteredArticles = [];
-    let currentPage = 1;
-    const pageSize = 15;
-    let editingArticleId = null;
-
-    // Image upload sync
-    function setupUrlSync(urlInput, previewImg) {
-        if (!urlInput || !previewImg) return;
-        urlInput.addEventListener('input', () => {
-            const val = urlInput.value.trim();
-            if (val) {
-                previewImg.src = val;
-                previewImg.style.display = 'block';
-            } else {
-                previewImg.style.display = 'none';
-            }
-        });
-    }
-
-    setupUrlSync(cmsImageUrl, cmsPreviewImg);
-    setupUrlSync(heroImageUrl, heroPreviewImg);
-
-    if (cmsHeadline) {
-        cmsHeadline.addEventListener('input', () => {
-            if (cmsSlug && !cmsSlug.dataset.touched) {
-                cmsSlug.value = generateSlug(cmsHeadline.value);
-            }
-        });
-    }
-    if (cmsSlug) {
-        cmsSlug.addEventListener('input', () => {
-            cmsSlug.dataset.touched = 'true';
-        });
-    }
-
-    // Direct Image Upload Handler
-    async function uploadImageToServer(file) {
-        const formData = new FormData();
-        formData.append('image', file);
-        const token = await getCsrfToken();
-        const headers = {};
-        if (token) headers['X-CSRF-Token'] = token;
-
-        const res = await fetch('/api/admin/upload', {
-            method: 'POST',
-            body: formData,
-            headers,
-            credentials: 'same-origin'
-        });
-
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || 'Upload failed');
-        }
-
-        const data = await res.json();
-        return data.url;
-    }
-
-    if (cmsImageFile) {
-        cmsImageFile.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            try {
-                showToast('Uploading image...', 'info');
-                const url = await uploadImageToServer(file);
-                cmsImageUrl.value = url;
-                cmsPreviewImg.src = url;
-                cmsPreviewImg.style.display = 'block';
-                showToast('Image uploaded successfully!', 'success');
-            } catch (err) {
-                showToast('Image upload failed: ' + err.message, 'error');
-            }
-        });
-    }
-
-    if (heroImageFile) {
-        heroImageFile.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            try {
-                showToast('Uploading hero image...', 'info');
-                const url = await uploadImageToServer(file);
-                heroImageUrl.value = url;
-                heroPreviewImg.src = url;
-                heroPreviewImg.style.display = 'block';
-                showToast('Hero image uploaded successfully!', 'success');
-            } catch (err) {
-                showToast('Hero upload failed: ' + err.message, 'error');
-            }
+            headers
         });
     }
 
     // ==========================================================================
-    // LOAD & RENDER ARTICLES
+    // LOAD ARTICLES FROM DATABASE
     // ==========================================================================
     async function loadCMSData() {
         try {
-            if (cmsArticlesList) {
-                cmsArticlesList.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem;">Loading articles...</td></tr>`;
+            if (articlesContainer) {
+                articlesContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem;">
+                        <i data-lucide="loader" style="width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 8px; display: inline-block;"></i>
+                        <div>Loading ledger chronicle inventory...</div>
+                    </div>
+                `;
+                if (window.lucide) lucide.createIcons();
             }
+
             const res = await apiRequest('/api/admin/articles?limit=500&sortBy=publishdate&sortOrder=desc');
-            if (!res.ok) throw new Error(`Failed to load articles (HTTP ${res.status})`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             allArticles = data.articles || [];
-            updateStats(allArticles);
-            populateCategoryFilter(allArticles);
-            applyFilters();
-            populateHeroSelect(allArticles);
-            populateHighlightSelects(allArticles);
+
+            updateMetrics(allArticles);
+            applyFiltersAndRender();
         } catch (err) {
             console.error('loadCMSData error:', err);
-            showToast('Failed to load articles: ' + err.message, 'error');
-            if (cmsArticlesList) {
-                cmsArticlesList.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #ef4444;">Error loading chronicles</td></tr>`;
+            showToast('Failed to load chronicles: ' + err.message, 'error');
+            if (articlesContainer) {
+                articlesContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #ef4444; font-size: 0.9rem;">
+                        <i data-lucide="alert-circle" style="width: 24px; height: 24px; margin-bottom: 8px; display: inline-block;"></i>
+                        <div>Error loading inventory from database. Please refresh.</div>
+                    </div>
+                `;
+                if (window.lucide) lucide.createIcons();
             }
         }
     }
 
-    function updateStats(articles) {
-        const total = articles.length;
-        if (statTotalArticles) statTotalArticles.textContent = total;
+    // ==========================================================================
+    // METRICS
+    // ==========================================================================
+    function updateMetrics(articles) {
+        if (statTotal) statTotal.textContent = articles.length;
 
-        let indian = 0, world = 0, uk = 0, berkshire = 0;
-        const catMap = {};
-
-        articles.forEach(a => {
-            const r = (a.region || '').toLowerCase();
-            if (r === 'indian') indian++;
-            else if (r === 'world') world++;
-            else if (r === 'uk') uk++;
-            else if (r === 'berkshire') berkshire++;
-
-            const c = a.category || 'Uncategorized';
-            catMap[c] = (catMap[c] || 0) + 1;
-        });
-
-        if (statIndianEdition) statIndianEdition.textContent = indian;
-        if (statWorldEdition) statWorldEdition.textContent = world;
-        if (statUKEdition) statUKEdition.textContent = uk;
-        if (statBerkshireEdition) statBerkshireEdition.textContent = berkshire;
-        if (statActiveEditions) statActiveEditions.textContent = 4;
-
-        let topCat = 'None', topCount = 0;
-        for (const [cat, count] of Object.entries(catMap)) {
-            if (count > topCount) {
-                topCount = count;
-                topCat = cat;
-            }
-        }
-        if (statTopCategory) statTopCategory.textContent = topCat;
-    }
-
-    function populateCategoryFilter(articles) {
-        if (!cmsCategoryFilter) return;
-        const currentVal = cmsCategoryFilter.value;
+        let editorialCount = 0;
+        let aiCount = 0;
         const categories = new Set();
+
         articles.forEach(a => {
-            if (a.category) categories.add(a.category);
+            if (a.authortype === 'admin' || (a.originalsource && a.originalsource.toLowerCase().includes('editorial'))) {
+                editorialCount++;
+            } else {
+                aiCount++;
+            }
+            if (a.category) categories.add(a.category.trim());
         });
 
-        cmsCategoryFilter.innerHTML = '<option value="">All Categories</option>';
-        Array.from(categories).sort().forEach(cat => {
-            const opt = document.createElement('option');
-            opt.value = cat;
-            opt.textContent = cat;
-            cmsCategoryFilter.appendChild(opt);
-        });
-        cmsCategoryFilter.value = currentVal;
+        if (statEditorial) statEditorial.textContent = editorialCount;
+        if (statAi) statAi.textContent = aiCount;
+        if (statCategories) statCategories.textContent = categories.size;
     }
 
-    function applyFilters() {
-        const search = (cmsSearch ? cmsSearch.value : '').toLowerCase().trim();
-        const region = (cmsRegionFilter ? cmsRegionFilter.value : '').toLowerCase().trim();
-        const cat = (cmsCategoryFilter ? cmsCategoryFilter.value : '').trim();
+    // ==========================================================================
+    // FILTERING, SORTING & RENDERING
+    // ==========================================================================
+    function applyFiltersAndRender() {
+        const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+        const sortBy = sortBySelect ? sortBySelect.value : 'publishdate';
+        const sortOrder = sortOrderSelect ? sortOrderSelect.value : 'desc';
 
+        // 1. Filter
         filteredArticles = allArticles.filter(a => {
-            const matchSearch = !search || 
-                (a.aiheadline && a.aiheadline.toLowerCase().includes(search)) ||
-                (a.aisummary && a.aisummary.toLowerCase().includes(search)) ||
-                (a.originalsource && a.originalsource.toLowerCase().includes(search));
-
-            const matchRegion = !region || (a.region && a.region.toLowerCase() === region);
-            const matchCat = !cat || (a.category === cat);
-
-            return matchSearch && matchRegion && matchCat;
+            if (!query) return true;
+            const headline = (a.aiheadline || a.title || '').toLowerCase();
+            const summary = (a.aisummary || a.summary || '').toLowerCase();
+            const source = (a.originalsource || '').toLowerCase();
+            const category = (a.category || '').toLowerCase();
+            const region = (a.region || '').toLowerCase();
+            return headline.includes(query) || summary.includes(query) || source.includes(query) || category.includes(query) || region.includes(query);
         });
 
-        currentPage = 1;
-        renderArticlesTable();
+        // 2. Sort
+        filteredArticles.sort((a, b) => {
+            let valA = a[sortBy] || '';
+            let valB = b[sortBy] || '';
+
+            if (sortBy === 'publishdate') {
+                valA = new Date(valA).getTime() || 0;
+                valB = new Date(valB).getTime() || 0;
+            } else if (typeof valA === 'string') {
+                valA = valA.toLowerCase();
+                valB = valB.toLowerCase();
+            }
+
+            if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        renderInventoryGrid();
     }
 
-    function renderArticlesTable() {
-        if (!cmsArticlesList) return;
-
-        if (articlesCountBadge) {
-            articlesCountBadge.textContent = `${filteredArticles.length} Chronicle${filteredArticles.length === 1 ? '' : 's'}`;
-        }
+    function renderInventoryGrid() {
+        if (!articlesContainer) return;
 
         if (filteredArticles.length === 0) {
-            cmsArticlesList.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem; color: #94a3b8;">No chronicles matching criteria</td></tr>`;
-            if (paginationInfo) paginationInfo.textContent = 'Showing 0 of 0';
-            if (paginationControls) paginationControls.innerHTML = '';
+            articlesContainer.innerHTML = `
+                <div style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+                    <i data-lucide="search-x" style="width: 32px; height: 32px; margin-bottom: 12px; display: inline-block; opacity: 0.5;"></i>
+                    <div style="font-weight: 700; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Chronicles Found</div>
+                    <p style="font-size: 0.8rem; margin: 0;">Try adjusting your search query or sorting options.</p>
+                </div>
+            `;
+            if (pageIndicator) pageIndicator.textContent = '0 / 0';
+            if (prevPageBtn) prevPageBtn.disabled = true;
+            if (nextPageBtn) nextPageBtn.disabled = true;
+            if (window.lucide) lucide.createIcons();
             return;
         }
 
-        const totalPages = Math.ceil(filteredArticles.length / pageSize);
+        const totalPages = Math.ceil(filteredArticles.length / itemsPerPage) || 1;
         if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
 
-        const start = (currentPage - 1) * pageSize;
-        const end = Math.min(start + pageSize, filteredArticles.length);
-        const pageItems = filteredArticles.slice(start, end);
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = Math.min(start + itemsPerPage, filteredArticles.length);
+        const pageArticles = filteredArticles.slice(start, end);
 
-        if (paginationInfo) {
-            paginationInfo.textContent = `Showing ${start + 1}–${end} of ${filteredArticles.length}`;
-        }
-
-        cmsArticlesList.innerHTML = pageItems.map(a => {
-            const dateStr = a.publishdate ? new Date(a.publishdate).toLocaleDateString('en-IN', {
+        articlesContainer.innerHTML = pageArticles.map(article => {
+            const headline = article.aiheadline || article.title || 'Untitled Chronicle';
+            const summary = article.aisummary || article.summary || '';
+            const category = article.category || 'Politics';
+            const region = (article.region || 'indian').toUpperCase();
+            const image = article.imageurl || '/assets/hero-bg.png';
+            const dateStr = article.publishdate ? new Date(article.publishdate).toLocaleDateString('en-IN', {
                 day: 'numeric', month: 'short', year: 'numeric'
-            }) : 'No date';
-            const img = a.imageurl || '/assets/hero-bg.png';
-            const regBadge = (a.region || 'indian').toUpperCase();
-            const catBadge = a.category || 'General';
+            }) : 'Draft';
+            const isEditorial = article.authortype === 'admin' || (article.originalsource && article.originalsource.toLowerCase().includes('editorial'));
+            const isInstagram = article.authortype === 'instagram';
 
             return `
-                <tr data-id="${a.id}">
-                    <td>
-                        <img src="${img}" alt="" class="article-table-thumb" onerror="this.src='/assets/hero-bg.png'" style="width: 48px; height: 36px; object-fit: cover; border-radius: 4px;">
-                    </td>
-                    <td>
-                        <div class="article-table-headline">${escapeHtml(a.aiheadline || 'Untitled')}</div>
-                        <div class="article-table-source" style="font-size: 0.8rem; color: #94a3b8;">${escapeHtml(a.originalsource || 'Editorial')}</div>
-                    </td>
-                    <td><span class="badge badge-region">${regBadge}</span></td>
-                    <td><span class="badge badge-category">${escapeHtml(catBadge)}</span></td>
-                    <td style="font-size: 0.85rem; color: #94a3b8;">${dateStr}</td>
-                    <td>
-                        <div class="table-actions">
-                            <button class="btn-action btn-edit" title="Edit Article" data-action="edit" data-id="${a.id}">
-                                <i data-lucide="edit-3"></i>
-                            </button>
-                            <button class="btn-action btn-delete" title="Delete Article" data-action="delete" data-id="${a.id}">
-                                <i data-lucide="trash-2"></i>
-                            </button>
+                <div class="inventory-card glass-element" data-id="${article.id}" style="display: flex; gap: 16px; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); background: var(--bg-card); transition: all 0.2s;">
+                    <div style="width: 100px; height: 75px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: var(--bg-secondary); position: relative;">
+                        <img src="${escapeHtml(image)}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/assets/hero-bg.png';">
+                        <span style="position: absolute; bottom: 4px; left: 4px; font-size: 0.6rem; font-weight: 700; background: rgba(0,0,0,0.75); color: #fff; padding: 2px 6px; border-radius: 3px;">${escapeHtml(region)}</span>
+                    </div>
+                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                            <span class="modal-tag saffron-bg" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 3px; font-weight: 700;">${escapeHtml(category)}</span>
+                            <span style="font-size: 0.7rem; color: var(--text-muted);"><i data-lucide="calendar" style="width: 11px; height: 11px; vertical-align: -1px;"></i> ${escapeHtml(dateStr)}</span>
+                            ${isEditorial ? '<span style="font-size: 0.7rem; color: var(--accent-green); font-weight: 700;"><i data-lucide="pen-tool" style="width: 11px; height: 11px; vertical-align: -1px;"></i> Editorial</span>' : (isInstagram ? '<span style="font-size: 0.7rem; color: #e1306c; font-weight: 700;"><i data-lucide="instagram" style="width: 11px; height: 11px; vertical-align: -1px;"></i> IG Video</span>' : '<span style="font-size: 0.7rem; color: #00E5FF; font-weight: 700;"><i data-lucide="cpu" style="width: 11px; height: 11px; vertical-align: -1px;"></i> AI Audited</span>')}
                         </div>
-                    </td>
-                </tr>
+                        <h4 style="font-size: 0.95rem; font-weight: 700; margin: 0 0 6px 0; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                            ${escapeHtml(headline)}
+                        </h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;">
+                            ${escapeHtml(summary)}
+                        </p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; flex-shrink: 0; border-left: 1px solid var(--border-color); padding-left: 14px;">
+                        <button type="button" class="btn-edit-article" data-id="${article.id}" title="Edit Chronicle" style="padding: 8px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
+                            <i data-lucide="edit-3" style="width: 15px; height: 15px;"></i>
+                        </button>
+                        <button type="button" class="btn-delete-article" data-id="${article.id}" title="Delete Chronicle" style="padding: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; color: #ef4444; cursor: pointer; transition: all 0.2s;">
+                            <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+                        </button>
+                    </div>
+                </div>
             `;
         }).join('');
 
-        lucide.createIcons({ targets: [cmsArticlesList] });
-        renderPagination(totalPages);
-    }
-
-    function renderPagination(totalPages) {
-        if (!paginationControls) return;
-        if (totalPages <= 1) {
-            paginationControls.innerHTML = '';
-            return;
+        if (pageIndicator) pageIndicator.textContent = `${currentPage} / ${totalPages}`;
+        if (prevPageBtn) {
+            prevPageBtn.disabled = currentPage <= 1;
+            prevPageBtn.style.opacity = currentPage <= 1 ? '0.3' : '1';
+        }
+        if (nextPageBtn) {
+            nextPageBtn.disabled = currentPage >= totalPages;
+            nextPageBtn.style.opacity = currentPage >= totalPages ? '0.3' : '1';
         }
 
-        let html = `
-            <button class="btn-page" ${currentPage === 1 ? 'disabled' : ''} data-page="${currentPage - 1}">&larr; Prev</button>
-        `;
+        if (window.lucide) lucide.createIcons();
+    }
 
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                html += `<button class="btn-page ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-            } else if (i === currentPage - 2 || i === currentPage + 2) {
-                html += `<span class="page-ellipsis">...</span>`;
+    // ==========================================================================
+    // EVENT LISTENERS - SEARCH, SORT, PAGINATION
+    // ==========================================================================
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            currentPage = 1;
+            applyFiltersAndRender();
+        });
+    }
+
+    if (sortBySelect) {
+        sortBySelect.addEventListener('change', () => {
+            currentPage = 1;
+            applyFiltersAndRender();
+        });
+    }
+
+    if (sortOrderSelect) {
+        sortOrderSelect.addEventListener('change', () => {
+            applyFiltersAndRender();
+        });
+    }
+
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', () => {
+            itemsPerPage = parseInt(perPageSelect.value) || 22;
+            currentPage = 1;
+            renderInventoryGrid();
+        });
+    }
+
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderInventoryGrid();
             }
-        }
-
-        html += `
-            <button class="btn-page" ${currentPage === totalPages ? 'disabled' : ''} data-page="${currentPage + 1}">Next &rarr;</button>
-        `;
-
-        paginationControls.innerHTML = html;
+        });
     }
 
-    if (paginationControls) {
-        paginationControls.addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-page');
-            if (!btn || btn.disabled) return;
-            const targetPage = parseInt(btn.dataset.page);
-            if (targetPage && targetPage !== currentPage) {
-                currentPage = targetPage;
-                renderArticlesTable();
-                const listSection = document.querySelector('.articles-manager-card');
-                if (listSection) listSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+            const totalPages = Math.ceil(filteredArticles.length / itemsPerPage) || 1;
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderInventoryGrid();
             }
         });
     }
 
     // ==========================================================================
-    // TABLE ACTIONS (EDIT & DELETE)
+    // ARTICLE EDIT & DELETE ACTIONS
     // ==========================================================================
-    if (cmsArticlesList) {
-        cmsArticlesList.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.btn-action');
-            if (!btn) return;
-            const action = btn.dataset.action;
-            const id = btn.dataset.id;
-            if (!id) return;
+    if (articlesContainer) {
+        articlesContainer.addEventListener('click', async (e) => {
+            const editBtn = e.target.closest('.btn-edit-article');
+            const deleteBtn = e.target.closest('.btn-delete-article');
 
-            if (action === 'edit') {
-                loadArticleForEdit(id);
-            } else if (action === 'delete') {
-                confirmAndDeleteArticle(id);
+            if (editBtn) {
+                const id = editBtn.dataset.id;
+                const article = allArticles.find(a => String(a.id) === String(id));
+                if (!article) return;
+
+                editingArticleId = article.id;
+                if (articleIdInput) articleIdInput.value = article.id;
+                if (formTitle) formTitle.textContent = 'Refine Chronicle';
+                if (formSubtitle) formSubtitle.textContent = `Editing ID: ${article.id.slice(0, 8)}...`;
+                if (btnSubmit) btnSubmit.textContent = 'Save Changes';
+                if (btnReset) btnReset.style.display = 'inline-block';
+
+                if (headlineInput) headlineInput.value = article.aiheadline || article.title || '';
+                if (summaryInput) summaryInput.value = article.aisummary || article.summary || '';
+                if (biasAuditInput) biasAuditInput.value = article.biasaudit || '';
+                if (fullBlogInput) fullBlogInput.value = article.fullblog || '';
+                if (categoryInput) categoryInput.value = article.category || 'Politics';
+                if (regionInput) regionInput.value = (article.region || 'indian').toLowerCase();
+                if (sourceInput) sourceInput.value = article.originalsource || 'Editorial';
+                if (originalUrlInput) originalUrlInput.value = article.originalurl || '';
+                if (imageUrlInput) {
+                    imageUrlInput.value = article.imageurl || '';
+                    updateImagePreview(article.imageurl);
+                }
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                showToast('Editing chronicle loaded in form', 'info');
+            }
+
+            if (deleteBtn) {
+                const id = deleteBtn.dataset.id;
+                const article = allArticles.find(a => String(a.id) === String(id));
+                const headline = article ? (article.aiheadline || article.title) : 'this chronicle';
+
+                if (!confirm(`Are you sure you want to permanently delete "${headline}"?`)) return;
+
+                try {
+                    showToast('Deleting chronicle...', 'info');
+                    const res = await apiRequest(`/api/admin/articles?id=${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    showToast('Chronicle deleted successfully', 'success');
+
+                    allArticles = allArticles.filter(a => String(a.id) !== String(id));
+                    updateMetrics(allArticles);
+                    applyFiltersAndRender();
+                } catch (err) {
+                    showToast('Failed to delete: ' + err.message, 'error');
+                }
             }
         });
     }
 
-    function loadArticleForEdit(id) {
-        const article = allArticles.find(a => String(a.id) === String(id));
-        if (!article) {
-            showToast('Chronicle not found in memory', 'error');
-            return;
-        }
-
-        editingArticleId = id;
-        cmsArticleId.value = article.id;
-        cmsCategory.value = article.category || 'Politics';
-        cmsRegion.value = (article.region || 'indian').toLowerCase();
-        cmsSource.value = article.originalsource || '';
-        cmsHeadline.value = article.aiheadline || '';
-        cmsBiasAudit.value = article.biasaudit || '';
-        cmsSummary.value = article.aisummary || '';
-        cmsFullBlog.value = article.fullblog || article.content || '';
-        cmsImageUrl.value = article.imageurl || '';
-        cmsOriginalUrl.value = article.originalurl || '';
-
-        if (cmsSlug) {
-            cmsSlug.value = article.slug || generateSlug(article.aiheadline || '');
-            cmsSlug.dataset.touched = article.slug ? 'true' : '';
-        }
-
-        if (article.imageurl && cmsPreviewImg) {
-            cmsPreviewImg.src = article.imageurl;
-            cmsPreviewImg.style.display = 'block';
-        } else if (cmsPreviewImg) {
-            cmsPreviewImg.style.display = 'none';
-        }
-
-        if (cmsPublishDate && article.publishdate) {
-            try {
-                const d = new Date(article.publishdate);
-                cmsPublishDate.value = d.toISOString().slice(0, 16);
-            } catch (err) {
-                cmsPublishDate.value = '';
-            }
-        }
-
-        if (cmsFormTitle) cmsFormTitle.textContent = 'Edit Chronicle';
-        if (cmsFormSubtitle) cmsFormSubtitle.textContent = `Editing: "${(article.aiheadline || '').slice(0, 45)}..."`;
-        if (btnCmsSubmit) btnCmsSubmit.innerHTML = `<i data-lucide="check"></i> Save Changes`;
-        if (btnCmsReset) btnCmsReset.style.display = 'inline-flex';
-
-        const formCard = document.querySelector('.cms-panel-card');
-        if (formCard) {
-            formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        lucide.createIcons();
-        showToast('Loaded article into editor', 'info');
-    }
-
-    function cancelEditMode() {
+    // ==========================================================================
+    // FORM RESET & SUBMISSION
+    // ==========================================================================
+    function resetArticleForm() {
         editingArticleId = null;
-        if (cmsArticleId) cmsArticleId.value = '';
-        if (cmsArticleForm) cmsArticleForm.reset();
-        if (cmsPreviewImg) cmsPreviewImg.style.display = 'none';
-        if (cmsSlug) {
-            cmsSlug.value = '';
-            delete cmsSlug.dataset.touched;
-        }
-        if (cmsFormTitle) cmsFormTitle.textContent = 'Compose New Chronicle';
-        if (cmsFormSubtitle) cmsFormSubtitle.textContent = 'Add opinionated, satire-infused commentary to the catalog.';
-        if (btnCmsSubmit) btnCmsSubmit.innerHTML = `<i data-lucide="send"></i> Publish Chronicle`;
-        if (btnCmsReset) btnCmsReset.style.display = 'none';
-        lucide.createIcons();
+        if (articleIdInput) articleIdInput.value = '';
+        if (articleForm) articleForm.reset();
+        if (formTitle) formTitle.textContent = 'Author New Chronicle';
+        if (formSubtitle) formSubtitle.textContent = 'Draft fresh satire or uncompromised bias audit.';
+        if (btnSubmit) btnSubmit.textContent = 'Publish Editorial';
+        if (btnReset) btnReset.style.display = 'none';
+        updateImagePreview('');
     }
 
-    if (btnCmsReset) {
-        btnCmsReset.addEventListener('click', cancelEditMode);
+    if (btnReset) {
+        btnReset.addEventListener('click', resetArticleForm);
     }
 
-    async function confirmAndDeleteArticle(id) {
-        const article = allArticles.find(a => String(a.id) === String(id));
-        const headline = article ? article.aiheadline : 'this chronicle';
-        if (!confirm(`Are you sure you want to permanently delete "${headline}"?`)) {
-            return;
-        }
-
-        try {
-            showToast('Deleting chronicle...', 'info');
-            const res = await apiRequest(`/api/admin/articles?id=${id}`, {
-                method: 'DELETE'
-            });
-
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || `HTTP ${res.status}`);
-            }
-
-            allArticles = allArticles.filter(a => String(a.id) !== String(id));
-            updateStats(allArticles);
-            applyFilters();
-            populateHeroSelect(allArticles);
-            populateHighlightSelects(allArticles);
-
-            if (editingArticleId && String(editingArticleId) === String(id)) {
-                cancelEditMode();
-            }
-
-            showToast('Chronicle deleted successfully', 'success');
-        } catch (err) {
-            console.error('Delete error:', err);
-            showToast('Failed to delete: ' + err.message, 'error');
-        }
-    }
-
-    // ==========================================================================
-    // ARTICLE FORM SUBMIT (CREATE / EDIT)
-    // ==========================================================================
-    if (cmsArticleForm) {
-        cmsArticleForm.addEventListener('submit', async (e) => {
+    if (articleForm) {
+        articleForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const isEdit = !!editingArticleId;
-            const payload = {
-                category: cmsCategory.value,
-                region: (cmsRegion.value || 'indian').toLowerCase(),
-                originalsource: cmsSource.value || 'Editorial Board',
-                aiheadline: cmsHeadline.value.trim(),
-                slug: cmsSlug && cmsSlug.value ? cmsSlug.value.trim() : generateSlug(cmsHeadline.value),
-                biasaudit: cmsBiasAudit.value.trim(),
-                aisummary: cmsSummary.value.trim(),
-                fullblog: cmsFullBlog.value.trim(),
-                imageurl: cmsImageUrl.value.trim() || '/assets/hero-bg.png',
-                originalurl: cmsOriginalUrl.value || '#'
-            };
+            const headline = (headlineInput ? headlineInput.value : '').trim();
+            const summary = (summaryInput ? summaryInput.value : '').trim();
+            const biasaudit = (biasAuditInput ? biasAuditInput.value : '').trim();
+            const fullblog = (fullBlogInput ? fullBlogInput.value : '').trim();
+            const category = (categoryInput ? categoryInput.value : 'Politics').trim();
+            const region = (regionInput ? regionInput.value : 'indian').toLowerCase().trim();
+            const originalsource = (sourceInput ? sourceInput.value : 'Editorial').trim();
+            const originalurl = (originalUrlInput ? originalUrlInput.value : '').trim();
+            const imageurl = (imageUrlInput ? imageUrlInput.value : '').trim();
 
-            if (cmsPublishDate && cmsPublishDate.value) {
-                payload.publishdate = new Date(cmsPublishDate.value).toISOString();
-            }
-
-            if (!payload.aiheadline) {
-                showToast('Please enter a headline', 'warning');
+            if (!headline) {
+                showToast('Headline is required', 'warning');
                 return;
             }
 
-            try {
-                const submitBtn = btnCmsSubmit;
-                if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = isEdit ? 'Saving...' : 'Publishing...';
-                }
+            const payload = {
+                aiheadline: headline,
+                aisummary: summary,
+                biasaudit: biasaudit || summary,
+                fullblog: fullblog || summary,
+                category,
+                region,
+                originalsource,
+                originalurl,
+                imageurl,
+                authortype: 'admin',
+                author: 'Honestly Biased Editorial Board'
+            };
 
+            try {
+                showToast(editingArticleId ? 'Saving updates...' : 'Publishing chronicle...', 'info');
                 let res;
-                if (isEdit) {
+
+                if (editingArticleId) {
                     res = await apiRequest(`/api/admin/articles?id=${editingArticleId}`, {
                         method: 'PUT',
                         body: JSON.stringify(payload)
@@ -638,193 +495,130 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    throw new Error(err.error || `HTTP ${res.status}`);
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || `HTTP ${res.status}`);
                 }
 
-                const savedArticle = await res.json();
-
-                if (isEdit) {
-                    const idx = allArticles.findIndex(a => String(a.id) === String(editingArticleId));
-                    if (idx !== -1) {
-                        allArticles[idx] = { ...allArticles[idx], ...savedArticle };
-                    }
-                    showToast('Chronicle updated successfully!', 'success');
-                } else {
-                    allArticles.unshift(savedArticle);
-                    showToast('Chronicle published successfully!', 'success');
-                }
-
-                cancelEditMode();
-                updateStats(allArticles);
-                populateCategoryFilter(allArticles);
-                applyFilters();
-                populateHeroSelect(allArticles);
-                populateHighlightSelects(allArticles);
-
+                showToast(editingArticleId ? 'Chronicle updated!' : 'Chronicle published!', 'success');
+                resetArticleForm();
+                await loadCMSData();
             } catch (err) {
-                console.error('Submit error:', err);
-                showToast('Operation failed: ' + err.message, 'error');
-            } finally {
-                if (btnCmsSubmit) {
-                    btnCmsSubmit.disabled = false;
-                    btnCmsSubmit.innerHTML = isEdit ? `<i data-lucide="check"></i> Save Changes` : `<i data-lucide="send"></i> Publish Chronicle`;
-                    lucide.createIcons();
-                }
+                showToast('Publishing failed: ' + err.message, 'error');
             }
         });
     }
-
-    // Filter Listeners
-    if (cmsSearch) cmsSearch.addEventListener('input', applyFilters);
-    if (cmsRegionFilter) cmsRegionFilter.addEventListener('change', applyFilters);
-    if (cmsCategoryFilter) cmsCategoryFilter.addEventListener('change', applyFilters);
-    if (btnRefreshList) btnRefreshList.addEventListener('click', loadCMSData);
 
     // ==========================================================================
-    // HERO & HIGHLIGHTS EDITORS
+    // IMAGE PREVIEW & UPLOAD
     // ==========================================================================
-    function populateHeroSelect(articles) {
-        if (!heroArticleSelect) return;
-        const currentRegion = (heroRegion ? heroRegion.value : 'indian').toLowerCase();
-        const matching = articles.filter(a => (a.region || 'indian').toLowerCase() === currentRegion);
-        heroArticleSelect.innerHTML = '<option value="">-- Choose Existing Article to Autofill --</option>' +
-            matching.map(a => `<option value="${a.id}">${escapeHtml(a.aiheadline || 'Untitled')}</option>`).join('');
-    }
-
-    if (heroArticleSelect) {
-        heroArticleSelect.addEventListener('change', () => {
-            const id = heroArticleSelect.value;
-            if (!id) return;
-            const article = allArticles.find(a => String(a.id) === String(id));
-            if (!article) return;
-            if (heroHeadline) heroHeadline.value = article.aiheadline || '';
-            if (heroSummary) heroSummary.value = article.aisummary || '';
-            if (heroCategory) heroCategory.value = article.category || 'Politics';
-            if (heroImageUrl) {
-                heroImageUrl.value = article.imageurl || '';
-                if (heroPreviewImg) {
-                    heroPreviewImg.src = article.imageurl || '';
-                    heroPreviewImg.style.display = article.imageurl ? 'block' : 'none';
-                }
-            }
-            if (heroOriginalUrl) heroOriginalUrl.value = article.originalurl || '';
-        });
-    }
-
-    if (heroRegion) {
-        heroRegion.addEventListener('change', () => {
-            populateHeroSelect(allArticles);
-            loadHeroConfig();
-        });
-    }
-
-    async function loadHeroConfig() {
-        const region = (heroRegion ? heroRegion.value : 'indian').toLowerCase();
-        try {
-            const res = await apiRequest(`/api/admin/hero?region=${region}`);
-            if (res.ok) {
-                const hero = await res.json();
-                if (hero && hero.headline) {
-                    if (heroHeadline) heroHeadline.value = hero.headline || '';
-                    if (heroSummary) heroSummary.value = hero.summary || '';
-                    if (heroCategory) heroCategory.value = hero.category || 'Politics';
-                    if (heroImageUrl) {
-                        heroImageUrl.value = hero.imageurl || '';
-                        if (heroPreviewImg) {
-                            heroPreviewImg.src = hero.imageurl || '';
-                            heroPreviewImg.style.display = hero.imageurl ? 'block' : 'none';
-                        }
-                    }
-                    if (heroOriginalUrl) heroOriginalUrl.value = hero.originalurl || '';
-                }
-            }
-        } catch (e) {
-            console.warn('Could not load hero config for region:', region);
+    function updateImagePreview(src) {
+        if (!previewImg) return;
+        if (src) {
+            previewImg.src = src;
+            previewImg.style.display = 'block';
+            if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+        } else {
+            previewImg.src = '';
+            previewImg.style.display = 'none';
+            if (previewPlaceholder) previewPlaceholder.style.display = 'block';
         }
     }
 
-    if (heroEditorForm) {
-        heroEditorForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const region = (heroRegion ? heroRegion.value : 'indian').toLowerCase();
-            const payload = {
-                region,
-                headline: heroHeadline.value.trim(),
-                summary: heroSummary.value.trim(),
-                category: heroCategory.value,
-                imageurl: heroImageUrl.value.trim(),
-                originalurl: heroOriginalUrl.value.trim()
-            };
+    if (imageUrlInput) {
+        imageUrlInput.addEventListener('input', () => {
+            updateImagePreview(imageUrlInput.value.trim());
+        });
+    }
+
+    if (imageUploadBtn && imageUploadInput) {
+        imageUploadBtn.addEventListener('click', () => imageUploadInput.click());
+
+        imageUploadInput.addEventListener('change', async () => {
+            const file = imageUploadInput.files[0];
+            if (!file) return;
+
+            if (imageUploadStatus) imageUploadStatus.textContent = 'Uploading image...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
             try {
-                showToast('Saving hero banner...', 'info');
-                const res = await apiRequest('/api/admin/hero', {
+                const token = await getCsrfToken();
+                const headers = {};
+                if (token) headers['X-CSRF-Token'] = token;
+
+                const res = await fetch('/api/admin/upload', {
                     method: 'POST',
-                    body: JSON.stringify(payload)
+                    headers,
+                    body: formData
                 });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                showToast(`Hero banner for ${region.toUpperCase()} updated!`, 'success');
+
+                if (!res.ok) throw new Error(`Upload failed (HTTP ${res.status})`);
+                const data = await res.json();
+
+                if (data.url) {
+                    if (imageUrlInput) imageUrlInput.value = data.url;
+                    updateImagePreview(data.url);
+                    if (imageUploadStatus) imageUploadStatus.textContent = 'Upload successful!';
+                    showToast('Image uploaded and linked!', 'success');
+                }
             } catch (err) {
-                showToast('Failed to update hero: ' + err.message, 'error');
+                if (imageUploadStatus) imageUploadStatus.textContent = 'Upload error';
+                showToast('Image upload failed: ' + err.message, 'error');
             }
         });
     }
 
-    function populateHighlightSelects(articles) {
-        const currentRegion = (highlightsRegion ? highlightsRegion.value : 'indian').toLowerCase();
-        const matching = articles.filter(a => (a.region || 'indian').toLowerCase() === currentRegion);
-        const opts = '<option value="">-- None --</option>' +
-            matching.map(a => `<option value="${a.id}">${escapeHtml(a.aiheadline || 'Untitled')}</option>`).join('');
-
-        if (highlight1Select) highlight1Select.innerHTML = opts;
-        if (highlight2Select) highlight2Select.innerHTML = opts;
-        if (highlight3Select) highlight3Select.innerHTML = opts;
-    }
-
-    if (highlightsRegion) {
-        highlightsRegion.addEventListener('change', () => {
-            populateHighlightSelects(allArticles);
-            loadHighlightsConfig();
-        });
-    }
-
-    async function loadHighlightsConfig() {
-        const region = (highlightsRegion ? highlightsRegion.value : 'indian').toLowerCase();
+    // ==========================================================================
+    // SUBSCRIBERS LOAD & EXPORT
+    // ==========================================================================
+    async function loadSubscribers() {
         try {
-            const res = await apiRequest(`/api/admin/highlights?region=${region}`);
+            const res = await apiRequest('/api/admin/subscribers');
             if (res.ok) {
-                const hl = await res.json();
-                if (hl && hl.article_ids) {
-                    if (highlight1Select) highlight1Select.value = hl.article_ids[0] || '';
-                    if (highlight2Select) highlight2Select.value = hl.article_ids[1] || '';
-                    if (highlight3Select) highlight3Select.value = hl.article_ids[2] || '';
+                const data = await res.json();
+                const subs = data.subscribers || [];
+                if (subCountBadge) subCountBadge.textContent = `${subs.length} Subscriber${subs.length === 1 ? '' : 's'}`;
+                if (subscribersList) {
+                    if (subs.length === 0) {
+                        subscribersList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding-top: 50px;">No subscribers found.</div>';
+                    } else {
+                        subscribersList.innerHTML = subs.map(s => `
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0;">
+                                <span style="color: var(--text-primary);">${escapeHtml(s.email)}</span>
+                                <span style="color: var(--text-muted); font-size: 0.7rem;">${escapeHtml(s.date || '')}</span>
+                            </div>
+                        `).join('');
+                    }
                 }
             }
         } catch (e) {
-            console.warn('Could not load highlights for region:', region);
+            console.warn('Subscribers load failed:', e);
         }
     }
 
-    if (highlightsConfigForm) {
-        highlightsConfigForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const region = (highlightsRegion ? highlightsRegion.value : 'indian').toLowerCase();
-            const article_ids = [
-                highlight1Select ? highlight1Select.value : '',
-                highlight2Select ? highlight2Select.value : '',
-                highlight3Select ? highlight3Select.value : ''
-            ].filter(Boolean);
-
+    if (btnExportSubscribers) {
+        btnExportSubscribers.addEventListener('click', async () => {
             try {
-                showToast('Saving highlights...', 'info');
-                const res = await apiRequest('/api/admin/highlights', {
-                    method: 'POST',
-                    body: JSON.stringify({ region, article_ids })
-                });
+                const res = await apiRequest('/api/admin/subscribers');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                showToast(`Highlights for ${region.toUpperCase()} updated!`, 'success');
+                const data = await res.json();
+                const subs = data.subscribers || [];
+                if (subs.length === 0) {
+                    showToast('No subscribers to export', 'warning');
+                    return;
+                }
+                const csv = 'Email,Date\n' + subs.map(s => `"${s.email}","${s.date || ''}"`).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `honestly-biased-subscribers-${Date.now()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Exported subscribers CSV', 'success');
             } catch (err) {
-                showToast('Failed to update highlights: ' + err.message, 'error');
+                showToast('Export failed: ' + err.message, 'error');
             }
         });
     }
@@ -833,9 +627,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // INITIALIZATION
     // ==========================================================================
     (async function init() {
-        await loadHeroConfig();
-        await loadHighlightsConfig();
         await loadCMSData();
-        lucide.createIcons();
+        await loadSubscribers();
+        if (window.lucide) lucide.createIcons();
     })();
 });
