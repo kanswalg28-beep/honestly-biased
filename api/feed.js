@@ -1,31 +1,30 @@
-// api/feed.js — Unified RSS 2.0 and Sitemap.xml generator
-// Serves /rss.xml, /feed.xml, and /sitemap.xml
-// Consolidates standalone feed endpoints to stay well within Vercel Hobby limits.
+// api/feed.js — Unified Feed Generator (RSS 2.0 & Google XML Sitemap)
+// Consolidates /rss.xml, /feed.xml, and /sitemap.xml into a single high-performance serverless function.
 
 const { supabase } = require('../db/client');
 
 const BASE_URL = 'https://www.honestlybiased.com';
 const SITE_NAME = 'Honestly Biased';
-const SITE_DESCRIPTION = 'Independent Commentary, Satire & Political Audit';
+const SITE_DESC =
+  'AI-powered news bias auditor providing balanced perspectives on global, national, and local stories.';
 
 const STATIC_ROUTES = [
   { url: '/', changefreq: 'daily', priority: 1.0 },
-  { url: '/manifesto', changefreq: 'monthly', priority: 0.8 },
-  { url: '/standards', changefreq: 'monthly', priority: 0.8 },
-  { url: '/funding', changefreq: 'monthly', priority: 0.8 },
-  { url: '/finances', changefreq: 'monthly', priority: 0.8 },
-  { url: '/collective', changefreq: 'monthly', priority: 0.8 },
-  { url: '/politics',  changefreq: 'daily',  priority: 0.7 },
-  { url: '/tech',      changefreq: 'daily',  priority: 0.7 },
-  { url: '/finance',   changefreq: 'daily',  priority: 0.7 },
-  { url: '/entertainment', changefreq: 'daily', priority: 0.7 },
-  { url: '/health',    changefreq: 'daily',  priority: 0.7 }
+  { url: '/manifesto', changefreq: 'monthly', priority: 0.7 },
+  { url: '/standards', changefreq: 'monthly', priority: 0.7 },
+  { url: '/funding', changefreq: 'monthly', priority: 0.7 },
+  { url: '/finances', changefreq: 'monthly', priority: 0.7 },
+  { url: '/collective', changefreq: 'monthly', priority: 0.7 },
+  { url: '/politics', changefreq: 'daily', priority: 0.8 },
+  { url: '/tech', changefreq: 'daily', priority: 0.8 },
+  { url: '/finance', changefreq: 'daily', priority: 0.8 },
+  { url: '/entertainment', changefreq: 'daily', priority: 0.8 },
+  { url: '/health', changefreq: 'daily', priority: 0.8 }
 ];
 
-let rssCache = { at: 0, xml: null };
-let sitemapCache = { at: 0, xml: null };
-const RSS_CACHE_MS = 60 * 1000;
-const SITEMAP_CACHE_MS = 45 * 1000;
+// In-memory caching per warm instance
+let sitemapCache = { xml: null, expires: 0 };
+let rssCache = { xml: null, expires: 0 };
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -63,8 +62,7 @@ function stripTags(s) {
 function truncate(s, n) {
   if (!s) return '';
   s = String(s);
-  if (s.length <= n) return s;
-  return s.slice(0, n - 1).replace(/\s+\S*$/, '') + '...';
+  return s.length > n ? s.slice(0, n) + '...' : s;
 }
 
 async function fetchArticlesForRss() {
@@ -108,44 +106,51 @@ async function fetchArticlesForSitemap() {
 }
 
 function buildRssXml(articles) {
-  const now = new Date().toUTCString();
+  const buildDate = new Date().toUTCString();
+  const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-  xml += '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">\n';
+  xml += '<rss version="2.0"\n';
+  xml += '     xmlns:atom="http://www.w3.org/2005/Atom"\n';
+  xml += '     xmlns:content="http://purl.org/rss/1.0/modules/content/"\n';
+  xml += '     xmlns:dc="http://purl.org/dc/elements/1.1/"\n';
+  xml += '     xmlns:media="http://search.yahoo.com/mrss/">\n';
   xml += '  <channel>\n';
   xml += `    <title>${escapeXml(SITE_NAME)}</title>\n`;
   xml += `    <link>${BASE_URL}</link>\n`;
+  xml += `    <description>${escapeXml(SITE_DESC)}</description>\n`;
+  xml += '    <language>en-us</language>\n';
+  xml += `    <lastBuildDate>${buildDate}</lastBuildDate>\n`;
   xml += `    <atom:link href="${BASE_URL}/rss.xml" rel="self" type="application/rss+xml" />\n`;
-  xml += `    <description>${escapeXml(SITE_DESCRIPTION)}</description>\n`;
-  xml += `    <language>en-IN</language>\n`;
-  xml += `    <lastBuildDate>${now}</lastBuildDate>\n`;
-  xml += `    <generator>Honestly Biased Feed Generator</generator>\n`;
-  xml += `    <image>\n`;
+  xml += '    <image>\n';
   xml += `      <url>${BASE_URL}/assets/logo.png</url>\n`;
   xml += `      <title>${escapeXml(SITE_NAME)}</title>\n`;
   xml += `      <link>${BASE_URL}</link>\n`;
-  xml += `    </image>\n`;
+  xml += '    </image>\n';
 
   for (const a of articles) {
     const region = (a.region || 'indian').toLowerCase().trim();
-    const validRegions = ['berkshire', 'indian', 'world', 'uk'];
     const r = validRegions.includes(region) ? region : 'indian';
     const slug = getArticleSlug(a);
     const link = `${BASE_URL}/${r}/${slug}`;
-    const pubDate = a.publishdate ? new Date(a.publishdate).toUTCString() : now;
-    const title = a.aiheadline || 'Untitled Article';
-    const description = a.aisummary || (a.biasaudit ? `Narrative Bias Audit: ${a.biasaudit}` : '');
-    const author = a.author || a.originalsource || 'Honestly Biased Editorial Board';
-    const category = a.category || 'Opinion';
+    const pubDate = a.publishdate ? new Date(a.publishdate).toUTCString() : buildDate;
+    const title = a.aiheadline || 'Honestly Biased Chronicle';
+    const description = a.aisummary ? truncate(stripTags(a.aisummary), 400) : '';
     const fullBlog = a.fullblog || a.aisummary || '';
+    const author = a.author || 'CMS Admin';
+    const category = a.category || 'Politics';
+    const guid = link;
 
     xml += '    <item>\n';
     xml += `      <title>${escapeXml(title)}</title>\n`;
     xml += `      <link>${link}</link>\n`;
-    xml += `      <guid isPermaLink="true">${link}</guid>\n`;
+    xml += `      <guid isPermaLink="true">${guid}</guid>\n`;
     xml += `      <pubDate>${pubDate}</pubDate>\n`;
     xml += `      <dc:creator>${escapeXml(author)}</dc:creator>\n`;
     xml += `      <category>${escapeXml(category)}</category>\n`;
-    xml += `      <description>${escapeXml(description)}</description>\n`;
+    if (description) {
+      xml += `      <description>${escapeXml(description)}</description>\n`;
+    }
     if (fullBlog) {
       xml += `      <content:encoded><![CDATA[${fullBlog}]]></content:encoded>\n`;
     }
@@ -163,6 +168,9 @@ function buildRssXml(articles) {
 
 function buildSitemapXml(articles) {
   const today = new Date().toISOString().split('T')[0];
+  const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
   xml += '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"\n';
@@ -180,30 +188,33 @@ function buildSitemapXml(articles) {
 
   for (const a of articles) {
     const region = (a.region || 'indian').toLowerCase().trim();
-    const validRegions = ['berkshire', 'indian', 'world', 'uk'];
     const r = validRegions.includes(region) ? region : 'indian';
     const slug = getArticleSlug(a);
     const url = `${BASE_URL}/${r}/${slug}`;
     const lastmod = (a.updatedat || a.publishdate || today).toString().split('T')[0];
+    const pubDate = a.publishdate ? new Date(a.publishdate) : null;
+    const isRecent = pubDate && !isNaN(pubDate.getTime()) && pubDate >= twoDaysAgo;
+
     xml += '  <url>\n';
     xml += `    <loc>${url}</loc>\n`;
     xml += `    <lastmod>${lastmod}</lastmod>\n`;
-    xml += '    <changefreq>monthly</changefreq>\n';
-    xml += '    <priority>0.8</priority>\n';
+    xml += `    <changefreq>${isRecent ? 'daily' : 'monthly'}</changefreq>\n`;
+    xml += `    <priority>${isRecent ? '0.9' : '0.7'}</priority>\n`;
 
     if (a.imageurl) {
       xml += `    <image:image><image:loc>${escapeXml(a.imageurl)}</image:loc></image:image>\n`;
     }
 
-    if (a.publishdate) {
-      const pubDateOnly = a.publishdate.toString().split('T')[0];
+    // Google News tags strictly for recent articles (< 48 hours)
+    if (isRecent) {
+      const pubDateIso = pubDate.toISOString();
       const title = a.aiheadline || 'Honestly Biased Chronicle';
       xml += '    <news:news>\n';
       xml += '      <news:publication>\n';
       xml += `        <news:name>${escapeXml(SITE_NAME)}</news:name>\n`;
       xml += '        <news:language>en</news:language>\n';
       xml += '      </news:publication>\n';
-      xml += `      <news:publication_date>${pubDateOnly}</news:publication_date>\n`;
+      xml += `      <news:publication_date>${pubDateIso}</news:publication_date>\n`;
       xml += `      <news:title>${escapeXml(title)}</news:title>\n`;
       xml += '    </news:news>\n';
     }
@@ -221,41 +232,43 @@ module.exports = async (req, res) => {
 
   try {
     if (type === 'sitemap') {
-      if (sitemapCache.xml && (now - sitemapCache.at) < SITEMAP_CACHE_MS) {
+      if (sitemapCache.xml && sitemapCache.expires > now) {
         res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.setHeader('Cache-Control', 'public, max-age=45, s-maxage=45, stale-while-revalidate=120');
-        res.setHeader('X-Cache', 'HIT');
+        res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1200');
+        res.setHeader('X-Cache-Status', 'HIT');
         return res.status(200).send(sitemapCache.xml);
       }
 
       const articles = await fetchArticlesForSitemap();
       const xml = buildSitemapXml(articles);
-      sitemapCache = { at: now, xml };
+      sitemapCache = { xml, expires: now + 10 * 60 * 1000 };
 
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=45, s-maxage=45, stale-while-revalidate=120');
-      res.setHeader('X-Cache', 'MISS');
-      return res.status(200).send(xml);
-    } else {
-      // RSS feed
-      if (rssCache.xml && (now - rssCache.at) < RSS_CACHE_MS) {
-        res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
-        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300');
-        res.setHeader('X-Cache', 'HIT');
-        return res.status(200).send(rssCache.xml);
-      }
-
-      const articles = await fetchArticlesForRss();
-      const xml = buildRssXml(articles);
-      rssCache = { at: now, xml };
-
-      res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300');
-      res.setHeader('X-Cache', 'MISS');
+      res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1200');
+      res.setHeader('X-Cache-Status', 'MISS');
       return res.status(200).send(xml);
     }
+
+    // Default RSS Feed
+    if (rssCache.xml && rssCache.expires > now) {
+      res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      res.setHeader('X-Cache-Status', 'HIT');
+      return res.status(200).send(rssCache.xml);
+    }
+
+    const articles = await fetchArticlesForRss();
+    const xml = buildRssXml(articles);
+    rssCache = { xml, expires: now + 5 * 60 * 1000 };
+
+    res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    res.setHeader('X-Cache-Status', 'MISS');
+    return res.status(200).send(xml);
   } catch (err) {
     console.error('Feed generation error:', err);
-    res.status(500).setHeader('Content-Type', 'text/plain').send('Error generating feed');
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'text/plain');
+    return res.end('Internal Server Error while generating feed');
   }
 };
