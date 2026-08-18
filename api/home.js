@@ -1,50 +1,9 @@
 // api/home.js — Server-Side Rendered Homepage with 24h freshness
-//
-// GET /  or  /index.html
-//
-// Renders a complete HTML document matching the static index.html layout
-// but with the bento grid PRE-RENDERED from the latest Supabase articles.
-// Cache headers: s-maxage=86400 (24h fresh), stale-while-revalidate=604800 (7d).
-// Vercel CDN caches for 24h, then revalidates on next request.
-//
-// When admin publishes a new article, the stale-while-revalidate window
-// means the next user after 24h gets a freshly built page without a
-// full redeploy. For faster busting, admin can call /api/cache/bust.
-
 const { supabase } = require('../db/client');
 
 const SITE = 'https://www.honestlybiased.com';
 const SITE_NAME = 'Honestly Biased';
 const SITE_TAGLINE = 'Independent Commentary, Satire & Political Audit';
-
-// Fetch hero from CMS site-content
-async function fetchHeroFromCMS() {
-  try {
-    const res = await fetch(`${SITE}/api/site-content`, { headers: { 'Accept': 'application/json' } });
-    if (res.ok) {
-      const data = await res.json();
-      const hero = data.hero;
-      if (hero && hero.headline) {
-        // Map CMS fields to our internal format
-        return {
-          headline: hero.headline,
-          summary: hero.body || hero.summary,
-          imageUrl: hero.image || hero.imageUrl,
-          byline: hero.byline,
-          eyebrow: hero.eyebrow,
-          readTime: hero.readtime || hero.readTime,
-          bylineRole: hero.byline_role || hero.bylineRole,
-          cta: hero.cta,
-          publishDate: hero.publishDate,
-          id: hero.id
-        };
-      }
-    }
-  } catch (e) {
-    console.warn('CMS hero fetch failed:', e.message);
-  }
-  return null;
-}
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -152,12 +111,6 @@ function cardTimeHtml(article) {
   return html;
 }
 
-function cardLinkHtml(article) {
-  const url = getArticleUrl(article);
-  return `<a href="${escapeAttr(url)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
-}
-
-// Build a single bento card HTML (mirrors app.js exactly)
 function buildBentoCard(article, index) {
   const isInstagram = article.authortype === 'instagram';
   const url = getArticleUrl(article);
@@ -172,41 +125,13 @@ function buildBentoCard(article, index) {
   
   const rawImg = article.imageurl || '/assets/hero-bg.png';
   const isBase64 = rawImg.startsWith('data:image');
-  const imgUrl = isBase64 ? '' : escapeAttr(rawImg);
-  const bgStyle = imgUrl
-    ? `background-image: url('${imgUrl}')`
-    : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
+  const imgUrl = isBase64 ? '/assets/hero-bg.png' : escapeAttr(rawImg);
 
-  if (index === 0) {
+  if (index >= 0 && index <= 3) {
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
-        <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
-          ${catTag}
-          ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
-        </div>
-        <div class="card-body">
-          <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
-            ${badgeHtml}
-            ${timeHtml}
-          </span>
-          <h3 class="card-title" style="margin-top:10px;">
-            ${cardLink}
-          </h3>
-          <p class="card-summary">${summary}</p>
-          <div class="card-footer-meta">
-            ${biasHtml}
-          </div>
-        </div>
-      </article>
-    `;
-  }
-
-  if (index >= 1 && index <= 3) {
-    return `
-      <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
-        <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
+        <div class="card-visual" style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; background:var(--bg-secondary);">
+          <img class="card-image-bg" src="${imgUrl}" alt="${escapeAttr(rawHeadline)}" loading="lazy" decoding="async" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.7) contrast(1.1);" onerror="this.onerror=null;this.src='/assets/hero-bg.png';">
           ${catTag}
           ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
@@ -229,8 +154,8 @@ function buildBentoCard(article, index) {
 
   return `
     <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
-      <div class="card-visual">
-        <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.65) grayscale(0.15);"></div>
+      <div class="card-visual" style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; background:var(--bg-secondary);">
+        <img class="card-image-bg" src="${imgUrl}" alt="${escapeAttr(rawHeadline)}" loading="lazy" decoding="async" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.65) grayscale(0.15);" onerror="this.onerror=null;this.src='/assets/hero-bg.png';">
         ${catTag}
       </div>
       <div class="card-body">
@@ -253,9 +178,6 @@ function buildBentoCard(article, index) {
   `;
 }
 
-// --------------------------------------------------------------------------
-// Article fetch
-// --------------------------------------------------------------------------
 async function fetchLatestArticles(limit = 22) {
   if (!supabase) return [];
   try {
@@ -273,9 +195,6 @@ async function fetchLatestArticles(limit = 22) {
   }
 }
 
-// --------------------------------------------------------------------------
-// Full HTML renderer
-// --------------------------------------------------------------------------
 async function renderHomepageHtml(articles) {
   const heroArticle = articles[0] || null;
   const heroHeadline = heroArticle ? (heroArticle.aiheadline || heroArticle.aiHeadline || heroArticle.title || 'Deep Perspective') : 'Deep Perspective';
@@ -297,8 +216,7 @@ async function renderHomepageHtml(articles) {
     'name': SITE_NAME,
     'url': SITE,
     'description': SITE_TAGLINE,
-    'publisher': { '@type': 'Organization', 'name': SITE_NAME, 'logo': { '@type': 'ImageObject', 'url': SITE + '/assets/logo.png' } },
-    'potentialAction': { '@type': 'SearchAction', 'target': { '@type': 'EntryPoint', 'urlTemplate': SITE + '/search?q={search_term_string}' }, 'query-input': 'required name=search_term_string' }
+    'publisher': { '@type': 'Organization', 'name': SITE_NAME, 'logo': { '@type': 'ImageObject', 'url': SITE + '/assets/logo.png' } }
   });
 
   const listJsonLd = JSON.stringify({
@@ -579,9 +497,6 @@ async function renderHomepageHtml(articles) {
 </html>`;
 }
 
-// --------------------------------------------------------------------------
-// In-memory cache & image proxy
-// --------------------------------------------------------------------------
 const SUPABASE_STORAGE_HOSTS = [
   'https://mprxrtesqgtznsinsezs.supabase.co',
   'http://mprxrtesqgtznsinsezs.supabase.co',
