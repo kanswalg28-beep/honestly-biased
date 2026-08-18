@@ -1,4 +1,4 @@
-// api/article.js — Server-Side Rendered Article Page with Full Dynamic Metadata
+// api/article.js — Server-Side Rendered Article Page with Full Dynamic Metadata and Dark Theme Glassmorphism
 const { supabase } = require('../db/client');
 
 const SITE_NAME = 'Honestly Biased';
@@ -40,14 +40,6 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-function getBiasColor(bias) {
-  const b = (bias || '').toLowerCase();
-  if (b.includes('left') || b.includes('liberal')) return { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5', label: 'Left Bias' };
-  if (b.includes('right') || b.includes('conservative')) return { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd', label: 'Right Bias' };
-  if (b.includes('center') || b.includes('neutral') || b.includes('balanced')) return { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Balanced' };
-  return { bg: '#f3f4f6', text: '#374151', border: '#d1d5db', label: bias || 'Analyzed' };
-}
-
 function getProxiedImageUrl(originalUrl) {
   if (!originalUrl) return '';
   if (originalUrl.startsWith('data:image')) return originalUrl;
@@ -57,7 +49,6 @@ function getProxiedImageUrl(originalUrl) {
 module.exports = async (req, res) => {
   const urlObj = new URL(req.url || '/', BASE_URL);
   
-  // Extract slug and optional region from query or URL pathname
   let slug = (req.query && req.query.slug) || '';
   let region = (req.query && req.query.region) || '';
 
@@ -77,13 +68,9 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // 1. Look up article by slug OR short ID OR full UUID
     let query = supabase.from('articles').select('*').eq('archived', false);
-    
-    // First try exact slug match
     let { data: articles, error } = await query.eq('slug', slug);
 
-    // If not found, try matching by first 4 words of headline or ID
     if (!articles || articles.length === 0) {
       const { data: allArticles } = await supabase
         .from('articles')
@@ -110,27 +97,24 @@ module.exports = async (req, res) => {
         <!DOCTYPE html>
         <html lang="en">
         <head><meta charset="UTF-8"><title>Article Not Found | Honestly Biased</title><link rel="stylesheet" href="/style.css"></head>
-        <body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
-          <div class="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center">
-            <h1 class="text-2xl font-serif font-bold text-slate-900 mb-2">Article Not Found</h1>
-            <p class="text-sm text-slate-500 mb-6">The story you are looking for may have been archived or moved.</p>
-            <a href="/" class="px-6 py-2.5 bg-slate-900 text-white font-medium text-sm rounded-xl hover:bg-indigo-600 transition-colors">Return to Home</a>
+        <body class="dark-theme" style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px;">
+          <div class="glass-element" style="padding:48px; border-radius:16px; text-align:center; max-width:480px;">
+            <h1 style="font-family:var(--font-editorial); font-size:2rem; font-weight:700; color:var(--text-primary); margin-bottom:12px;">Article Not Found</h1>
+            <p style="color:var(--text-muted); font-size:0.95rem; margin-bottom:24px;">The story you are looking for may have been archived or moved.</p>
+            <a href="/" class="btn btn-primary" style="padding:10px 20px;">Return to Front Page</a>
           </div>
         </body>
         </html>
       `);
     }
 
-    // Canonical link & region formatting
     const validRegions = ['berkshire', 'indian', 'world', 'uk'];
     const articleRegion = (article.region || 'indian').toLowerCase().trim();
     const finalRegion = validRegions.includes(articleRegion) ? articleRegion : 'indian';
     const canonicalSlug = getArticleSlug(article);
     const canonicalUrl = `${BASE_URL}/${finalRegion}/${canonicalSlug}`;
 
-    // Bias formatting
-    const bias = getBiasColor(article.biasaudit);
-    const imgUrl = article.imageurl ? (article.imageurl.startsWith('data:image') ? '' : getProxiedImageUrl(article.imageurl)) : '';
+    const imgUrl = (article.imageurl && !article.imageurl.startsWith('data:image')) ? article.imageurl : '/assets/hero-bg.png';
     const headline = article.aiheadline || article.title || 'Honestly Biased Chronicle';
     const summary = article.aisummary || article.summary || '';
     const fullBlog = article.fullblog || article.aisummary || article.summary || '';
@@ -141,7 +125,7 @@ module.exports = async (req, res) => {
     const isoPubDate = article.publishdate ? new Date(article.publishdate).toISOString() : new Date().toISOString();
     const isoModDate = article.updatedat ? new Date(article.updatedat).toISOString() : isoPubDate;
 
-    // JSON-LD NewsArticle Structured Data
+    // Structured Data
     const schemaOrgArticle = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'NewsArticle',
@@ -176,170 +160,149 @@ module.exports = async (req, res) => {
       'inLanguage': 'en-IN'
     });
 
-    const schemaOrgBreadcrumb = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      'itemListElement': [
-        {
-          '@type': 'ListItem',
-          'position': 1,
-          'name': 'Home',
-          'item': BASE_URL
-        },
-        {
-          '@type': 'ListItem',
-          'position': 2,
-          'name': finalRegion.toUpperCase(),
-          'item': `${BASE_URL}/${finalRegion}`
-        },
-        {
-          '@type': 'ListItem',
-          'position': 3,
-          'name': headline,
-          'item': canonicalUrl
-        }
-      ]
-    });
-
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escapeHtml(headline)} | ${SITE_NAME}</title>
-<meta name="description" content="${escapeHtml(summary)}">
-<link rel="canonical" href="${canonicalUrl}">
-<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(headline)} | ${SITE_NAME}</title>
+    <meta name="description" content="${escapeHtml(summary)}">
+    <link rel="canonical" href="${canonicalUrl}">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <meta name="theme-color" content="#0a0e1a">
+    <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+    <link rel="apple-touch-icon" href="/assets/logo.png">
+    <link rel="manifest" href="/manifest.webmanifest">
 
-<!-- OpenGraph -->
-<meta property="og:type" content="article">
-<meta property="og:site_name" content="${escapeHtml(SITE_NAME)}">
-<meta property="og:title" content="${escapeHtml(headline)}">
-<meta property="og:description" content="${escapeHtml(summary)}">
-<meta property="og:url" content="${canonicalUrl}">
-<meta property="og:image" content="${escapeHtml(article.imageurl || `${BASE_URL}/assets/og-image.png`)}">
-<meta property="article:published_time" content="${isoPubDate}">
-<meta property="article:section" content="${escapeHtml(article.category || 'News')}">
-<meta property="article:author" content="${escapeHtml(author)}">
+    <!-- OpenGraph -->
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="${escapeHtml(SITE_NAME)}">
+    <meta property="og:title" content="${escapeHtml(headline)}">
+    <meta property="og:description" content="${escapeHtml(summary)}">
+    <meta property="og:url" content="${canonicalUrl}">
+    <meta property="og:image" content="${escapeHtml(article.imageurl || `${BASE_URL}/assets/hero-bg.png`)}">
+    <meta property="article:published_time" content="${isoPubDate}">
+    <meta property="article:section" content="${escapeHtml(article.category || 'News')}">
+    <meta property="article:author" content="${escapeHtml(author)}">
 
-<!-- Twitter -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:site" content="@honestlybiased">
-<meta name="twitter:title" content="${escapeHtml(headline)}">
-<meta name="twitter:description" content="${escapeHtml(summary)}">
-<meta name="twitter:image" content="${escapeHtml(article.imageurl || `${BASE_URL}/assets/og-image.png`)}">
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@honestlybiased">
+    <meta name="twitter:title" content="${escapeHtml(headline)}">
+    <meta name="twitter:description" content="${escapeHtml(summary)}">
+    <meta name="twitter:image" content="${escapeHtml(article.imageurl || `${BASE_URL}/assets/hero-bg.png`)}">
 
-<!-- Fonts & Stylesheet -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css">
+    <!-- Fonts & Core Stylesheet -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
 
-<!-- Structured Data -->
-<script type="application/ld+json">${schemaOrgArticle}</script>
-<script type="application/ld+json">${schemaOrgBreadcrumb}</script>
-
-<style>
-  .font-serif { font-family: 'Newsreader', serif; }
-  .font-brand { font-family: 'Cinzel', serif; }
-</style>
-<script src="/assets/lucide-local.js" defer></script>
-<script defer src="/_vercel/insights/script.js"></script>
-<script defer src="/_vercel/speed-insights/script.js"></script>
+    <!-- Structured Data -->
+    <script type="application/ld+json">${schemaOrgArticle}</script>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col justify-between">
+<body class="dark-theme">
+    <a href="#main-content" class="skip-to-content">Skip to main content</a>
 
-  <!-- Header -->
-  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-2">
-        <span class="font-brand font-bold text-2xl tracking-tight text-slate-950">HONESTLY BIASED</span>
-      </a>
-      <a href="/" class="text-xs font-semibold text-slate-600 hover:text-indigo-600 flex items-center gap-1">
-        &larr; Back to Front Page
-      </a>
-    </div>
-  </header>
+    <!-- Header Navigation -->
+    <header class="main-header glass-element" id="main-header">
+        <div class="header-container">
+            <a href="/" class="brand-logo" aria-label="Honestly Biased Home">
+                <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
+            </a>
+            <div class="header-actions">
+                <a href="/" class="btn btn-secondary" style="font-size:0.8rem; padding:6px 12px;">&larr; Front Page</a>
+                <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle color theme" title="Toggle between Dark and Light mode">
+                    <span class="theme-toggle-track"><span class="theme-toggle-thumb"><i data-lucide="moon" class="icon-dark"></i><i data-lucide="sun" class="icon-light"></i></span></span>
+                </button>
+            </div>
+        </div>
+    </header>
 
-  <!-- Article Hero & Body -->
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-10 w-full">
-    
-    <!-- Meta Badges -->
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-      <span class="px-3 py-1 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider rounded-md">${escapeHtml(article.category || 'News')}</span>
-      <span class="px-3 py-1 text-xs font-bold rounded-md border" style="background-color: ${bias.bg}; color: ${bias.text}; border-color: ${bias.border};">${escapeHtml(bias.label)}</span>
-      <span class="text-xs text-slate-400">•</span>
-      <span class="text-xs text-slate-500 font-medium">${escapeHtml(pubDate)}</span>
-    </div>
+    <!-- Main Content -->
+    <main id="main-content" style="padding: 100px 24px 80px; max-width: 900px; margin: 0 auto; width: 100%;">
+        
+        <div class="article-meta-row" style="display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+            <span class="card-tag saffron-bg" style="font-size:0.75rem; padding:4px 10px; border-radius:4px; font-weight:700; text-transform:uppercase;">${escapeHtml(article.category || 'News')}</span>
+            <span style="font-size:0.8rem; color:var(--text-muted);"><i data-lucide="calendar" style="width:12px; height:12px; display:inline;"></i> ${escapeHtml(pubDate)}</span>
+            <span style="font-size:0.8rem; color:var(--accent-green); font-weight:700;">Bias Audit: ${escapeHtml(article.biasaudit || 'Analyzed')}</span>
+        </div>
 
-    <!-- Title -->
-    <h1 class="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-slate-950 leading-tight mb-6">
-      ${escapeHtml(headline)}
-    </h1>
+        <h1 style="font-family: var(--font-editorial); font-size: 2.8rem; font-weight: 800; line-height: 1.2; margin-bottom: 24px; color: var(--text-primary); letter-spacing: -0.01em;">
+            ${escapeHtml(headline)}
+        </h1>
 
-    <!-- Author & Attribution Header -->
-    <div class="flex items-center justify-between py-4 border-y border-slate-200 mb-8 text-xs text-slate-600">
-      <div>
-        By <span class="font-semibold text-slate-900">${escapeHtml(author)}</span> (${escapeHtml(authorType)})
-      </div>
-      <div>
-        Source: <span class="font-semibold text-slate-900">${escapeHtml(source)}</span>
-      </div>
-    </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); margin-bottom:32px; font-size:0.85rem; color:var(--text-muted);">
+            <div>By <strong style="color:var(--text-primary);">${escapeHtml(author)}</strong> (${escapeHtml(authorType)})</div>
+            <div>Source: <strong style="color:var(--text-primary);">${escapeHtml(source)}</strong></div>
+        </div>
 
-    <!-- Featured Image -->
-    ${imgUrl ? `
-      <div class="rounded-2xl overflow-hidden mb-10 shadow-sm border border-slate-200 bg-slate-900">
-        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(headline)}" class="w-full max-h-[500px] object-cover" loading="eager" fetchpriority="high">
-      </div>
-    ` : ''}
+        ${imgUrl ? `
+        <div class="glass-element" style="border-radius:16px; overflow:hidden; margin-bottom:36px; border:1px solid var(--border-color);">
+            <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(headline)}" style="width:100%; max-height:480px; object-fit:cover; display:block;" onerror="this.onerror=null;this.src='/assets/hero-bg.png';">
+        </div>
+        ` : ''}
 
-    <!-- Executive Summary / Bias Audit Box -->
-    <div class="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-6 sm:p-8 mb-10">
-      <div class="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-widest mb-3">
-        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        AI Bias Audit & Summary
-      </div>
-      <p class="text-slate-700 text-sm sm:text-base leading-relaxed">
-        ${escapeHtml(summary)}
-      </p>
-    </div>
+        <!-- AI Summary Box -->
+        <div class="glass-element" style="padding:28px; border-radius:16px; border:1px solid rgba(var(--accent-saffron-rgb), 0.3); background:rgba(var(--bg-secondary-rgb), 0.7); margin-bottom:36px;">
+            <h3 style="font-family:var(--font-heading); font-size:1rem; font-weight:700; color:var(--accent-saffron); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="cpu" style="width:16px; height:16px;"></i> AI Bias Audit Summary
+            </h3>
+            <p style="color:var(--text-secondary); font-size:1.05rem; line-height:1.65; margin:0;">
+                ${escapeHtml(summary)}
+            </p>
+        </div>
 
-    <!-- Full Article Body -->
-    <article class="prose prose-slate max-w-none font-serif text-lg leading-relaxed text-slate-800 space-y-6">
-      ${escapeHtml(fullBlog).split('\n\n').map(p => `<p>${p.trim()}</p>`).join('')}
-    </article>
+        <!-- Full Content -->
+        <div class="article-body" style="color:var(--text-primary); font-family:var(--font-editorial); font-size:1.2rem; line-height:1.8; margin-bottom:48px;">
+            ${escapeHtml(fullBlog).split('\n\n').map(p => `<p style="margin-bottom:20px;">${p.trim()}</p>`).join('')}
+        </div>
 
-    <!-- Source Link -->
-    ${article.originalurl ? `
-      <div class="mt-12 pt-6 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-        <span>Original Publication: <a href="${escapeHtml(article.originalurl)}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline font-medium">${escapeHtml(article.originaltitle || source)}</a></span>
-        <button onclick="navigator.clipboard.writeText(window.location.href); alert('Link copied to clipboard!');" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium rounded-lg transition-colors">
-          Share Story
-        </button>
-      </div>
-    ` : ''}
+        <!-- Share / Return -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:24px; border-top:1px solid var(--border-color);">
+            <a href="/" class="btn btn-secondary">&larr; Front Page</a>
+            <button onclick="navigator.clipboard.writeText(window.location.href); alert('Link copied to clipboard!');" class="btn btn-primary">Share Story</button>
+        </div>
 
-  </main>
+    </main>
 
-  <!-- Footer -->
-  <footer class="bg-white border-t border-slate-200 py-10 mt-20">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
-      <p>&copy; ${new Date().getFullYear()} Honestly Biased Media. All rights reserved.</p>
-      <div class="flex gap-6">
-        <a href="/manifesto" class="hover:text-slate-600">Manifesto</a>
-        <a href="/standards" class="hover:text-slate-600">Audit Standards</a>
-        <a href="/rss.xml" class="hover:text-slate-600">RSS Feed</a>
-      </div>
-    </div>
-  </footer>
+    <!-- Footer -->
+    <footer class="editorial-footer">
+        <div class="footer-grid">
+            <div class="footer-brand-column">
+                <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png-footer"></a>
+                <p class="mission-statement">Honestly Biased is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity.</p>
+            </div>
+            <div class="footer-links-column">
+                <h4 class="footer-heading">Sections</h4>
+                <ul class="footer-links-list">
+                    <li><a href="/politics">Politics</a></li>
+                    <li><a href="/tech">Tech</a></li>
+                    <li><a href="/finance">Finance</a></li>
+                    <li><a href="/entertainment">Entertainment</a></li>
+                    <li><a href="/health">Health</a></li>
+                </ul>
+            </div>
+            <div class="footer-links-column">
+                <h4 class="footer-heading">Standards</h4>
+                <ul class="footer-links-list">
+                    <li><a href="/manifesto">Our Manifesto</a></li>
+                    <li><a href="/standards">Editorial Standards</a></li>
+                    <li><a href="/rss.xml">RSS 2.0 Feed</a></li>
+                    <li><a href="/sitemap.xml">XML Sitemap</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="copyright">&copy; 2026 Honestly Biased Digital Media Trust. Reader supported, fiercely independent.</p>
+        </div>
+    </footer>
 
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      if (window.lucide) lucide.createIcons();
-    });
-  </script>
+    <script src="/assets/lucide-local.js" defer></script>
+    <script src="/app.js" defer></script>
+    <script defer src="/_vercel/insights/script.js"></script>
+    <script defer src="/_vercel/speed-insights/script.js"></script>
+    <script>window.addEventListener('DOMContentLoaded',()=>{if(window.lucide)lucide.createIcons();});</script>
 </body>
 </html>`;
 
