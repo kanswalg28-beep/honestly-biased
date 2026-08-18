@@ -1,0 +1,13 @@
+/* Cover Image background with premium zoom-out hover */
+.card-image-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-size: cover;
+    background-position: center;
+    transition: transform var(--transition-slow);
+    display: block;
+}
