@@ -453,8 +453,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (ssrData.articles && ssrData.articles.length > 0) {
                     console.log(`⚡ __SSR_DATA__ found with ${ssrData.articles.length} articles — instant hydration`);
                     allArticles = ssrData.articles.map(a => ({ ...a }));
-                    const base64Count = allArticles.filter(a => a.hasBase64Image).length;
-                    if (base64Count > 0) console.log(`🖼️ ${base64Count} articles have base64 images`);
 
                     if (allArticles.length > 0) {
                         const tickerTrack = document.querySelector('.ticker-track');
@@ -466,47 +464,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    console.log('✅ Skipping API fetch — using SSR data for instant load');
                     handleRouting(true);
                     
-                    const base64Articles = allArticles.filter(a => a.hasBase64Image);
-                    if (base64Articles.length > 0) {
-                        setTimeout(async () => {
-                            try {
-                                const res = await fetch('/api/honestly-biased-feed');
-                                const data = await res.json();
-                                const apiArticles = data.articles || [];
-                                base64Articles.forEach(bs64 => {
-                                    const match = apiArticles.find(a => a.id === bs64.id);
-                                    if (match && match.imageurl && match.imageurl.startsWith('data:image')) {
-                                        bs64.imageurl = match.imageurl;
-                                        bs64.hasBase64Image = false;
-                                    }
-                                });
-                                handleRouting(false);
-                            } catch (e) {
-                                console.warn('Background image fetch failed:', e);
-                            }
-                        }, 2000);
-                    }
-                    
+                    // Fast background fetch to load ALL 280+ chronicles across Indian, World, UK, and Berkshire editions
                     setTimeout(async () => {
                         try {
-                            const res = await fetch('/api/honestly-biased-feed?limit=200');
+                            const res = await fetch('/api/honestly-biased-feed?limit=500');
                             const data = await res.json();
                             const apiArticles = data.articles || [];
-                            if (apiArticles.length > allArticles.length) {
-                                const existingIds = new Set(allArticles.map(a => a.id));
-                                const newArticles = apiArticles.filter(a => !existingIds.has(a.id));
-                                if (newArticles.length > 0) {
-                                    allArticles.push(...newArticles);
-                                    handleRouting(false);
-                                }
+                            if (apiArticles.length > 0) {
+                                allArticles = apiArticles;
+                                console.log('✅ Loaded all ' + allArticles.length + ' articles across all editions');
+                                handleRouting(false);
                             }
                         } catch (e) {
                             console.warn('Background full article fetch failed:', e);
                         }
-                    }, 3000);
+                    }, 300);
                     
                     return;
                 }
@@ -531,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
         catch (e) { console.warn('site_content hydration failed:', e); }
 
         try {
-            const response = await fetch('/api/honestly-biased-feed');
+            const response = await fetch('/api/honestly-biased-feed?limit=500');
             if (!response.ok) {
                 throw new Error(`API returned HTTP status ${response.status}`);
             }
