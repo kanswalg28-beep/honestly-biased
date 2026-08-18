@@ -7,43 +7,43 @@
     },
     {
       "source": "/api/admin/(.*)",
-      "destination": "/api/admin?route=$1"
+      "destination": "/api/admin.js?route=$1"
     },
     {
       "source": "/api/admin",
-      "destination": "/api/admin"
+      "destination": "/api/admin.js"
     },
     {
       "source": "/img-proxy/(.*)",
-      "destination": "/api/home?__imgproxy=1&__path=$1"
+      "destination": "/api/home.js?__imgproxy=1&__path=$1"
     },
     {
       "source": "/",
-      "destination": "/api/home"
+      "destination": "/api/home.js"
     },
     {
       "source": "/index.html",
-      "destination": "/api/home"
+      "destination": "/api/home.js"
     },
     {
       "source": "/rss.xml",
-      "destination": "/api/feed?type=rss"
+      "destination": "/api/feed.js?type=rss"
     },
     {
       "source": "/feed.xml",
-      "destination": "/api/feed?type=rss"
+      "destination": "/api/feed.js?type=rss"
     },
     {
       "source": "/sitemap.xml",
-      "destination": "/api/feed?type=sitemap"
+      "destination": "/api/feed.js?type=sitemap"
     },
     {
       "source": "/(berkshire|indian|world|uk)/:slug",
-      "destination": "/api/article?region=$1&slug=$2"
+      "destination": "/api/article.js?region=$1&slug=$2"
     },
     {
       "source": "/article/:slug",
-      "destination": "/api/article?slug=$1"
+      "destination": "/api/article.js?slug=$1"
     },
     {
       "source": "/politics",
