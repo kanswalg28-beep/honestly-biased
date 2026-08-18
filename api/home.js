@@ -1,9 +1,10 @@
-// api/home.js — Server-Side Rendered Homepage (Exact 1:1 Match with www.honestlybiased.com Production Layout)
+// api/home.js — Server-Side Rendered Homepage with Direct Supabase CDN Images & Robust Proxy
 const { supabase } = require('../db/client');
 
 const SITE_NAME = 'Honestly Biased';
 const SITE_DESC = 'Honestly Biased - Independent Commentary, Satire & Political Audit';
 const BASE_URL = 'https://www.honestlybiased.com';
+const SUPABASE_PROJECT_URL = process.env.SUPABASE_URL || 'https://mprxrtesqgtznsinsezs.supabase.co';
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -55,28 +56,31 @@ function formatDate(dateStr) {
   }
 }
 
-function getProxiedImageUrl(originalUrl) {
-  if (!originalUrl) return '/assets/hero-bg.png';
-  if (originalUrl.startsWith('data:image')) return '/assets/hero-bg.png';
-  if (originalUrl.startsWith('/')) return originalUrl;
-  if (originalUrl.includes('supabase.co')) {
-    const match = originalUrl.match(/storage\/v1\/object\/public\/.+$/);
-    if (match) return `/img-proxy/${match[0]}`;
+function formatImageUrl(url) {
+  if (!url) return '/assets/hero-bg.png';
+  if (url.startsWith('data:image')) return '/assets/hero-bg.png';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/storage/v1/object/public/')) {
+    return `${SUPABASE_PROJECT_URL}${url}`;
   }
-  return `/img-proxy/${encodeURIComponent(originalUrl)}`;
+  if (url.startsWith('storage/v1/object/public/')) {
+    return `${SUPABASE_PROJECT_URL}/${url}`;
+  }
+  if (url.startsWith('/')) return url;
+  return url;
 }
 
 module.exports = async (req, res) => {
   const urlObj = new URL(req.url || '/', BASE_URL);
 
-  // 1. IMAGE PROXY ROUTE
+  // 1. IMAGE PROXY ROUTE (Fallback for hotlinked external images or storage paths)
   if (urlObj.searchParams.get('__imgproxy') === '1' || urlObj.pathname.startsWith('/img-proxy/')) {
     const rawPath = urlObj.searchParams.get('__path') || urlObj.pathname.replace(/^\/img-proxy\/?/, '');
     let targetUrl = rawPath;
 
-    if (targetUrl.startsWith('storage/v1/object/public/')) {
-      const supabaseUrl = process.env.SUPABASE_URL || 'https://jvajl4t3m6t6p9mlsxs0.supabase.co';
-      targetUrl = `${supabaseUrl}/${targetUrl}`;
+    if (targetUrl.startsWith('storage/v1/object/public/') || targetUrl.startsWith('/storage/v1/object/public/')) {
+      const cleanPath = targetUrl.replace(/^\//, '');
+      targetUrl = `${SUPABASE_PROJECT_URL}/${cleanPath}`;
     } else {
       targetUrl = decodeURIComponent(targetUrl);
     }
@@ -88,7 +92,7 @@ module.exports = async (req, res) => {
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
+      const timeout = setTimeout(() => controller.abort(), 8000);
 
       const fetchRes = await fetch(targetUrl, {
         signal: controller.signal,
@@ -102,7 +106,7 @@ module.exports = async (req, res) => {
 
       if (!fetchRes.ok) {
         res.statusCode = fetchRes.status;
-        return res.end('Upstream image error');
+        return res.end('Upstream image error: ' + fetchRes.status);
       }
 
       const contentType = fetchRes.headers.get('content-type') || 'image/webp';
@@ -142,7 +146,7 @@ module.exports = async (req, res) => {
     const heroArticle = articles.find(a => a.category === 'Hero' || a.is_hero) || articles[0] || {};
     const heroHeadline = heroArticle.aiheadline || heroArticle.title || 'Honestly Biased';
     const heroSummary = heroArticle.aisummary || heroArticle.summary || SITE_DESC;
-    const heroImg = getProxiedImageUrl(heroArticle.imageurl);
+    const heroImg = formatImageUrl(heroArticle.imageurl);
     const heroUrl = getArticleUrl(heroArticle);
 
     // Highlights Ticker HTML
@@ -150,13 +154,13 @@ module.exports = async (req, res) => {
     const tickerArticles = articles.slice(0, 10);
     tickerItemsHtml = tickerArticles.map(a => `<span>${escapeHtml(a.aiheadline || a.title)}</span>`).join('');
 
-    // Bento Grid Cards HTML (matching production exact layout)
+    // Bento Grid Cards HTML
     const bentoArticles = articles.slice(0, 22);
     const bentoCardsHtml = bentoArticles.map((article, index) => {
       const articleUrl = getArticleUrl(article);
       const rawHeadline = article.aiheadline || article.title || 'Untitled Chronicle';
       const rawSummary = article.aisummary || article.summary || '';
-      const imgUrl = getProxiedImageUrl(article.imageurl);
+      const imgUrl = formatImageUrl(article.imageurl);
       const isLarge = index >= 0 && index <= 3;
       const spanClass = isLarge ? 'bento-span-2x1' : 'bento-span-1x1';
       const authorTypeBadge = article.authortype === 'admin'
@@ -245,24 +249,22 @@ module.exports = async (req, res) => {
           '@type': 'NewsArticle',
           'url': `${BASE_URL}${getArticleUrl(a)}`,
           'headline': a.aiheadline || a.title || 'Honestly Biased Story',
-          'image': getProxiedImageUrl(a.imageurl),
+          'image': formatImageUrl(a.imageurl),
           'datePublished': a.publishdate || new Date().toISOString()
         }
       }))
     });
 
-    // Pass SSR Data to Client
+    // Pass SSR Data to Client with properly formatted image URLs
     const ssrArticlesJson = JSON.stringify({
       articles: articles.map(a => {
         const stripped = {
           ...a,
           slug: getArticleSlug(a),
           shortId: shortIdFromUuid(a.id),
-          regionUrl: getArticleUrl(a)
+          regionUrl: getArticleUrl(a),
+          imageurl: formatImageUrl(a.imageurl)
         };
-        if (a.imageurl && a.imageurl.startsWith('data:image')) {
-          stripped.imageurl = '';
-        }
         return stripped;
       })
     });
