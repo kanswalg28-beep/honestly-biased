@@ -7,21 +7,18 @@ const DEFAULT_HIGHLIGHTS = [
   "Supreme Court requests national media houses to explain what they meant by '100% objective facts.'"
 ];
 
-// ----------------------------------------------------------------------------
-// EGRESS GUARD: this endpoint is polled by app.js on EVERY homepage load.
-// ----------------------------------------------------------------------------
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 let cached = null;
 let cacheTime = 0;
 
-async function getCustomArticles() {
+async function getCustomArticles(limit = 500) {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('articles')
     .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
     .eq('archived', false)
     .order('publishdate', { ascending: false })
-    .limit(100);
+    .limit(limit);
   if (error) {
     console.error('getCustomArticles error:', error.message);
     return [];
@@ -37,14 +34,15 @@ async function getCustomArticles() {
 
 module.exports = async (req, res) => {
   try {
+    const limit = Math.min(parseInt(req.query && req.query.limit) || 500, 1000);
     const now = Date.now();
     let customArticles;
 
-    if (cached && (now - cacheTime) < CACHE_TTL_MS) {
+    if (cached && (now - cacheTime) < CACHE_TTL_MS && limit <= (cached.length || 0)) {
       customArticles = cached;
       res.setHeader('X-Cache', 'HIT');
     } else {
-      customArticles = await getCustomArticles();
+      customArticles = await getCustomArticles(Math.max(limit, 500));
       cached = customArticles;
       cacheTime = now;
       res.setHeader('X-Cache', 'MISS');
@@ -54,7 +52,7 @@ module.exports = async (req, res) => {
       ? customArticles.slice(0, 10).map(a => a.aiheadline || a.title).filter(Boolean)
       : DEFAULT_HIGHLIGHTS;
 
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
+    res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=120, stale-while-revalidate=300');
     return res.json({
       rhetoricMeter: {
         hyperbolePercentage: "84.2%",
