@@ -109,7 +109,7 @@ module.exports = async (req, res) => {
       return res.end(`
         <!DOCTYPE html>
         <html lang="en">
-        <head><meta charset="UTF-8"><title>Article Not Found | Honestly Biased</title><link rel="stylesheet" href="/assets/tailwind-built.css"></head>
+        <head><meta charset="UTF-8"><title>Article Not Found | Honestly Biased</title><link rel="stylesheet" href="/style.css"></head>
         <body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
           <div class="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center">
             <h1 class="text-2xl font-serif font-bold text-slate-900 mb-2">Article Not Found</h1>
@@ -230,11 +230,11 @@ module.exports = async (req, res) => {
 <meta name="twitter:description" content="${escapeHtml(summary)}">
 <meta name="twitter:image" content="${escapeHtml(article.imageurl || `${BASE_URL}/assets/og-image.png`)}">
 
-<!-- Fonts & Tailwind -->
+<!-- Fonts & Stylesheet -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/tailwind-built.css">
+<link rel="stylesheet" href="/style.css">
 
 <!-- Structured Data -->
 <script type="application/ld+json">${schemaOrgArticle}</script>
