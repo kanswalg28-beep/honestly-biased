@@ -6,16 +6,16 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/admin/(.*)",
+      "destination": "/api/admin?route=$1"
+    },
+    {
+      "source": "/api/admin",
+      "destination": "/api/admin"
     },
     {
       "source": "/img-proxy/(.*)",
       "destination": "/api/home?__imgproxy=1&__path=$1"
-    },
-    {
-      "source": "/api/admin/articles/(.+)",
-      "destination": "/api/admin/articles?id=$1"
     },
     {
       "source": "/",
@@ -27,15 +27,15 @@
     },
     {
       "source": "/rss.xml",
-      "destination": "/api/rss"
+      "destination": "/api/feed?type=rss"
     },
     {
       "source": "/feed.xml",
-      "destination": "/api/rss"
+      "destination": "/api/feed?type=rss"
     },
     {
       "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
+      "destination": "/api/feed?type=sitemap"
     },
     {
       "source": "/(berkshire|indian|world|uk)/:slug",
@@ -147,7 +147,7 @@
       ]
     },
     {
-      "source": "/api/admin/upload",
+      "source": "/api/admin/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
