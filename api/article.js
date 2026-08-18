@@ -1,4 +1,4 @@
-// api/article.js — Server-Side Rendered Article Page with Direct Supabase CDN Images
+// api/article.js — Server-Side Rendered Article Page with Dynamic Author/Editorial Badges
 const { supabase } = require('../db/client');
 
 const SITE_NAME = 'Honestly Biased';
@@ -141,9 +141,22 @@ module.exports = async (req, res) => {
     const headline = article.aiheadline || article.title || 'Honestly Biased Chronicle';
     const summary = article.aisummary || article.summary || '';
     const fullBlog = article.fullblog || article.aisummary || article.summary || '';
-    const author = article.author || 'Honestly Biased Team';
-    const authorType = article.authortype || 'Editorial Staff';
-    const source = article.originalsource || 'Editorial Desk';
+    
+    // Dynamic Author & Badge Logic
+    const isEditorial = article.authortype === 'admin' || (article.originalsource && article.originalsource.toLowerCase().includes('editorial'));
+    const isInstagram = article.authortype === 'instagram';
+    
+    let authorBadgeHtml = '';
+    if (isEditorial) {
+      authorBadgeHtml = `<span style="font-size:0.75rem; color:var(--accent-green); font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="pen-tool" style="width:12px;height:12px;"></i> Editorial</span>`;
+    } else if (isInstagram) {
+      authorBadgeHtml = `<span style="font-size:0.75rem; color:#e1306c; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="instagram" style="width:12px;height:12px;"></i> IG Video</span>`;
+    } else {
+      authorBadgeHtml = `<span style="font-size:0.75rem; color:var(--accent-green); font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> Editorial</span>`;
+    }
+
+    const author = isEditorial ? 'Editorial' : (article.author || 'Honestly Biased Team');
+    const source = article.originalsource || (isEditorial ? 'Editorial' : 'Editorial Desk');
     const pubDate = formatDate(article.publishdate);
     const isoPubDate = article.publishdate ? new Date(article.publishdate).toISOString() : new Date().toISOString();
     const isoModDate = article.updatedat ? new Date(article.updatedat).toISOString() : isoPubDate;
@@ -311,8 +324,7 @@ module.exports = async (req, res) => {
       <div style="display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
         <span class="modal-tag saffron-bg" style="font-size:0.7rem; padding:4px 12px; border-radius:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-primary); background-color:var(--accent-saffron);">${escapeHtml(article.category || 'Politics')}</span>
         <span style="font-size:0.75rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;"><i data-lucide="calendar" style="width:12px;height:12px;"></i> ${escapeHtml(pubDate)}</span>
-        <span style="font-size:0.75rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> Audited Chronicle</span>
-        <span style="font-size:0.75rem; color:var(--accent-green); font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> Audited by Honestly Biased AI Engine (Gemini)</span>
+        ${authorBadgeHtml}
       </div>
 
       <h1 style="font-family:var(--font-heading); font-size:clamp(1.75rem, 4vw, 2.75rem); font-weight:800; line-height:1.2; margin-bottom:20px; color:var(--text-primary); text-shadow:0 2px 10px var(--shadow-color);">${escapeHtml(headline)}</h1>
