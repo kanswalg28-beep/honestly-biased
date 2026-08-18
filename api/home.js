@@ -51,6 +51,27 @@ function shortIdFromUuid(uuid) {
   return String(uuid).replace(/-/g, '').slice(-8);
 }
 
+function getArticleSlug(article) {
+  if (article.slug && article.slug.trim()) return article.slug.trim();
+  const headline = article.aiheadline || article.aiHeadline || article.title || '';
+  const words = headline
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .join('-');
+  return words || shortIdFromUuid(article.id);
+}
+
+function getArticleUrl(article) {
+  const region = (article.region || 'indian').toLowerCase().trim();
+  const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+  const r = validRegions.includes(region) ? region : 'indian';
+  const slug = getArticleSlug(article);
+  return `/${r}/${slug}`;
+}
+
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
   const E = {
@@ -95,9 +116,7 @@ function formatDate(isoString) {
 function formatTimeAgo(dateStr) {
   if (!dateStr) return '';
   try {
-    return new Date(dateStr).toLocaleTimeString('en-IN', {
-      timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
-    }) + ' IST';
+    return new Date(dateStr).toLocaleTimeString('en-IN', {\n      timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true\n    }) + ' IST';
   } catch (e) { return ''; }
 }
 
@@ -129,24 +148,23 @@ function cardTimeHtml(article) {
 }
 
 function cardLinkHtml(article) {
-  const shortId = shortIdFromUuid(article.id);
-  return `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
+  const url = getArticleUrl(article);
+  return `<a href="${escapeAttr(url)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
 }
 
 // Build a single bento card HTML (mirrors app.js exactly)
 function buildBentoCard(article, index) {
   const isInstagram = article.authortype === 'instagram';
-  const shortId = shortIdFromUuid(article.id);
+  const url = getArticleUrl(article);
   const rawHeadline = article.aiheadline || article.aiHeadline || article.title || 'Untitled Chronicle';
   const rawSummary = article.aisummary || article.aiSummary || article.description || article.summary || '';
-  const cardLink = `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(rawHeadline)}</a>`;
+  const cardLink = `<a href="${escapeAttr(url)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(rawHeadline)}</a>`;
   const badgeHtml = authorBadgeHtml(article.authortype);
   const catTag = categoryTagHtml(article.category);
   const timeHtml = cardTimeHtml(article);
   const biasHtml = biasAuditHtml(article.biasaudit || article.biasAudit);
   const summary = escapeHtml(rawSummary);
-  // Strip base64 data URIs from SSR — they bloat HTML by ~1MB
-  // Use gradient placeholder; app.js will restore from real Supabase URL on hydration
+  
   const rawImg = article.imageurl || '/assets/hero-bg.png';
   const isBase64 = rawImg.startsWith('data:image');
   const imgUrl = isBase64 ? '' : escapeAttr(rawImg);
@@ -155,7 +173,6 @@ function buildBentoCard(article, index) {
     : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
 
   if (index === 0) {
-    // FIRST POST: Same size as posts 2,3,4 (2x1 horizontal card)
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
@@ -181,7 +198,6 @@ function buildBentoCard(article, index) {
   }
 
   if (index >= 1 && index <= 3) {
-    // FEATURED HORIZONTALS: Next 3 articles as 2x1 cards
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
@@ -206,7 +222,6 @@ function buildBentoCard(article, index) {
     `;
   }
 
-  // STANDARD CARDS: 1x1 with images
   return `
     <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
       <div class="card-visual">
@@ -241,7 +256,7 @@ async function fetchLatestArticles(limit = 22) {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+      .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(limit);
@@ -257,10 +272,8 @@ async function fetchLatestArticles(limit = 22) {
 // Full HTML renderer
 // --------------------------------------------------------------------------
 async function renderHomepageHtml(articles) {
-  // Hero section is dynamically driven by the latest published article (articles[0])
   const heroArticle = articles[0] || null;
   const heroHeadline = heroArticle ? (heroArticle.aiheadline || heroArticle.aiHeadline || heroArticle.title || 'Deep Perspective') : 'Deep Perspective';
-  // Use ONLY the audited critical summary (aisummary) for the Hero Description
   const heroSummary = heroArticle ? stripTags(heroArticle.aisummary || heroArticle.aiSummary || heroArticle.description || heroArticle.summary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
   const heroImage = heroArticle ? (heroArticle.imageurl || heroArticle.imageUrl || '/assets/hero-bg.png') : '/assets/hero-bg.png';
   const heroByline = heroArticle ? (heroArticle.author || 'Honestly Biased Team') : 'Honestly Biased Team';
@@ -270,13 +283,9 @@ async function renderHomepageHtml(articles) {
   const heroPublishDate = heroArticle ? heroArticle.publishdate : new Date().toISOString();
   const heroTimeAgo = heroArticle ? (heroArticle.timeago || formatTimeAgo(heroPublishDate)) : formatTimeAgo(new Date().toISOString());
 
-  // Ticker highlights derived from top 10 articles
   const tickerItemsHtml = articles.slice(0, 10).map(a => `<span>${escapeHtml(a.aiheadline || a.aiHeadline || a.title)}</span>`).join('');
-
-  // Bento grid cards (first 22 articles from Supabase)
   const bentoCards = articles.map((a, i) => buildBentoCard(a, i)).join('\n');
 
-  // JSON-LD for homepage (WebSite + ItemList)
   const siteJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -291,12 +300,11 @@ async function renderHomepageHtml(articles) {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     'itemListElement': articles.slice(0, 22).map((a, i) => {
-      // Strip base64 data URIs from JSON-LD — they bloat HTML by ~1.5MB
       let img = a.imageurl || SITE + '/assets/hero-bg.png';
       if (img.startsWith('data:image')) img = SITE + '/assets/hero-bg.png';
       return {
         '@type': 'ListItem', 'position': i + 1,
-        'item': { '@type': 'NewsArticle', 'url': SITE + '/article/' + shortIdFromUuid(a.id), 'headline': a.aiheadline, 'image': img, 'datePublished': a.publishdate }
+        'item': { '@type': 'NewsArticle', 'url': SITE + getArticleUrl(a), 'headline': a.aiheadline, 'image': img, 'datePublished': a.publishdate }
       };
     })
   });
@@ -334,20 +342,15 @@ async function renderHomepageHtml(articles) {
 <script type="application/ld+json">${siteJsonLd}</script>
 <script type="application/ld+json">${listJsonLd}</script>
 
-<!-- Preconnect to critical external resources -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-<!-- Google Fonts (UI/UX Pro Max Tri-Stack) -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 
-<!-- Lucide Icons (bundled locally — no CDN dependency) -->
 <script src="/assets/lucide-local.js" defer></script>
 
-<!-- Preload hero image for LCP -->
 <link rel="preload" as="image" href="${escapeAttr(heroImage)}" type="image/webp">
 
-<!-- Core Stylesheet -->
 <link rel="preload" href="/style.css" as="style">
 <link rel="stylesheet" href="/style.css">
 </head>
@@ -355,7 +358,6 @@ async function renderHomepageHtml(articles) {
 <div id="read-progress-bar"></div>
 <a href="#main-content" class="skip-to-content">Skip to main content</a>
 
-<!-- STICKY GLASSMORPHIC HEADER -->
 <header class="main-header glass-element" id="main-header">
   <div class="header-container">
     <div class="header-left">
@@ -385,7 +387,6 @@ async function renderHomepageHtml(articles) {
 </header>
 
 <main id="main-content">
-  <!-- Dynamic Premium Region Selector Bar -->
   <nav class="top-region-bar glass-element" aria-label="Edition selector">
     <div class="top-region-container">
       <div class="region-tabs-container" id="region-tabs-container">
@@ -398,7 +399,6 @@ async function renderHomepageHtml(articles) {
     </div>
   </nav>
 
-  <!-- HERO SECTION -->
   <section class="hero-section" id="politics" data-site-content-block="hero">
     <div class="lens-canvas-container" id="lens-canvas-container" data-src="${escapeAttr(heroImage)}">
       <picture>
@@ -432,7 +432,7 @@ async function renderHomepageHtml(articles) {
               <span class="author-title" data-bind="byline_role">${escapeHtml(heroRole)}</span>
             </div>
           </div>
-          <a href="/article/${escapeAttr(shortIdFromUuid(heroArticle ? heroArticle.id : ''))}" class="btn btn-primary" aria-label="Read full analysis">
+          <a href="${escapeAttr(heroArticle ? getArticleUrl(heroArticle) : '/')}" class="btn btn-primary" aria-label="Read full analysis">
             <span data-bind="cta">Read Audit</span>
             <i data-lucide="arrow-up-right"></i>
           </a>
@@ -441,7 +441,6 @@ async function renderHomepageHtml(articles) {
     </div>
   </section>
 
-  <!-- BENTO BOX SECTION -->
   <section class="bento-section" id="satire">
     <div class="section-header" data-site-content-block="ledger_intro">
       <div class="title-with-accent">
@@ -463,7 +462,7 @@ async function renderHomepageHtml(articles) {
       <div style="display: flex; align-items: center; gap: 10px;">
         <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Page:</span>
         <button class="pagination-btn" id="prev-page" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
-        <span id="page-indicator" style="min-width: 60px; text-align: center; font-weight: 600;">1 / 1</span>
+        <span id=\"page-indicator\" style=\"min-width: 60px; text-align: center; font-weight: 600;\">1 / 1</span>
         <button class="pagination-btn" id="next-page" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
       </div>
     </div>
@@ -487,7 +486,6 @@ async function renderHomepageHtml(articles) {
     </div>
   </section>
 
-  <!-- ARTICLE DETAIL SECTION (SPA Page View) -->
   <section class="article-detail-section" id="article-detail-section" aria-hidden="true" style="display: none; padding: 120px 0 80px 0; min-height: 80vh;">
     <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 24px;">
       <div style="margin-bottom: 32px;">
@@ -516,7 +514,6 @@ async function renderHomepageHtml(articles) {
   </section>
 </main>
 
-<!-- PREMIUM HIGH-CONTRAST EDITORIAL FOOTER -->
 <footer class="editorial-footer">
   <div class="footer-grid">
     <div class="footer-brand-column">
@@ -554,7 +551,6 @@ async function renderHomepageHtml(articles) {
   </div>
 </footer>
 
-<!-- PREMIUM GLASSMORPHIC ARTICLE AUDIT READER MODAL -->
 <div class="audit-modal" id="audit-modal" aria-hidden="true" role="dialog">
   <div class="modal-backdrop" id="modal-backdrop"></div>
   <div class="modal-content glass-element">
@@ -569,33 +565,17 @@ async function renderHomepageHtml(articles) {
   </div>
 </div>
 
-<!-- Pre-hydration data for instant SSR → SPA transition -->
-<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
+<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id), slug: getArticleSlug(a), regionUrl: getArticleUrl(a) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
 
-<!-- Three.js is vendored locally and lazy-loaded by lens-effect.js when the hero scrolls into view -->
-
-<!-- Dynamic Theme and Page Logic -->
 <script src="/app.js" defer></script>
-
-<!-- Custom Three.js "Perspective Refraction Lens" Glass Displacement Effect -->
 <script src="/lens-effect.js" defer></script>
-
-<!-- Initializing Lucide Icons -->
 <script>window.addEventListener('DOMContentLoaded',()=>{if(window.lucide)lucide.createIcons();});</script>
 </body>
 </html>`;
 }
 
 // --------------------------------------------------------------------------
-// In-memory cache (survives within same serverless instance)
-// Key optimization: eliminates Supabase fetch + HTML render on every request
-// --------------------------------------------------------------------------
-// --------------------------------------------------------------------------
-// Image URL rewriter — proxies Supabase Storage URLs through Vercel CDN
-// Cuts Supabase egress by ~99% (Vercel CDN caches 1 year immutable, free)
-//
-// Original:  https://mprxrtesqgtznsinsezs.supabase.co/storage/v1/object/public/article-images/foo.webp
-// Proxied:   /img-proxy/storage/v1/object/public/article-images/foo.webp
+// In-memory cache & image proxy
 // --------------------------------------------------------------------------
 const SUPABASE_STORAGE_HOSTS = [
   'https://mprxrtesqgtznsinsezs.supabase.co',
@@ -607,7 +587,6 @@ function proxyImageUrls(text) {
   if (!text || typeof text !== 'string') return text;
   let out = text;
   for (const host of SUPABASE_STORAGE_HOSTS) {
-    // Replace host + storage path with local proxy path
     out = out.split(host + STORAGE_PATH).join('/img-proxy' + STORAGE_PATH);
   }
   return out;
@@ -616,13 +595,8 @@ function proxyImageUrls(text) {
 let cachedHtml = null;
 let cachedJson = null;
 let cacheTime = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_MS = 60 * 60 * 1000;
 
-// --------------------------------------------------------------------------
-// Image proxy handler — intercepts /img-proxy/* requests to cache Supabase
-// images at Vercel CDN (1 year immutable). Triggered via Vercel rewrite:
-//   /img-proxy/(.*) → /api/home?__imgproxy=1&__path=$1
-// --------------------------------------------------------------------------
 async function handleImgProxy(req, res) {
   const supabasePath = (req.query && req.query.__path) || '';
   if (!supabasePath || !supabasePath.startsWith('storage/v1/object/public/')) {
@@ -637,7 +611,6 @@ async function handleImgProxy(req, res) {
   const targetUrl = `${SUPABASE_URL.replace(/\/$/, '')}/${supabasePath}`;
 
   try {
-    // 1-year immutable cache at Vercel CDN — first request cached, all subsequent free
     res.setHeader('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -662,7 +635,6 @@ async function handleImgProxy(req, res) {
     const contentType = originRes.headers.get('content-type');
     if (contentType) res.setHeader('Content-Type', contentType);
 
-    // HEAD: just send headers, no body
     if (req.method === 'HEAD') {
       return res.status(200).end();
     }
@@ -678,8 +650,6 @@ async function handleImgProxy(req, res) {
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Image proxy short-circuit (triggered by /img-proxy/* rewrite)
-  // Accept GET and HEAD for cache-warmup by crawlers/CDNs
   if (req.query && req.query.__imgproxy) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return res.status(405).json({ error: 'Method not allowed' });
@@ -692,7 +662,6 @@ module.exports = async (req, res) => {
   const now = Date.now();
   const cacheValid = cachedHtml && (now - cacheTime) < CACHE_TTL_MS;
 
-  // Support /api/home/feed.json for SPA pagination
   if (req.url && req.url.includes('/feed.json')) {
     if (cacheValid && cachedJson) {
       res.setHeader('Content-Type', 'application/json');
@@ -702,12 +671,11 @@ module.exports = async (req, res) => {
     }
     const articles = await fetchLatestArticles(100);
     const feed = articles.map(a => {
-      const stripped = { ...a, shortId: shortIdFromUuid(a.id), timeago: formatTimeAgo(a.publishdate) };
+      const stripped = { ...a, shortId: shortIdFromUuid(a.id), slug: getArticleSlug(a), regionUrl: getArticleUrl(a), timeago: formatTimeAgo(a.publishdate) };
       if (a.imageurl && a.imageurl.startsWith('data:image')) {
         stripped.hasBase64Image = true;
         stripped.imageurl = '';
       } else if (a.imageurl) {
-        // Route through Vercel image proxy to reduce Supabase egress
         stripped.imageurl = proxyImageUrls(a.imageurl);
       }
       return stripped;
@@ -719,7 +687,6 @@ module.exports = async (req, res) => {
     return res.status(200).json(cachedJson);
   }
 
-  // HTML homepage — serve from cache if valid
   if (cacheValid) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
@@ -727,13 +694,11 @@ module.exports = async (req, res) => {
     return res.status(200).send(cachedHtml);
   }
 
-  // Cache miss — fetch fresh data
   const articles = await fetchLatestArticles(22);
   const html = proxyImageUrls(await renderHomepageHtml(articles));
   cachedHtml = html;
   cacheTime = now;
 
-  // Cache: 24h fresh (s-maxage=86400), 7d stale-while-revalidate (604800s)
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
   res.setHeader('Vary', 'User-Agent');
