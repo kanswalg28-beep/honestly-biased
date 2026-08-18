@@ -116,7 +116,12 @@ function formatDate(isoString) {
 function formatTimeAgo(dateStr) {
   if (!dateStr) return '';
   try {
-    return new Date(dateStr).toLocaleTimeString('en-IN', {\n      timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true\n    }) + ' IST';
+    return new Date(dateStr).toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) + ' IST';
   } catch (e) { return ''; }
 }
 
@@ -462,7 +467,7 @@ async function renderHomepageHtml(articles) {
       <div style="display: flex; align-items: center; gap: 10px;">
         <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Page:</span>
         <button class="pagination-btn" id="prev-page" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
-        <span id=\"page-indicator\" style=\"min-width: 60px; text-align: center; font-weight: 600;\">1 / 1</span>
+        <span id="page-indicator" style="min-width: 60px; text-align: center; font-weight: 600;">1 / 1</span>
         <button class="pagination-btn" id="next-page" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
       </div>
     </div>
