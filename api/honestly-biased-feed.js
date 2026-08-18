@@ -9,29 +9,23 @@ const DEFAULT_HIGHLIGHTS = [
 
 // ----------------------------------------------------------------------------
 // EGRESS GUARD: this endpoint is polled by app.js on EVERY homepage load.
-// Returning the full column set (incl. legacy base64 imageurl blobs) dragged
-// ~600MB/day across PostgREST. Fixes:
-//   1. In-memory TTL cache so repeated/polled loads inside a warm instance
-//      never hit PostgREST more than once per TTL window.
-//   2. Cache-Control header so edge/CDN + browsers revalidate instead of
-//      re-requesting raw on every visit.
-//   3. Strip any lingering base64 imageurl from the payload (the page has a
-//      gradient placeholder + hydration fallback for those rows).
-// The permanent fix is running scripts/migrate-base64-images.js (moves the
-// blobs to Storage). Until then we refuse to ship them over the wire.
 // ----------------------------------------------------------------------------
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let cached = null;
 let cacheTime = 0;
 
 async function getCustomArticles() {
-  const { data } = await supabase
+  if (!supabase) return [];
+  const { data, error } = await supabase
     .from('articles')
-    .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+    .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
     .eq('archived', false)
     .order('publishdate', { ascending: false })
     .limit(100);
-  // Do NOT ship legacy base64 image blobs over the wire — they inflate egress.
+  if (error) {
+    console.error('getCustomArticles error:', error.message);
+    return [];
+  }
   return (data || []).map(a => {
     if (a.imageurl && a.imageurl.startsWith('data:image')) {
       a.hasBase64Image = true;
