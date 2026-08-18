@@ -1,20 +1,12 @@
 // api/article.js — Server-Side Rendered article page.
 //
+// GET /api/article?region=<region>&slug=<slug>
 // GET /api/article?slug=<slug-or-uuid>
 //
 // Returns a fully-rendered HTML page for a single article, with full SEO
 // metadata (title, description, canonical, Open Graph, Twitter Card,
-// JSON-LD NewsArticle schema). Used as the rewrite destination for
-// /article/:slug so search engines (Google, Bing, DuckDuckGo, social
-// crawler bots) can index every post.
-//
-// For human visitors, the same HTML is sent — and a small client script
-// then re-binds event handlers (theme toggle, lucide icons). The content
-// itself is server-rendered so it renders without JS.
-//
-// Lookup supports both the article ID (uuid) and a derived short id
-// (last 8 hex chars of uuid) as the slug for backwards compatibility
-// with the legacy handler that cached short slugs in URLs.
+// JSON-LD NewsArticle schema).
+// Rewrites route /:region/:slug and /article/:slug here.
 
 const { supabase } = require('../db/client');
 
@@ -24,18 +16,13 @@ const SITE_TAGLINE = 'Independent Commentary, Satire & Political Audit';
 
 // --------------------------------------------------------------------------
 // In-memory article cache — survives warm serverless invocations
-// Key: slug or uuid; Value: { article, time }
+// Key: region:slug or slug or uuid; Value: { article, time }
 // TTL: 5 minutes (articles rarely change after publish)
 // --------------------------------------------------------------------------
 const articleCache = new Map();
 const ARTICLE_CACHE_TTL_MS = 5 * 60 * 1000;
 
-// Explicit column set for article queries. Contains ONLY columns that provably
-// exist on the `articles` table (verified against home/sitemap/rss/admin queries
-// and the CMS write path). Do NOT add site_content hero fields (readtime, byline,
-// byline_role, cta, eyebrow) or `originaltitle` — they are not article columns
-// and requesting them makes PostgREST reject the query, which 404s every page.
-const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat';
+const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat, slug';
 
 // --------------------------------------------------------------------------
 // Helpers
@@ -59,7 +46,6 @@ function escapeHtml(s) {
 }
 
 function escapeAttr(s) {
-  // Same as escapeHtml but defensive — strips control chars too
   return escapeHtml(s).replace(/[\u0000-\u001F\u007F]/g, '');
 }
 
@@ -80,26 +66,9 @@ function isoDate(s) {
   try { return new Date(s).toISOString(); } catch (e) { return new Date().toISOString(); }
 }
 
-// Derives a short, URL-friendly identifier from the article UUID.
-// Last 8 hex chars without dashes (e.g. "b1e7192c" from a full UUID).
-// Stable across reads because uuid is immutable.
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
   return String(uuid).replace(/-/g, '').slice(-8);
-}
-
-// Build a slug from the headline. Falls back to shortId if headline is empty.
-// Used only for *display* in case the URL pattern ever wants to be more friendly;
-// we still resolve by uuid/shortId for stability.
-function slugify(s) {
-  if (!s) return '';
-  return String(s)
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 80);
 }
 
 function normalizeRegion(r) {
@@ -108,27 +77,87 @@ function normalizeRegion(r) {
   return map[String(r).toLowerCase()] || 'Indian';
 }
 
+function getArticleSlug(article) {
+  if (article.slug && article.slug.trim()) return article.slug.trim();
+  const headline = article.aiheadline || article.title || '';
+  const words = headline
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .join('-');
+  return words || shortIdFromUuid(article.id);
+}
+
+function getArticleUrl(article) {
+  const region = (article.region || 'indian').toLowerCase().trim();
+  const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+  const r = validRegions.includes(region) ? region : 'indian';
+  const slug = getArticleSlug(article);
+  return `/${r}/${slug}`;
+}
+
 // --------------------------------------------------------------------------
 // Supabase resolution
 // --------------------------------------------------------------------------
 
-async function resolveArticleBySlug(slug) {
+async function resolveArticle(slug, region) {
   if (!supabase) return null;
   if (!slug) return null;
 
-  // Cache hit? (5 min TTL — articles rarely change after publish)
-  const cacheKey = slug.toLowerCase();
+  const normalizedSlug = String(slug).toLowerCase().trim();
+  const normalizedRegion = region ? String(region).toLowerCase().trim() : null;
+  const cacheKey = `${normalizedRegion || 'any'}:${normalizedSlug}`;
+  
   const cached = articleCache.get(cacheKey);
   if (cached && (Date.now() - cached.time) < ARTICLE_CACHE_TTL_MS) {
     return cached.article;
   }
 
-  // 1. Try by exact uuid / column id
-  if (/^[a-f0-9-]{36}$/.test(slug)) {
+  // 1. Try exact slug match with region if provided
+  if (normalizedRegion) {
+    try {
+      const { data } = await supabase
+        .from('articles')
+        .select(ARTICLE_SELECT)
+        .eq('slug', normalizedSlug)
+        .ilike('region', normalizedRegion)
+        .eq('archived', false)
+        .order('publishdate', { ascending: false })
+        .limit(1);
+      if (data && data[0]) {
+        articleCache.set(cacheKey, { article: data[0], time: Date.now() });
+        return data[0];
+      }
+    } catch (e) {
+      console.warn('slug+region query error:', e.message);
+    }
+  }
+
+  // 2. Try exact slug match across all regions
+  try {
     const { data } = await supabase
       .from('articles')
       .select(ARTICLE_SELECT)
-      .eq('id', slug)
+      .eq('slug', normalizedSlug)
+      .eq('archived', false)
+      .order('publishdate', { ascending: false })
+      .limit(1);
+    if (data && data[0]) {
+      articleCache.set(cacheKey, { article: data[0], time: Date.now() });
+      return data[0];
+    }
+  } catch (e) {
+    console.warn('slug query error:', e.message);
+  }
+
+  // 3. Try by exact uuid / column id
+  if (/^[a-f0-9-]{36}$/.test(normalizedSlug)) {
+    const { data } = await supabase
+      .from('articles')
+      .select(ARTICLE_SELECT)
+      .eq('id', normalizedSlug)
       .eq('archived', false)
       .maybeSingle();
     if (data) {
@@ -137,34 +166,7 @@ async function resolveArticleBySlug(slug) {
     }
   }
 
-  // 2. Try the dedicated `slug` column (exact, indexed, unlimited).
-  //    Populated by db/add_article_slug.sql for existing rows and auto-stamped
-  //    on insert by a trigger. If the column doesn't exist yet (migration not
-  //    run), the query returns no data and we fall through to the scan below.
-  if (slug.length <= 40) {
-    try {
-      const { data: bySlug } = await supabase
-        .from('articles')
-        .select(ARTICLE_SELECT)
-        .eq('slug', slug)
-        .eq('archived', false)
-        .order('publishdate', { ascending: false })
-        .limit(1);
-      if (bySlug && bySlug[0]) {
-        articleCache.set(cacheKey, { article: bySlug[0], time: Date.now() });
-        return bySlug[0];
-      }
-    } catch (e) {
-      // slug column missing (pre-migration) — fall through to the scan
-    }
-  }
-
-  // 3. Fallback: shortId suffix (last 8 hex of uuid). Paginate through ALL
-  //    non-archived articles (newest first) until matched — no arbitrary cap,
-  //    so every published article resolves regardless of catalog size.
-  //    EGRESS: scan only tiny (id, publishdate) rows; fetch the full row just
-  //    for the single match. Avoids pulling every article's fullblog just to
-  //    do an 8-char suffix match.
+  // 4. Fallback: shortId suffix (last 8 hex of uuid)
   const PAGE = 1000;
   let from = 0;
   while (true) {
@@ -175,7 +177,7 @@ async function resolveArticleBySlug(slug) {
       .order('publishdate', { ascending: false })
       .range(from, from + PAGE - 1);
     if (error || !list || list.length === 0) return null;
-    const match = list.find(a => shortIdFromUuid(a.id) === slug.toLowerCase());
+    const match = list.find(a => shortIdFromUuid(a.id) === normalizedSlug);
     if (match) {
       const { data: full } = await supabase
         .from('articles')
@@ -187,7 +189,7 @@ async function resolveArticleBySlug(slug) {
       articleCache.set(cacheKey, { article, time: Date.now() });
       return article;
     }
-    if (list.length < PAGE) return null; // last page, no match
+    if (list.length < PAGE) return null;
     from += PAGE;
   }
 }
@@ -206,6 +208,7 @@ function renderArticleHtml(article) {
   const byline    = article.authortype === 'admin' ? 'Editorial · ' + SITE_NAME : 'Audited by ' + SITE_NAME + ' AI Engine';
   const category  = article.category || 'Editorial';
   const region    = normalizeRegion(article.region);
+  const regionSlug = (article.region || 'indian').toLowerCase();
   const regionLabel = region === 'Indian' ? 'Indian Edition' : (region + ' Edition');
   const datePublished = isoDate(article.publishdate || article.createdat);
   const dateModified  = isoDate(article.updatedat || article.publishdate || article.createdat);
@@ -213,13 +216,13 @@ function renderArticleHtml(article) {
   const source    = article.originalsource || SITE_NAME + ' Editorial';
   const origUrl   = article.originalurl || '#';
 
-  // Pretty printable timeago (e.g. "July 1, 2026")
   let prettyDate = '';
   try {
     prettyDate = new Date(datePublished).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   } catch (e) { prettyDate = ''; }
 
-  const canonical = `${SITE}/article/${shortIdFromUuid(article.id)}`;
+  const articlePath = getArticleUrl(article);
+  const canonical = `${SITE}${articlePath}`;
   const seoDesc   = truncate(summary, 200);
 
   // NewsArticle JSON-LD structured data
@@ -249,8 +252,9 @@ function renderArticleHtml(article) {
     '@type': 'BreadcrumbList',
     'itemListElement': [
       { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': SITE + '/' },
-      { '@type': 'ListItem', 'position': 2, 'name': category, 'item': SITE + '/' + category.toLowerCase() },
-      { '@type': 'ListItem', 'position': 3, 'name': headline, 'item': canonical }
+      { '@type': 'ListItem', 'position': 2, 'name': regionLabel, 'item': `${SITE}/#/${regionSlug}` },
+      { '@type': 'ListItem', 'position': 3, 'name': category, 'item': `${SITE}/${category.toLowerCase()}` },
+      { '@type': 'ListItem', 'position': 4, 'name': headline, 'item': canonical }
     ]
   });
 
@@ -326,6 +330,8 @@ function renderArticleHtml(article) {
   <article class="glass-element article-page" style="padding: 48px; border-radius: 24px; border: 1px solid var(--border-color); margin-top: 120px; max-width: 900px; margin-left: auto; margin-right: auto;">
     <nav class="breadcrumbs" aria-label="Breadcrumb" style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 24px;">
       <a href="/" style="color: var(--text-muted); text-decoration: none;">Home</a>
+      <span class="bc-sep" style="margin: 0 8px;">›</span>
+      <a href="/#/${escapeAttr(regionSlug)}" style="color: var(--text-muted); text-decoration: none;">${escapeAttr(regionLabel)}</a>
       <span class="bc-sep" style="margin: 0 8px;">›</span>
       <a href="/${escapeAttr(category.toLowerCase())}" style="color: var(--text-muted); text-decoration: none;">${escapeAttr(category)}</a>
       <span class="bc-sep" style="margin: 0 8px;">›</span>
@@ -417,17 +423,14 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // The path arrives either as a query (?slug=…) from vercel rewrites or
-  // /api/article/:slug. Normalize both shapes.
   let slug = (req.query && req.query.slug) || '';
+  const region = (req.query && req.query.region) || '';
   if (!slug) {
-    const m = (req.url || '').match(/\/api\/article\/([^/?#]+)/);
+    const m = (req.url || '').match(/\/(?:berkshire|indian|world|uk|article)\/([^/?#]+)/i);
     if (m) slug = decodeURIComponent(m[1]);
   }
   slug = String(slug || '').trim();
 
-  // When supabase isn't reachable, still serve a "missing" 200 so that
-  // vercel's rewrite at least doesn't 404 — but emit a clear noindex.
   if (!supabase) {
     res.setHeader('X-Robots-Tag', 'noindex');
     return res.status(503).send('Article service unavailable');
@@ -440,7 +443,7 @@ module.exports = async (req, res) => {
 
   let article;
   try {
-    article = await resolveArticleBySlug(slug);
+    article = await resolveArticle(slug, region);
   } catch (e) {
     console.error('article resolve error:', e);
     return res.status(500).send('Internal error');
@@ -459,6 +462,18 @@ module.exports = async (req, res) => {
     );
   }
 
+  // 301 Permanent Redirect if accessed via legacy /article/:slug route
+  const rawUrl = req.url || '';
+  const isLegacyArticleRoute = !region && (rawUrl.includes('/article/') || rawUrl.startsWith('/api/article?slug='));
+  if (isLegacyArticleRoute) {
+    const targetUrl = getArticleUrl(article);
+    res.writeHead(301, {
+      Location: targetUrl,
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+    });
+    return res.end();
+  }
+
   // Cache control: serve fresh for humans, allow 5min CDN cache for crawlers
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Vary', 'User-Agent');
@@ -467,4 +482,3 @@ module.exports = async (req, res) => {
 
   return res.status(200).send(renderArticleHtml(article));
 };
-

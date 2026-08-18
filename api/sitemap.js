@@ -36,12 +36,25 @@ function shortIdFromUuid(uuid) {
   return String(uuid).replace(/-/g, '').slice(-8);
 }
 
+function getArticleSlug(article) {
+  if (article.slug && article.slug.trim()) return article.slug.trim();
+  const headline = article.aiheadline || article.title || '';
+  const words = headline
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .join('-');
+  return words || shortIdFromUuid(article.id);
+}
+
 async function fetchArticles() {
   if (!supabase) return [];
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, category, region, author, originalsource, imageurl, publishdate, updatedat, archived')
+      .select('id, aiheadline, category, region, author, originalsource, imageurl, publishdate, updatedat, archived, slug')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(2000);
@@ -74,9 +87,11 @@ function buildXml(articles) {
   }
 
   for (const a of articles) {
-    const shortId = shortIdFromUuid(a.id);
-    if (!shortId) continue;
-    const url = `${BASE_URL}/article/${shortId}`;
+    const region = (a.region || 'indian').toLowerCase().trim();
+    const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+    const r = validRegions.includes(region) ? region : 'indian';
+    const slug = getArticleSlug(a);
+    const url = `${BASE_URL}/${r}/${slug}`;
     const lastmod = (a.updatedat || a.publishdate || today).toString().split('T')[0];
     xml += '  <url>\n';
     xml += `    <loc>${url}</loc>\n`;

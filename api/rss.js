@@ -20,13 +20,26 @@ function shortIdFromUuid(uuid) {
   return String(uuid).replace(/-/g, '').slice(-8);
 }
 
+function getArticleSlug(article) {
+  if (article.slug && article.slug.trim()) return article.slug.trim();
+  const headline = article.aiheadline || article.title || '';
+  const words = headline
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .join('-');
+  return words || shortIdFromUuid(article.id);
+}
+
 function escapeXml(s) {
   if (s === null || s === undefined) return '';
   return String(s)
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 }
 
@@ -47,7 +60,7 @@ async function fetchArticles() {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, fullblog, category, region, author, originalsource, imageurl, publishdate, biasaudit')
+      .select('id, aiheadline, aisummary, fullblog, category, region, author, originalsource, imageurl, publishdate, biasaudit, slug')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(100);
@@ -81,7 +94,11 @@ function buildRss(articles) {
   xml += `    </image>\n`;
 
   for (const a of articles) {
-    const url = `${SITE}/article/${shortIdFromUuid(a.id)}`;
+    const region = (a.region || 'indian').toLowerCase().trim();
+    const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+    const r = validRegions.includes(region) ? region : 'indian';
+    const slug = getArticleSlug(a);
+    const url = `${SITE}/${r}/${slug}`;
     const title = a.aiheadline || a.title || 'Untitled';
     const desc = truncate(stripTags(a.aisummary) || stripTags(a.biasaudit) || stripTags(a.fullblog), 500);
     const content = truncate(
@@ -126,7 +143,6 @@ module.exports = async (req, res) => {
   const xml = buildRss(articles);
 
   res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
-  // RSS updates frequently — 15 min cache for crawlers, instant STALE on update
   res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900');
   return res.status(200).send(xml);
 };
