@@ -38,8 +38,12 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/(berkshire|indian|world|uk)/:slug",
+      "destination": "/api/article?region=$1&slug=$2"
+    },
+    {
       "source": "/article/:slug",
-      "destination": "/api/article?slug=:slug"
+      "destination": "/api/article?slug=$1"
     },
     {
       "source": "/politics",
@@ -154,4 +158,3 @@
   ],
   "crons": []
 }
-
