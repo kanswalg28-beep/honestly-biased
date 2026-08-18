@@ -7,31 +7,22 @@ const DEFAULT_HIGHLIGHTS = [
   "Supreme Court requests national media houses to explain what they meant by '100% objective facts.'"
 ];
 
-// ----------------------------------------------------------------------------
-// EGRESS GUARD: this endpoint is polled by app.js on EVERY homepage load.
-// Returning the full column set (incl. legacy base64 imageurl blobs) dragged
-// ~600MB/day across PostgREST. Fixes:
-//   1. In-memory TTL cache so repeated/polled loads inside a warm instance
-//      never hit PostgREST more than once per TTL window.
-//   2. Cache-Control header so edge/CDN + browsers revalidate instead of
-//      re-requesting raw on every visit.
-//   3. Strip any lingering base64 imageurl from the payload (the page has a
-//      gradient placeholder + hydration fallback for those rows).
-// The permanent fix is running scripts/migrate-base64-images.js (moves the
-// blobs to Storage). Until then we refuse to ship them over the wire.
-// ----------------------------------------------------------------------------
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 let cached = null;
 let cacheTime = 0;
 
-async function getCustomArticles() {
-  const { data } = await supabase
+async function getCustomArticles(limit = 500) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
     .from('articles')
-    .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+    .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
     .eq('archived', false)
     .order('publishdate', { ascending: false })
-    .limit(100);
-  // Do NOT ship legacy base64 image blobs over the wire — they inflate egress.
+    .limit(limit);
+  if (error) {
+    console.error('getCustomArticles error:', error.message);
+    return [];
+  }
   return (data || []).map(a => {
     if (a.imageurl && a.imageurl.startsWith('data:image')) {
       a.hasBase64Image = true;
@@ -43,14 +34,15 @@ async function getCustomArticles() {
 
 module.exports = async (req, res) => {
   try {
+    const limit = Math.min(parseInt(req.query && req.query.limit) || 500, 1000);
     const now = Date.now();
     let customArticles;
 
-    if (cached && (now - cacheTime) < CACHE_TTL_MS) {
+    if (cached && (now - cacheTime) < CACHE_TTL_MS && limit <= (cached.length || 0)) {
       customArticles = cached;
       res.setHeader('X-Cache', 'HIT');
     } else {
-      customArticles = await getCustomArticles();
+      customArticles = await getCustomArticles(Math.max(limit, 500));
       cached = customArticles;
       cacheTime = now;
       res.setHeader('X-Cache', 'MISS');
@@ -60,7 +52,7 @@ module.exports = async (req, res) => {
       ? customArticles.slice(0, 10).map(a => a.aiheadline || a.title).filter(Boolean)
       : DEFAULT_HIGHLIGHTS;
 
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
+    res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=120, stale-while-revalidate=300');
     return res.json({
       rhetoricMeter: {
         hyperbolePercentage: "84.2%",

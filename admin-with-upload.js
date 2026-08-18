@@ -1,954 +1,634 @@
+// admin-with-upload.js — Honestly Biased CMS Core Operations Controller
 document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
-    // CSRF TOKEN HANDLING
+    // STATE & VARIABLES
     // ==========================================================================
-    function getCsrfToken() {
-        const meta = document.getElementById('csrf-token');
-        return meta ? meta.content : '';
-    }
+    let allArticles = [];
+    let filteredArticles = [];
+    let currentPage = 1;
+    let itemsPerPage = 22;
+    let editingArticleId = null;
+    let csrfToken = null;
 
-    function setCsrfToken(token) {
-        const meta = document.getElementById('csrf-token');
-        if (meta) meta.content = token;
-    }
-
-    // Fetch CSRF token from auth endpoint (requires Basic Auth - browser handles natively)
-    async function fetchCsrfToken() {
-        try {
-            const res = await fetch('/api/admin/auth?type=csrf');
-            if (res.ok) {
-                const data = await res.json();
-                setCsrfToken(data.token);
-            }
-        } catch (e) {
-            // Fallback to legacy path
-            try {
-                const res2 = await fetch('/api/admin/csrf-token');
-                if (res2.ok) {
-                    const data = await res2.json();
-                    setCsrfToken(data.token);
-                }
-            } catch (e2) {
-                console.warn('CSRF token fetch failed:', e2);
-            }
-        }
-    }
-
-    // ==========================================================================
-    // TOAST NOTIFICATION SYSTEM
-    // ==========================================================================
-    function showToast(message, type = 'info', duration = 4000) {
-        const container = document.getElementById('toast-container') || createToastContainer();
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'polite');
-        toast.innerHTML = `
-            <span class="toast-message">${escapeHtml(message)}</span>
-            <button class="toast-close" aria-label="Dismiss">&times;</button>
-        `;
-        container.appendChild(toast);
-        
-        // Animate in
-        requestAnimationFrame(() => toast.classList.add('toast-show'));
-        
-        // Auto dismiss
-        const timer = setTimeout(() => dismissToast(toast), duration);
-        
-        // Manual dismiss
-        toast.querySelector('.toast-close').addEventListener('click', () => {
-            clearTimeout(timer);
-            dismissToast(toast);
-        });
-    }
-
-    function createToastContainer() {
-        const container = document.createElement('div');
-        container.id = 'toast-container';
-        container.style.cssText = `
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(container);
-        return container;
-    }
-
-    function dismissToast(toast) {
-        toast.classList.remove('toast-show');
-        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // ==========================================================================
-    // LOADING STATE HELPERS
-    // ==========================================================================
-    function setLoading(button, loading = true) {
-        if (!button) return;
-        if (loading) {
-            button.dataset.originalText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<i data-lucide="loader" class="spin" style="width:16px;height:16px;margin-right:8px;"></i> Working...';
-            lucide.createIcons();
-        } else {
-            button.disabled = false;
-            button.innerHTML = button.dataset.originalText || button.innerHTML;
-            lucide.createIcons();
-        }
-    }
-
-    // ==========================================================================
-        // STATE
-        // ==========================================================================
-        let allArticles = [];
-        let searchFilterQuery = "";
-
-        // Pagination state (uses new UI: per-page select + prev/next + page indicator)
-        let currentPage = 1;
-        let pageSize = 22; // Default, will be overridden by #admin-per-page-select
-        let totalPages = 1;
-        let totalArticles = 0;
-        let currentSortBy = 'publishdate';
-        let currentSortOrder = 'desc';
-
-        // SELECT DOM ELEMENTS
-        const adminArticlesList = document.getElementById('admin-articles-list');
-        const cmsArticleForm = document.getElementById('cms-article-form');
-        const searchInput = document.getElementById('cms-search');
-
-        // NEW Pagination UI elements (from admin.html)
-        const adminPerPageSelect = document.getElementById('admin-per-page-select');
-        const adminPrevPageBtn = document.getElementById('admin-prev-page');
-        const adminNextPageBtn = document.getElementById('admin-next-page');
-        const adminPageIndicator = document.getElementById('admin-page-indicator');
-
-    // STATS METRIC LABELS
+    // DOM Elements - Metrics
     const statTotal = document.getElementById('stat-total');
     const statEditorial = document.getElementById('stat-editorial');
     const statAi = document.getElementById('stat-ai');
     const statCategories = document.getElementById('stat-categories');
 
-    // FORM FIELDS - Article Form
-    const cmsArticleId = document.getElementById('cms-article-id');
-    const cmsCategory = document.getElementById('cms-category');
-    const cmsRegion = document.getElementById('cms-region');
-    const cmsSource = document.getElementById('cms-source');
-    const cmsHeadline = document.getElementById('cms-headline');
-    const cmsBiasAudit = document.getElementById('cms-bias-audit');
-    const cmsSummary = document.getElementById('cms-summary');
-    const cmsFullBlog = document.getElementById('cms-full-blog');
-    const cmsImageUrl = document.getElementById('cms-image-url');
-    const cmsOriginalUrl = document.getElementById('cms-original-url');
-    const cmsPreviewImg = document.getElementById('cms-preview-img');
-    const cmsPublishDate = document.getElementById('cms-publish-date');
+    // DOM Elements - Inventory List & Filters
+    const articlesContainer = document.getElementById('admin-articles-list');
+    const searchInput = document.getElementById('cms-search');
+    const sortBySelect = document.getElementById('cms-sort-by');
+    const sortOrderSelect = document.getElementById('cms-sort-order');
 
-    // FILE UPLOAD ELEMENTS - Article Form
-    const cmsImageUpload = document.getElementById('cms-image-upload');
-    const cmsImageUploadBtn = document.getElementById('cms-image-upload-btn');
-    const cmsImageUploadStatus = document.getElementById('cms-image-upload-status');
+    // DOM Elements - Pagination
+    const perPageSelect = document.getElementById('admin-per-page-select');
+    const prevPageBtn = document.getElementById('admin-prev-page');
+    const nextPageBtn = document.getElementById('admin-next-page');
+    const pageIndicator = document.getElementById('admin-page-indicator');
 
-    // HEADERS AND SUBMIT BUTTONS
-    const cmsFormTitle = document.getElementById('cms-form-title');
-    const cmsFormSubtitle = document.getElementById('cms-form-subtitle');
-    const btnCmsSubmit = document.getElementById('btn-cms-submit');
-    const btnCmsReset = document.getElementById('btn-cms-reset');
+    // DOM Elements - Article Editor Form
+    const articleForm = document.getElementById('cms-article-form');
+    const formTitle = document.getElementById('cms-form-title');
+    const formSubtitle = document.getElementById('cms-form-subtitle');
+    const articleIdInput = document.getElementById('cms-article-id');
+    const categoryInput = document.getElementById('cms-category');
+    const publishDateInput = document.getElementById('cms-publish-date');
+    const regionInput = document.getElementById('cms-region');
+    const sourceInput = document.getElementById('cms-source');
+    const headlineInput = document.getElementById('cms-headline');
+    const biasAuditInput = document.getElementById('cms-bias-audit');
+    const summaryInput = document.getElementById('cms-summary');
+    const fullBlogInput = document.getElementById('cms-full-blog');
+    const imageUrlInput = document.getElementById('cms-image-url');
+    const originalUrlInput = document.getElementById('cms-original-url');
+    const previewImg = document.getElementById('cms-preview-img');
+    const previewPlaceholder = document.getElementById('cms-preview-placeholder');
+    const btnSubmit = document.getElementById('btn-cms-submit');
+    const btnReset = document.getElementById('btn-cms-reset');
 
-    // HERO FORM ELEMENTS
-    const heroForm = document.getElementById('cms-hero-form');
-    const heroEyebrow = document.getElementById('hero-eyebrow');
-    const heroReadtime = document.getElementById('hero-readtime');
-    const heroHeadline = document.getElementById('hero-headline');
-    const heroBody = document.getElementById('hero-body');
-    const heroByline = document.getElementById('hero-byline');
-    const heroBylineRole = document.getElementById('hero-byline-role');
-    const heroCta = document.getElementById('hero-cta');
-    const heroImageUrl = document.getElementById('hero-image-url');
-    const heroImageUpload = document.getElementById('hero-image-upload');
-    const heroImageUploadBtn = document.getElementById('hero-image-upload-btn');
-    const heroImageUploadStatus = document.getElementById('hero-image-upload-status');
-    const heroPreviewImg = document.getElementById('hero-preview-img');
+    // DOM Elements - Image Upload
+    const imageUploadInput = document.getElementById('cms-image-upload');
+    const imageUploadBtn = document.getElementById('cms-image-upload-btn');
+    const imageUploadStatus = document.getElementById('cms-image-upload-status');
 
-    // HIGHLIGHTS FORM ELEMENTS
-    const highlightsForm = document.getElementById('cms-highlights-form');
-    const highlightsInput = document.getElementById('cms-highlights-input');
-    const btnHighlightsSubmit = document.getElementById('btn-highlights-submit');
-
-    // AUDIENCE DIRECTORY
+    // DOM Elements - Subscribers
     const subscribersList = document.getElementById('subscribers-list');
     const subCountBadge = document.getElementById('sub-count-badge');
     const btnExportSubscribers = document.getElementById('btn-export-subscribers');
 
-    // SORT CONTROLS
-    const sortBySelect = document.getElementById('cms-sort-by');
-    const sortOrderSelect = document.getElementById('cms-sort-order');
+    // Toast Container
+    const toastContainer = document.getElementById('toast-container');
 
     // ==========================================================================
-    // IMAGE UPLOAD TO SERVER (not base64)
+    // UTILITIES
     // ==========================================================================
-    async function uploadImageToServer(file, statusEl, btnEl) {
-        const validation = validateImageFile(file);
-        if (!validation.valid) {
-            showUploadStatus(statusEl, validation.error, 'error');
-            return null;
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function showToast(message, type = 'info') {
+        if (!toastContainer) {
+            alert(message);
+            return;
         }
+        const toast = document.createElement('div');
+        toast.className = `cms-toast ${type}`;
+        toast.style.cssText = `
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 18px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            background: rgba(14, 22, 34, 0.95); border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(16px);
+            color: ${type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#00e5ff')};
+            animation: fadeIn 0.2s ease-out; margin-bottom: 8px;
+        `;
+        toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
 
-        showUploadStatus(statusEl, `Uploading ${file.name}...`, 'info');
-        if (btnEl) btnEl.classList.add('uploading');
-
-        const formData = new FormData();
-        formData.append('image', file);
-
+    // ==========================================================================
+    // CSRF & API CLIENT
+    // ==========================================================================
+    async function getCsrfToken() {
+        if (csrfToken) return csrfToken;
         try {
-            const res = await fetch('/api/admin/upload', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-Token': getCsrfToken()
-                    // Basic Auth handled by browser natively
-                },
-                body: formData
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'Upload failed');
+            const res = await fetch('/api/admin/csrf');
+            if (res.ok) {
+                const data = await res.json();
+                csrfToken = data.csrfToken;
+                return csrfToken;
             }
-
-            const data = await res.json();
-            showUploadStatus(statusEl, `Uploaded: ${data.url}`, 'success');
-            if (btnEl) btnEl.classList.remove('uploading');
-            return data.url;
-        } catch (error) {
-            console.error('Image upload error:', error);
-            showUploadStatus(statusEl, error.message, 'error');
-            if (btnEl) btnEl.classList.remove('uploading');
-            return null;
+        } catch (e) {
+            console.warn('Could not fetch CSRF token:', e);
         }
+        return null;
     }
 
-    function validateImageFile(file, maxSizeMB = 2) {
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if (!allowedTypes.includes(file.type)) {
-            return { valid: false, error: 'Only JPEG, PNG, WebP, and GIF images are allowed.' };
-        }
-        if (file.size > maxSizeMB * 1024 * 1024) {
-            return { valid: false, error: `Image must be smaller than ${maxSizeMB}MB.` };
-        }
-        return { valid: true };
-    }
-
-    function showUploadStatus(statusEl, message, type) {
-        if (!statusEl) return;
-        statusEl.textContent = message;
-        statusEl.className = 'file-upload-status ' + type;
-    }
-
-    // Setup file upload handlers
-    function setupFileUpload(uploadInput, uploadBtn, statusEl, previewImg, urlInput) {
-        if (!uploadInput || !uploadBtn) return;
-
-        uploadBtn.addEventListener('click', () => uploadInput.click());
-
-        uploadInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const url = await uploadImageToServer(file, statusEl, uploadBtn);
-                if (url) {
-                    if (previewImg) previewImg.src = url;
-                    if (urlInput) urlInput.value = url;
-                }
-            }
-        });
-
-        // Drag and drop on preview area
-        if (previewImg && previewImg.parentElement) {
-            const wrapper = previewImg.parentElement;
-            wrapper.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                wrapper.style.borderColor = 'var(--accent-cyan)';
-                wrapper.style.background = 'rgba(0, 229, 255, 0.05)';
-            });
-            wrapper.addEventListener('dragleave', () => {
-                wrapper.style.borderColor = '';
-                wrapper.style.background = '';
-            });
-            wrapper.addEventListener('drop', async (e) => {
-                e.preventDefault();
-                wrapper.style.borderColor = '';
-                wrapper.style.background = '';
-                const file = e.dataTransfer.files[0];
-                if (file) {
-                    uploadInput.files = e.dataTransfer.files;
-                    const url = await uploadImageToServer(file, statusEl, uploadBtn);
-                    if (url) {
-                        if (previewImg) previewImg.src = url;
-                        if (urlInput) urlInput.value = url;
-                    }
-                }
-            });
-        }
-    }
-
-    // Sync URL input changes to preview (existing functionality)
-    function setupUrlSync(urlInput, previewImg) {
-        if (!urlInput) return;
-        urlInput.addEventListener('input', () => {
-            const url = urlInput.value.trim();
-            if (previewImg) previewImg.src = url || "./assets/hero-bg.png";
-        });
-        if (previewImg) {
-            previewImg.addEventListener('error', () => {
-                previewImg.src = "./assets/hero-bg.png";
-            });
-        }
-    }
-
-    // Initialize file uploads
-    setupFileUpload(cmsImageUpload, cmsImageUploadBtn, cmsImageUploadStatus, cmsPreviewImg, cmsImageUrl);
-    setupFileUpload(heroImageUpload, heroImageUploadBtn, heroImageUploadStatus, heroPreviewImg, heroImageUrl);
-    setupUrlSync(cmsImageUrl, cmsPreviewImg);
-    setupUrlSync(heroImageUrl, heroPreviewImg);
-
-    // ==========================================================================
-    // API HELPER WITH CSRF
-    // ==========================================================================
-    async function apiRequest(path, options = {}) {
-        const csrf = getCsrfToken();
+    async function apiRequest(url, options = {}) {
+        const token = await getCsrfToken();
         const headers = {
             'Content-Type': 'application/json',
-            ...options.headers
+            ...(options.headers || {})
         };
-        if (csrf) headers['X-CSRF-Token'] = csrf;
-        // Basic Auth handled by browser natively after 401 challenge
-
-        const res = await fetch(path, {
+        if (token) {
+            headers['X-CSRF-Token'] = token;
+        }
+        return fetch(url, {
             ...options,
             headers
         });
-
-        if (res.status === 401) {
-            showToast('Session expired. Please refresh the page.', 'error');
-            setTimeout(() => window.location.reload(), 2000);
-            throw new Error('Unauthorized');
-        }
-
-        return res;
     }
 
     // ==========================================================================
-        // CMS DATA LOADING (fetch all, client-side pagination)
-        // ==========================================================================
-        async function loadCMSData() {
-            console.log("📡 Fetching CMS articles for hydration...");
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+    // LOAD ARTICLES FROM DATABASE
+    // ==========================================================================
+    async function loadCMSData() {
+        try {
+            if (articlesContainer) {
+                articlesContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem;">
+                        <i data-lucide="loader" style="width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 8px; display: inline-block;"></i>
+                        <div>Loading ledger chronicle inventory...</div>
+                    </div>
+                `;
+                if (window.lucide) lucide.createIcons();
+            }
 
-                const response = await fetch('/api/admin/articles?limit=2000&_t=' + Date.now(), {
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
+            const res = await apiRequest('/api/admin/articles?limit=500&sortBy=publishdate&sortOrder=desc');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            allArticles = data.articles || [];
 
-                if (response.ok) {
-                    const data = await response.json();
-                    // Handle both old format (array) and new format (object with pagination)
-                    if (Array.isArray(data)) {
-                        allArticles = data;
-                    } else {
-                        allArticles = data.articles || [];
-                    }
-                    updateStatsMetrics();
-                    populateManagerList();
-                } else {
-                    console.error("Failed to load CMS articles:", response.status);
-                    showToast('Failed to load articles', 'error');
-                }
-            } catch (error) {
-                if (error.name !== 'AbortError') {
-                    console.error("CMS could not connect to server:", error);
-                    showToast('Cannot connect to server', 'error');
-                }
+            updateMetrics(allArticles);
+            applyFiltersAndRender();
+        } catch (err) {
+            console.error('loadCMSData error:', err);
+            showToast('Failed to load chronicles: ' + err.message, 'error');
+            if (articlesContainer) {
+                articlesContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #ef4444; font-size: 0.9rem;">
+                        <i data-lucide="alert-circle" style="width: 24px; height: 24px; margin-bottom: 8px; display: inline-block;"></i>
+                        <div>Error loading inventory from database. Please refresh.</div>
+                    </div>
+                `;
+                if (window.lucide) lucide.createIcons();
             }
         }
-    // ==========================================================================
-    // STATS & LIST RENDERING
-    // ==========================================================================
-    function updateStatsMetrics() {
-        if (!allArticles) return;
-        const total = allArticles.length;
-        const customCount = allArticles.filter(a => a.authortype === 'admin').length;
-        const aiCount = allArticles.filter(a => a.authortype === 'ai' || a.authortype === 'instagram').length;
-        const categoriesSeen = new Set();
-        allArticles.forEach(a => { if (a.category) categoriesSeen.add(a.category.toLowerCase().trim()); });
-        animateCounter(statTotal, total);
-        animateCounter(statEditorial, customCount);
-        animateCounter(statAi, aiCount);
-        animateCounter(statCategories, categoriesSeen.size);
     }
 
-    function animateCounter(element, targetValue) {
-        if (!element) return;
-        element.textContent = targetValue;
-    }
+    // ==========================================================================
+    // METRICS
+    // ==========================================================================
+    function updateMetrics(articles) {
+        if (statTotal) statTotal.textContent = articles.length;
 
-    function populateManagerList() {
-        if (!adminArticlesList) return;
-        adminArticlesList.innerHTML = '';
+        let editorialCount = 0;
+        let aiCount = 0;
+        const categories = new Set();
 
-        // Filter based on search input query
-        const query = searchFilterQuery.toLowerCase().trim();
-        const filtered = allArticles.filter(article => {
-            const matchHeadline = article.aiheadline && article.aiheadline.toLowerCase().includes(query);
-            const matchSource = article.originalsource && article.originalsource.toLowerCase().includes(query);
-            const matchCategory = article.category && article.category.toLowerCase().includes(query);
-            const matchAuthor = article.author && article.author.toLowerCase().includes(query);
-            return matchHeadline || matchSource || matchCategory || matchAuthor;
+        articles.forEach(a => {
+            if (a.authortype === 'admin' || (a.originalsource && a.originalsource.toLowerCase().includes('editorial'))) {
+                editorialCount++;
+            } else {
+                aiCount++;
+            }
+            if (a.category) categories.add(a.category.trim());
         });
 
-        // Client-side pagination
-        totalArticles = filtered.length;
-        totalPages = Math.ceil(totalArticles / pageSize);
-        if (currentPage > totalPages) currentPage = totalPages;
-        if (currentPage < 1) currentPage = 1;
+        if (statEditorial) statEditorial.textContent = editorialCount;
+        if (statAi) statAi.textContent = aiCount;
+        if (statCategories) statCategories.textContent = categories.size;
+    }
 
-        const startIdx = (currentPage - 1) * pageSize;
-        const endIdx = startIdx + pageSize;
-        const paginatedArticles = filtered.slice(startIdx, endIdx);
+    // ==========================================================================
+    // FILTERING, SORTING & RENDERING
+    // ==========================================================================
+    function applyFiltersAndRender() {
+        const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+        const sortBy = sortBySelect ? sortBySelect.value : 'publishdate';
+        const sortOrder = sortOrderSelect ? sortOrderSelect.value : 'desc';
 
-        if (paginatedArticles.length === 0) {
-            adminArticlesList.innerHTML = `
-                <div style="padding: 64px 24px; text-align: center; color: var(--text-muted);">
-                    <i data-lucide="search-code" style="width: 44px; height: 44px; margin-bottom: 16px; color: var(--accent-saffron); opacity: 0.7;"></i>
-                    <h3 style="font-family:var(--font-heading); font-size:1.1rem; color:var(--text-primary); margin-bottom:6px;">No chronicles matched criteria</h3>
-                    <p style="font-size: 0.8rem; max-width: 320px; margin: 0 auto;">Refine your search parameters or write a fresh custom editorial draft.</p>
+        // 1. Filter
+        filteredArticles = allArticles.filter(a => {
+            if (!query) return true;
+            const headline = (a.aiheadline || a.title || '').toLowerCase();
+            const summary = (a.aisummary || a.summary || '').toLowerCase();
+            const source = (a.originalsource || '').toLowerCase();
+            const category = (a.category || '').toLowerCase();
+            const region = (a.region || '').toLowerCase();
+            return headline.includes(query) || summary.includes(query) || source.includes(query) || category.includes(query) || region.includes(query);
+        });
+
+        // 2. Sort
+        filteredArticles.sort((a, b) => {
+            let valA = a[sortBy] || '';
+            let valB = b[sortBy] || '';
+
+            if (sortBy === 'publishdate') {
+                valA = new Date(valA).getTime() || 0;
+                valB = new Date(valB).getTime() || 0;
+            } else if (typeof valA === 'string') {
+                valA = valA.toLowerCase();
+                valB = valB.toLowerCase();
+            }
+
+            if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        renderInventoryGrid();
+    }
+
+    function renderInventoryGrid() {
+        if (!articlesContainer) return;
+
+        if (filteredArticles.length === 0) {
+            articlesContainer.innerHTML = `
+                <div style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+                    <i data-lucide="search-x" style="width: 32px; height: 32px; margin-bottom: 12px; display: inline-block; opacity: 0.5;"></i>
+                    <div style="font-weight: 700; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">No Chronicles Found</div>
+                    <p style="font-size: 0.8rem; margin: 0;">Try adjusting your search query or sorting options.</p>
                 </div>
             `;
-            lucide.createIcons();
-            updatePaginationUI();
+            if (pageIndicator) pageIndicator.textContent = '0 / 0';
+            if (prevPageBtn) prevPageBtn.disabled = true;
+            if (nextPageBtn) nextPageBtn.disabled = true;
+            if (window.lucide) lucide.createIcons();
             return;
         }
 
-        paginatedArticles.forEach(article => {
-            const card = document.createElement('div');
-            card.className = 'admin-card-row';
+        const totalPages = Math.ceil(filteredArticles.length / itemsPerPage) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
 
-            let badgeClass = 'badge-ai';
-            let badgeText = '🤖 AI Audited';
-            if (article.authortype === 'admin') {
-                badgeClass = 'badge-admin';
-                badgeText = '✍️ Editorial';
-            } else if (article.authortype === 'instagram') {
-                badgeClass = 'badge-instagram';
-                badgeText = '🎥 IG Video';
-            }
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = Math.min(start + itemsPerPage, filteredArticles.length);
+        const pageArticles = filteredArticles.slice(start, end);
 
-            const cardImageUrl = article.imageurl || article.imageUrl || "./assets/hero-bg.png";
-            const headline = article.aiheadline || article.aiHeadline || article.title || "Untitled Chronicle";
+        articlesContainer.innerHTML = pageArticles.map(article => {
+            const headline = article.aiheadline || article.title || 'Untitled Chronicle';
+            const summary = article.aisummary || article.summary || '';
+            const category = article.category || 'Politics';
+            const region = (article.region || 'indian').toUpperCase();
+            const image = article.imageurl || '/assets/hero-bg.png';
+            const dateStr = article.publishdate ? new Date(article.publishdate).toLocaleDateString('en-IN', {
+                day: 'numeric', month: 'short', year: 'numeric'
+            }) : 'Draft';
+            const isEditorial = article.authortype === 'admin' || (article.originalsource && article.originalsource.toLowerCase().includes('editorial'));
+            const isInstagram = article.authortype === 'instagram';
 
-            let regionBadge = '🇮🇳 Indian';
-            if (article.region === 'world') regionBadge = '🌐 World';
-            else if (article.region === 'uk') regionBadge = '🇬🇧 UK';
-            else if (article.region === 'berkshire') regionBadge = '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Berkshire';
-
-            card.innerHTML = `
-                <!-- Thumbnail Cover Preview -->
-                <div class="admin-row-thumb" style="background-image: url('${escapeHtml(cardImageUrl)}')">
-                    <span class="admin-row-tag">${escapeHtml(article.category || 'General')}</span>
-                </div>
-                
-                <!-- Card content meta -->
-                <div class="admin-row-body">
-                    <h3 class="admin-row-title">${escapeHtml(headline)}</h3>
-                    
-                    <div class="admin-row-meta">
-                        <span class="author-type-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
-                        <span class="author-type-badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-glass);">${escapeHtml(regionBadge)}</span>
-                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> ${escapeHtml(article.originalsource || article.originalSource || 'Honestly Biased')}</span>
-                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${escapeHtml(article.timeago || article.timeAgo || 'Just now')}</span>
+            return `
+                <div class="inventory-card glass-element" data-id="${article.id}" style="display: flex; gap: 16px; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); background: var(--bg-card); transition: all 0.2s;">
+                    <div style="width: 100px; height: 75px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: var(--bg-secondary); position: relative;">
+                        <img src="${escapeHtml(image)}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/assets/hero-bg.png';">
+                        <span style="position: absolute; bottom: 4px; left: 4px; font-size: 0.6rem; font-weight: 700; background: rgba(0,0,0,0.75); color: #fff; padding: 2px 6px; border-radius: 3px;">${escapeHtml(region)}</span>
+                    </div>
+                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                            <span class="modal-tag saffron-bg" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 3px; font-weight: 700;">${escapeHtml(category)}</span>
+                            <span style="font-size: 0.7rem; color: var(--text-muted);"><i data-lucide="calendar" style="width: 11px; height: 11px; vertical-align: -1px;"></i> ${escapeHtml(dateStr)}</span>
+                            ${isEditorial ? '<span style="font-size: 0.7rem; color: var(--accent-green); font-weight: 700;"><i data-lucide="pen-tool" style="width: 11px; height: 11px; vertical-align: -1px;"></i> Editorial</span>' : (isInstagram ? '<span style="font-size: 0.7rem; color: #e1306c; font-weight: 700;"><i data-lucide="instagram" style="width: 11px; height: 11px; vertical-align: -1px;"></i> IG Video</span>' : '<span style="font-size: 0.7rem; color: #00E5FF; font-weight: 700;"><i data-lucide="cpu" style="width: 11px; height: 11px; vertical-align: -1px;"></i> AI Audited</span>')}
+                        </div>
+                        <h4 style="font-size: 0.95rem; font-weight: 700; margin: 0 0 6px 0; color: var(--text-primary); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                            ${escapeHtml(headline)}
+                        </h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;">
+                            ${escapeHtml(summary)}
+                        </p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; flex-shrink: 0; border-left: 1px solid var(--border-color); padding-left: 14px;">
+                        <button type="button" class="btn-edit-article" data-id="${article.id}" title="Edit Chronicle" style="padding: 8px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
+                            <i data-lucide="edit-3" style="width: 15px; height: 15px;"></i>
+                        </button>
+                        <button type="button" class="btn-delete-article" data-id="${article.id}" title="Delete Chronicle" style="padding: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; color: #ef4444; cursor: pointer; transition: all 0.2s;">
+                            <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+                        </button>
                     </div>
                 </div>
-                
-                <!-- Action triggers with built-in SVG icons -->
-                <div class="admin-row-actions">
-                    <button class="btn-action act-edit" data-id="${escapeHtml(article.id)}" title="Refine Satirical Text">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                    </button>
-                    <button class="btn-action act-delete" data-id="${escapeHtml(article.id)}" title="Permanently Scrub News Card">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                    </button>
-                </div>
             `;
-            adminArticlesList.appendChild(card);
-        });
+        }).join('');
 
-        if (window.lucide && window.lucide.createIcons) {
-            lucide.createIcons();
+        if (pageIndicator) pageIndicator.textContent = `${currentPage} / ${totalPages}`;
+        if (prevPageBtn) {
+            prevPageBtn.disabled = currentPage <= 1;
+            prevPageBtn.style.opacity = currentPage <= 1 ? '0.3' : '1';
+        }
+        if (nextPageBtn) {
+            nextPageBtn.disabled = currentPage >= totalPages;
+            nextPageBtn.style.opacity = currentPage >= totalPages ? '0.3' : '1';
         }
 
-        // Bind Edit buttons
-        adminArticlesList.querySelectorAll('.act-edit').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const id = btn.getAttribute('data-id');
-                const article = allArticles.find(a => String(a.id) === String(id));
-                if (article) {
-                    loadArticleForEdit(id);
-                }
-            });
-        });
-
-        // Bind Delete buttons with CSRF authentication
-        adminArticlesList.querySelectorAll('.act-delete').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const id = btn.getAttribute('data-id');
-                const article = allArticles.find(a => String(a.id) === String(id));
-                if (!article) return;
-
-                const articleTitle = article.aiheadline || article.aiHeadline || article.title || "this article";
-                if (confirm(`Scrub and erase "${articleTitle}" permanently from the database cache?`)) {
-                    try {
-                        const response = await apiRequest(`/api/admin/articles/${id}`, {
-                            method: 'DELETE'
-                        });
-
-                        if (response.ok) {
-                            console.log(`🗑️ Successfully deleted article ID: ${id}`);
-                            allArticles = allArticles.filter(a => String(a.id) !== String(id));
-                            updateStatsMetrics();
-                            populateManagerList();
-                            showToast('Article erased from inventory', 'success');
-
-                            if (cmsArticleId && cmsArticleId.value === String(id)) {
-                                cancelEditMode();
-                            }
-                        } else {
-                            const errData = await response.json().catch(() => ({}));
-                            showToast(`Failed to delete: ${errData.error || 'Server error'}`, 'error');
-                        }
-                    } catch (err) {
-                        if (err.message !== 'Unauthorized') {
-                            console.error("Delete CMS request failed:", err);
-                            showToast("Cannot connect to backend server.", 'error');
-                        }
-                    }
-                }
-            });
-        });
-
-        updatePaginationUI();
+        if (window.lucide) lucide.createIcons();
     }
 
     // ==========================================================================
-    // PAGINATION UI UPDATE (uses new admin.html elements)
-    // ==========================================================================
-    function updatePaginationUI() {
-        if (adminPageIndicator) {
-            adminPageIndicator.textContent = `${currentPage} / ${totalPages}`;
-        }
-
-        if (adminPrevPageBtn) {
-            adminPrevPageBtn.disabled = currentPage <= 1;
-            adminPrevPageBtn.style.opacity = currentPage <= 1 ? '0.4' : '1';
-            adminPrevPageBtn.style.cursor = currentPage <= 1 ? 'not-allowed' : 'pointer';
-        }
-
-        if (adminNextPageBtn) {
-            adminNextPageBtn.disabled = currentPage >= totalPages;
-            adminNextPageBtn.style.opacity = currentPage >= totalPages ? '0.4' : '1';
-            adminNextPageBtn.style.cursor = currentPage >= totalPages ? 'not-allowed' : 'pointer';
-        }
-
-        // Also remove any old pagination container if it exists
-        const oldContainer = document.getElementById('pagination-container');
-        if (oldContainer) {
-            oldContainer.remove();
-        }
-    }
-
-    async function loadArticleForEdit(id) {
-        const article = allArticles.find(a => String(a.id) === String(id));
-        if (!article) return;
-
-        cmsArticleId.value = article.id;
-        cmsCategory.value = article.category;
-        cmsRegion.value = article.region || 'indian';
-        cmsSource.value = article.originalsource || '';
-        cmsHeadline.value = article.aiheadline;
-        cmsBiasAudit.value = article.biasaudit;
-        cmsSummary.value = article.aisummary;
-        if (cmsFullBlog) cmsFullBlog.value = article.fullblog || '';
-        cmsImageUrl.value = article.imageurl || '';
-        cmsOriginalUrl.value = article.originalurl || '';
-        
-        if (cmsPublishDate && article.publishdate) {
-            const d = new Date(article.publishdate);
-            const pad = n => String(n).padStart(2, '0');
-            cmsPublishDate.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        } else if (cmsPublishDate) {
-            cmsPublishDate.value = '';
-        }
-
-        cmsPreviewImg.src = article.imageurl || "./assets/hero-bg.png";
-        if (cmsImageUploadStatus) {
-            cmsImageUploadStatus.textContent = '';
-            cmsImageUploadStatus.className = 'file-upload-status';
-        }
-
-        cmsFormTitle.textContent = "Refine News Chronicle";
-        cmsFormSubtitle.textContent = "Refine satirical headlines, critical summaries or narrative bias audits.";
-        btnCmsSubmit.textContent = "Save Changes";
-        btnCmsReset.style.display = "inline-flex";
-        
-        document.querySelector('.cms-grid').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    async function deleteArticle(id) {
-        const article = allArticles.find(a => String(a.id) === String(id));
-        if (!article) return;
-
-        if (!confirm(`Scrub and erase "${article.aiheadline}" permanently from the database cache?`)) return;
-
-        try {
-            const res = await apiRequest(`/api/admin/articles/${id}`, { method: 'DELETE' });
-            
-            if (res.ok) {
-                showToast('Article deleted', 'success');
-                // Update local state and re-render (client-side pagination)
-                allArticles = allArticles.filter(a => String(a.id) !== String(id));
-                updateStatsMetrics();
-                populateManagerList();
-                if (cmsArticleId.value === String(id)) cancelEditMode();
-            } else {
-                showToast('Failed to delete article', 'error');
-            }
-        } catch (err) {
-            console.error("Delete failed:", err);
-            if (err.message !== 'Unauthorized') showToast('Cannot connect to server', 'error');
-        }
-    }
-
-    function cancelEditMode() {
-        if (cmsArticleForm) cmsArticleForm.reset();
-        if (cmsArticleId) cmsArticleId.value = '';
-        if (cmsFullBlog) cmsFullBlog.value = '';
-        if (cmsPublishDate) cmsPublishDate.value = '';
-        cmsPreviewImg.src = "./assets/hero-bg.png";
-        if (cmsImageUploadStatus) {
-            cmsImageUploadStatus.textContent = '';
-            cmsImageUploadStatus.className = 'file-upload-status';
-        }
-        cmsFormTitle.textContent = "Draft Custom Editorial";
-        cmsFormSubtitle.textContent = "Write an opinionated editorial that unshifts to the very front of the ledger.";
-        btnCmsSubmit.textContent = "Publish Editorial";
-        btnCmsReset.style.display = "none";
-    }
-
-    // ==========================================================================
-    // FORM SUBMISSIONS
-    // ==========================================================================
-    if (cmsArticleForm) {
-        cmsArticleForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            setLoading(btnCmsSubmit, true);
-
-            const id = cmsArticleId.value;
-            const payload = {
-                category: cmsCategory.value,
-                region: cmsRegion.value,
-                originalsource: cmsSource.value || "Honestly Biased Editorial Board",
-                aiheadline: cmsHeadline.value,
-                biasaudit: cmsBiasAudit.value,
-                aisummary: cmsSummary.value,
-                fullblog: cmsFullBlog ? cmsFullBlog.value : "",
-                imageurl: cmsImageUrl.value || "./assets/hero-bg.png",
-                originalurl: cmsOriginalUrl.value || "#",
-                publishdate: cmsPublishDate && cmsPublishDate.value ? new Date(cmsPublishDate.value).toISOString() : null
-            };
-
-            try {
-                const path = id ? `/api/admin/articles/${id}` : '/api/admin/articles';
-                const method = id ? 'PUT' : 'POST';
-                const res = await apiRequest(path, { method, body: JSON.stringify(payload) });
-
-                if (res.ok) {
-                    const saved = await res.json();
-                    showToast(id ? 'Article updated' : 'Article published', 'success');
-                    
-                    if (id) {
-                        const idx = allArticles.findIndex(a => String(a.id) === String(id));
-                        if (idx !== -1) allArticles[idx] = { ...allArticles[idx], ...saved };
-                    } else {
-                        allArticles.unshift(saved);
-                    }
-                    cancelEditMode();
-                    updateStatsMetrics();
-                    populateManagerList();
-                } else {
-                    const err = await res.json();
-                    showToast(err.error || 'Failed to save article', 'error');
-                }
-            } catch (err) {
-                console.error("Submit failed:", err);
-                if (err.message !== 'Unauthorized') showToast('Cannot connect to server', 'error');
-            } finally {
-                setLoading(btnCmsSubmit, false);
-            }
-        });
-    }
-
-    if (btnCmsReset) btnCmsReset.addEventListener('click', cancelEditMode);
-
-    // ==========================================================================
-    // HERO FORM
-    // ==========================================================================
-    if (heroForm) {
-        heroForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-hero-submit');
-            setLoading(btn, true);
-
-            const payload = {
-                updates: [{
-                    key: 'hero',
-                    value: {
-                        eyebrow: heroEyebrow.value,
-                        readtime: heroReadtime.value,
-                        headline: heroHeadline.value,
-                        body: heroBody.value,
-                        byline: heroByline.value,
-                        byline_role: heroBylineRole.value,
-                        cta: heroCta.value,
-                        image: heroImageUrl.value
-                    }
-                }]
-            };
-
-            try {
-                const res = await apiRequest('/api/admin/site-content', {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
-                });
-                if (res.ok) {
-                    showToast('Hero article updated', 'success');
-                    await loadHeroContent();
-                } else {
-                    showToast('Failed to save hero content', 'error');
-                }
-            } catch (err) {
-                if (err.message !== 'Unauthorized') showToast('Cannot connect to server', 'error');
-            } finally {
-                setLoading(btn, false);
-            }
-        });
-    }
-
-    async function loadHeroContent() {
-        if (!heroForm) return;
-        try {
-            const res = await fetch('/api/site-content?_t=' + Date.now());
-            if (res.ok) {
-                const content = await res.json();
-                const hero = content.hero || {};
-                if (heroEyebrow) heroEyebrow.value = hero.eyebrow || '';
-                if (heroReadtime) heroReadtime.value = hero.readtime || '';
-                if (heroHeadline) heroHeadline.value = hero.headline || '';
-                if (heroBody) heroBody.value = hero.body || '';
-                if (heroByline) heroByline.value = hero.byline || '';
-                if (heroBylineRole) heroBylineRole.value = hero.byline_role || '';
-                if (heroCta) heroCta.value = hero.cta || '';
-                if (heroImageUrl) heroImageUrl.value = hero.image || './assets/hero-bg.png';
-                if (heroPreviewImg) heroPreviewImg.src = hero.image || './assets/hero-bg.png';
-            }
-        } catch (e) {
-            console.error("Failed to load hero content:", e);
-        }
-    }
-
-    // ==========================================================================
-    // HIGHLIGHTS FORM (NEW HANDLER)
-    // ==========================================================================
-    if (highlightsForm) {
-        highlightsForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            setLoading(btnHighlightsSubmit, true);
-
-            const rawText = highlightsInput.value;
-            const highlightsArray = rawText.split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0);
-
-            if (highlightsArray.length === 0) {
-                showToast('Please enter at least one highlight', 'error');
-                setLoading(btnHighlightsSubmit, false);
-                return;
-            }
-
-            try {
-                const res = await apiRequest('/api/admin/highlights', {
-                    method: 'POST',
-                    body: JSON.stringify({ highlights: highlightsArray })
-                });
-                if (res.ok) {
-                    showToast('Highlights saved', 'success');
-                    await loadHighlightsConfig();
-                } else {
-                    showToast('Failed to save highlights', 'error');
-                }
-            } catch (err) {
-                if (err.message !== 'Unauthorized') showToast('Cannot connect to server', 'error');
-            } finally {
-                setLoading(btnHighlightsSubmit, false);
-            }
-        });
-    }
-
-    async function loadHighlightsConfig() {
-        try {
-            const res = await fetch('/api/admin/highlights');
-            if (res.ok) {
-                const highlights = await res.json();
-                if (highlightsInput) highlightsInput.value = highlights.join('\n');
-            }
-        } catch (error) {
-            console.error("Failed to load highlights:", error);
-        }
-    }
-
-
-    // ==========================================================================
-    // AUDIENCE DIRECTORY
-    // ==========================================================================
-    async function loadSubscribers() {
-        if (!subscribersList) return;
-        try {
-            const res = await fetch('/api/admin/subscribers');
-            if (res.ok) {
-                const subs = await res.json();
-                if (subCountBadge) subCountBadge.textContent = `${subs.length} ${subs.length === 1 ? 'Subscriber' : 'Subscribers'}`;
-                if (subs.length === 0) {
-                    subscribersList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding-top: 50px;">No subscribers loaded.</div>';
-                } else {
-                    subscribersList.innerHTML = subs.map(sub => {
-                        const localDate = new Date(sub.subscribedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' });
-                        return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1.5px solid rgba(255,255,255,0.02); font-size: 0.8rem;">
-                            <span style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 60%;">${escapeHtml(sub.email)}</span>
-                            <span style="color: var(--text-muted); font-size: 0.7rem;">${localDate}</span>
-                        </div>`;
-                    }).join('');
-                }
-            }
-        } catch (error) {
-            console.error("Failed to load subscribers:", error);
-        }
-    }
-
-    if (btnExportSubscribers) {
-        btnExportSubscribers.addEventListener('click', () => {
-            window.open('/api/admin/subscribers/export', '_blank');
-        });
-    }
-
-    loadSubscribers();
-    setInterval(loadSubscribers, 10000);
-
-    // ==========================================================================
-    // SEARCH
+    // EVENT LISTENERS - SEARCH, SORT, PAGINATION
     // ==========================================================================
     if (searchInput) {
         searchInput.addEventListener('input', () => {
-            searchFilterQuery = searchInput.value;
-            currentPage = 1; // Reset to first page on search
-            populateManagerList(); // Client-side filter + paginate
+            currentPage = 1;
+            applyFiltersAndRender();
         });
     }
 
-    // ==========================================================================
-    // SORT CONTROLS
-    // ==========================================================================
     if (sortBySelect) {
-        sortBySelect.value = currentSortBy;
         sortBySelect.addEventListener('change', () => {
-            currentSortBy = sortBySelect.value;
             currentPage = 1;
-            // Sort the allArticles array client-side
-            allArticles.sort((a, b) => {
-                const aVal = a[currentSortBy] || '';
-                const bVal = b[currentSortBy] || '';
-                if (currentSortOrder === 'asc') {
-                    return String(aVal).localeCompare(String(bVal));
-                } else {
-                    return String(bVal).localeCompare(String(aVal));
-                }
-            });
-            populateManagerList();
+            applyFiltersAndRender();
         });
     }
 
     if (sortOrderSelect) {
-        sortOrderSelect.value = currentSortOrder;
         sortOrderSelect.addEventListener('change', () => {
-            currentSortOrder = sortOrderSelect.value;
+            applyFiltersAndRender();
+        });
+    }
+
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', () => {
+            itemsPerPage = parseInt(perPageSelect.value) || 22;
             currentPage = 1;
-            // Re-sort with new order
-            allArticles.sort((a, b) => {
-                const aVal = a[currentSortBy] || '';
-                const bVal = b[currentSortBy] || '';
-                if (currentSortOrder === 'asc') {
-                    return String(aVal).localeCompare(String(bVal));
-                } else {
-                    return String(bVal).localeCompare(String(aVal));
-                }
-            });
-            populateManagerList();
+            renderInventoryGrid();
         });
     }
 
-    // ==========================================================================
-    // NEW PAGINATION UI EVENT LISTENERS (admin-per-page-select, admin-prev-page, admin-next-page)
-    // ==========================================================================
-    if (adminPerPageSelect) {
-        adminPerPageSelect.addEventListener('change', () => {
-            pageSize = parseInt(adminPerPageSelect.value);
-            currentPage = 1; // Reset to first page
-            populateManagerList();
-        });
-    }
-
-    if (adminPrevPageBtn) {
-        adminPrevPageBtn.addEventListener('click', () => {
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
             if (currentPage > 1) {
                 currentPage--;
-                populateManagerList();
+                renderInventoryGrid();
             }
         });
     }
 
-    if (adminNextPageBtn) {
-        adminNextPageBtn.addEventListener('click', () => {
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+            const totalPages = Math.ceil(filteredArticles.length / itemsPerPage) || 1;
             if (currentPage < totalPages) {
                 currentPage++;
-                populateManagerList();
+                renderInventoryGrid();
             }
         });
     }
 
     // ==========================================================================
-    // INIT
+    // ARTICLE EDIT & DELETE ACTIONS
+    // ==========================================================================
+    if (articlesContainer) {
+        articlesContainer.addEventListener('click', async (e) => {
+            const editBtn = e.target.closest('.btn-edit-article');
+            const deleteBtn = e.target.closest('.btn-delete-article');
+
+            if (editBtn) {
+                const id = editBtn.dataset.id;
+                const article = allArticles.find(a => String(a.id) === String(id));
+                if (!article) return;
+
+                editingArticleId = article.id;
+                if (articleIdInput) articleIdInput.value = article.id;
+                if (formTitle) formTitle.textContent = 'Refine Chronicle';
+                if (formSubtitle) formSubtitle.textContent = `Editing ID: ${article.id.slice(0, 8)}...`;
+                if (btnSubmit) btnSubmit.textContent = 'Save Changes';
+                if (btnReset) btnReset.style.display = 'inline-block';
+
+                if (headlineInput) headlineInput.value = article.aiheadline || article.title || '';
+                if (summaryInput) summaryInput.value = article.aisummary || article.summary || '';
+                if (biasAuditInput) biasAuditInput.value = article.biasaudit || '';
+                if (fullBlogInput) fullBlogInput.value = article.fullblog || '';
+                if (categoryInput) categoryInput.value = article.category || 'Politics';
+                if (regionInput) regionInput.value = (article.region || 'indian').toLowerCase();
+                if (sourceInput) sourceInput.value = article.originalsource || 'Editorial';
+                if (originalUrlInput) originalUrlInput.value = article.originalurl || '';
+                if (imageUrlInput) {
+                    imageUrlInput.value = article.imageurl || '';
+                    updateImagePreview(article.imageurl);
+                }
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                showToast('Editing chronicle loaded in form', 'info');
+            }
+
+            if (deleteBtn) {
+                const id = deleteBtn.dataset.id;
+                const article = allArticles.find(a => String(a.id) === String(id));
+                const headline = article ? (article.aiheadline || article.title) : 'this chronicle';
+
+                if (!confirm(`Are you sure you want to permanently delete "${headline}"?`)) return;
+
+                try {
+                    showToast('Deleting chronicle...', 'info');
+                    const res = await apiRequest(`/api/admin/articles?id=${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    showToast('Chronicle deleted successfully', 'success');
+
+                    allArticles = allArticles.filter(a => String(a.id) !== String(id));
+                    updateMetrics(allArticles);
+                    applyFiltersAndRender();
+                } catch (err) {
+                    showToast('Failed to delete: ' + err.message, 'error');
+                }
+            }
+        });
+    }
+
+    // ==========================================================================
+    // FORM RESET & SUBMISSION
+    // ==========================================================================
+    function resetArticleForm() {
+        editingArticleId = null;
+        if (articleIdInput) articleIdInput.value = '';
+        if (articleForm) articleForm.reset();
+        if (formTitle) formTitle.textContent = 'Author New Chronicle';
+        if (formSubtitle) formSubtitle.textContent = 'Draft fresh satire or uncompromised bias audit.';
+        if (btnSubmit) btnSubmit.textContent = 'Publish Editorial';
+        if (btnReset) btnReset.style.display = 'none';
+        updateImagePreview('');
+    }
+
+    if (btnReset) {
+        btnReset.addEventListener('click', resetArticleForm);
+    }
+
+    if (articleForm) {
+        articleForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const headline = (headlineInput ? headlineInput.value : '').trim();
+            const summary = (summaryInput ? summaryInput.value : '').trim();
+            const biasaudit = (biasAuditInput ? biasAuditInput.value : '').trim();
+            const fullblog = (fullBlogInput ? fullBlogInput.value : '').trim();
+            const category = (categoryInput ? categoryInput.value : 'Politics').trim();
+            const region = (regionInput ? regionInput.value : 'indian').toLowerCase().trim();
+            const originalsource = (sourceInput ? sourceInput.value : 'Editorial').trim();
+            const originalurl = (originalUrlInput ? originalUrlInput.value : '').trim();
+            const imageurl = (imageUrlInput ? imageUrlInput.value : '').trim();
+
+            if (!headline) {
+                showToast('Headline is required', 'warning');
+                return;
+            }
+
+            const payload = {
+                aiheadline: headline,
+                aisummary: summary,
+                biasaudit: biasaudit || summary,
+                fullblog: fullblog || summary,
+                category,
+                region,
+                originalsource,
+                originalurl,
+                imageurl,
+                authortype: 'admin',
+                author: 'Honestly Biased Editorial Board'
+            };
+
+            try {
+                showToast(editingArticleId ? 'Saving updates...' : 'Publishing chronicle...', 'info');
+                let res;
+
+                if (editingArticleId) {
+                    res = await apiRequest(`/api/admin/articles?id=${editingArticleId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    res = await apiRequest('/api/admin/articles', {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || `HTTP ${res.status}`);
+                }
+
+                showToast(editingArticleId ? 'Chronicle updated!' : 'Chronicle published!', 'success');
+                resetArticleForm();
+                await loadCMSData();
+            } catch (err) {
+                showToast('Publishing failed: ' + err.message, 'error');
+            }
+        });
+    }
+
+    // ==========================================================================
+    // IMAGE PREVIEW & UPLOAD
+    // ==========================================================================
+    function updateImagePreview(src) {
+        if (!previewImg) return;
+        if (src) {
+            previewImg.src = src;
+            previewImg.style.display = 'block';
+            if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+        } else {
+            previewImg.src = '';
+            previewImg.style.display = 'none';
+            if (previewPlaceholder) previewPlaceholder.style.display = 'block';
+        }
+    }
+
+    if (imageUrlInput) {
+        imageUrlInput.addEventListener('input', () => {
+            updateImagePreview(imageUrlInput.value.trim());
+        });
+    }
+
+    if (imageUploadBtn && imageUploadInput) {
+        imageUploadBtn.addEventListener('click', () => imageUploadInput.click());
+
+        imageUploadInput.addEventListener('change', async () => {
+            const file = imageUploadInput.files[0];
+            if (!file) return;
+
+            if (imageUploadStatus) imageUploadStatus.textContent = 'Uploading image...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const token = await getCsrfToken();
+                const headers = {};
+                if (token) headers['X-CSRF-Token'] = token;
+
+                const res = await fetch('/api/admin/upload', {
+                    method: 'POST',
+                    headers,
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error(`Upload failed (HTTP ${res.status})`);
+                const data = await res.json();
+
+                if (data.url) {
+                    if (imageUrlInput) imageUrlInput.value = data.url;
+                    updateImagePreview(data.url);
+                    if (imageUploadStatus) imageUploadStatus.textContent = 'Upload successful!';
+                    showToast('Image uploaded and linked!', 'success');
+                }
+            } catch (err) {
+                if (imageUploadStatus) imageUploadStatus.textContent = 'Upload error';
+                showToast('Image upload failed: ' + err.message, 'error');
+            }
+        });
+    }
+
+    // ==========================================================================
+    // SUBSCRIBERS LOAD & EXPORT
+    // ==========================================================================
+    async function loadSubscribers() {
+        try {
+            const res = await apiRequest('/api/admin/subscribers');
+            if (res.ok) {
+                const data = await res.json();
+                const subs = data.subscribers || [];
+                if (subCountBadge) subCountBadge.textContent = `${subs.length} Subscriber${subs.length === 1 ? '' : 's'}`;
+                if (subscribersList) {
+                    if (subs.length === 0) {
+                        subscribersList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding-top: 50px;">No subscribers found.</div>';
+                    } else {
+                        subscribersList.innerHTML = subs.map(s => `
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0;">
+                                <span style="color: var(--text-primary);">${escapeHtml(s.email)}</span>
+                                <span style="color: var(--text-muted); font-size: 0.7rem;">${escapeHtml(s.date || '')}</span>
+                            </div>
+                        `).join('');
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Subscribers load failed:', e);
+        }
+    }
+
+    if (btnExportSubscribers) {
+        btnExportSubscribers.addEventListener('click', async () => {
+            try {
+                const res = await apiRequest('/api/admin/subscribers');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const subs = data.subscribers || [];
+                if (subs.length === 0) {
+                    showToast('No subscribers to export', 'warning');
+                    return;
+                }
+                const csv = 'Email,Date\n' + subs.map(s => `"${s.email}","${s.date || ''}"`).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `honestly-biased-subscribers-${Date.now()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Exported subscribers CSV', 'success');
+            } catch (err) {
+                showToast('Export failed: ' + err.message, 'error');
+            }
+        });
+    }
+
+    // ==========================================================================
+    // INITIALIZATION
     // ==========================================================================
     (async function init() {
-        await fetchCsrfToken();
-        await loadHeroContent();
-        await loadHighlightsConfig();
         await loadCMSData();
-        lucide.createIcons();
+        await loadSubscribers();
+        if (window.lucide) lucide.createIcons();
     })();
 });

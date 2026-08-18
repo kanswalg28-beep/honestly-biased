@@ -1,0 +1,90 @@
+/* ==========================================================================
+   BENTO GRID ENHANCEMENTS — Better card hierarchy & interaction
+   ========================================================================== */
+.bento-card {
+    transition: transform var(--transition-medium), box-shadow var(--transition-medium), border-color var(--transition-fast);
+    will-change: transform, box-shadow;
+}
+
+.bento-card:focus-visible,
+.bento-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px var(--shadow-color), 0 0 0 1px var(--accent-saffron);
+    border-color: var(--accent-saffron);
+    z-index: 10;
+}
+
+/* Dynamic glow highlighting on hover */
+.bento-card:hover {
+    box-shadow: 0 12px 40px var(--shadow-color),
+                0 0 15px rgba(var(--accent-saffron-rgb), 0.12);
+}
+
+.bento-card.theme-green:hover {
+    box-shadow: 0 12px 40px var(--shadow-color),
+                0 0 15px rgba(var(--accent-green-rgb), 0.12);
+}
+
+.bento-card:hover .card-video-element {
+    transform: scale(1.03);
+}
+
+/* Bento card modular designs */
+.bento-card {
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border: 1px solid var(--border-color);
+    min-height: 420px;
+}
+
+/* Dynamic transform transitions */
+.bento-card:hover {
+    border-color: var(--border-color-hover);
+    transform: translateY(-4px);
+}
+
+/* Card Subcomponents */
+.card-visual {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+/* Ensure consistent image sizing across all card types */
+.bento-card .card-visual {
+    flex-shrink: 0;
+}
+
+/* For 2x2 cards, slightly taller visual area */
+.bento-span-2x2 .card-visual {
+    aspect-ratio: 16 / 10;
+}
+
+/* For 1x1 cards, standard 16:9 */
+.bento-span-1x1 .card-visual {
+    aspect-ratio: 16 / 9;
+}
+
+/* Cover Image background with premium zoom-out hover */
+.card-image-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-size: cover;
+    background-position: center;
+    transition: transform var(--transition-slow);
+    display: block;
+}
+
+.bento-card:hover .card-image-bg {
+    transform: scale(1.03);
+}
