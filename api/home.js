@@ -291,11 +291,11 @@ module.exports = async (req, res) => {
 <meta name="twitter:description" content="${escapeHtml(SITE_DESC)}">
 <meta name="twitter:image" content="${BASE_URL}/assets/og-image.png">
 
-<!-- Fonts & Tailwind -->
+<!-- Fonts & Stylesheet -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/tailwind-built.css">
+<link rel="stylesheet" href="/style.css">
 
 <!-- Structured Data -->
 <script type="application/ld+json">${siteJsonLd}</script>
