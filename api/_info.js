@@ -1,1 +1,1 @@
-// HB API router active
+__DELETE__
