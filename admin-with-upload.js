@@ -1,7 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ==========================================================================
-    // CSRF TOKEN HANDLING
-    // ==========================================================================
     function getCsrfToken() {
         const meta = document.getElementById('csrf-token');
         return meta ? meta.content : '';
@@ -12,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (meta) meta.content = token;
     }
 
-    // Fetch CSRF token from auth endpoint (requires Basic Auth - browser handles natively)
     async function fetchCsrfToken() {
         try {
             const res = await fetch('/api/admin/auth?type=csrf');
@@ -21,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 setCsrfToken(data.token);
             }
         } catch (e) {
-            // Fallback to legacy path
             try {
                 const res2 = await fetch('/api/admin/csrf-token');
                 if (res2.ok) {
@@ -34,9 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================================================
-    // TOAST NOTIFICATION SYSTEM
-    // ==========================================================================
     function showToast(message, type = 'info', duration = 4000) {
         const container = document.getElementById('toast-container') || createToastContainer();
         const toast = document.createElement('div');
@@ -49,13 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         container.appendChild(toast);
         
-        // Animate in
         requestAnimationFrame(() => toast.classList.add('toast-show'));
         
-        // Auto dismiss
         const timer = setTimeout(() => dismissToast(toast), duration);
         
-        // Manual dismiss
         toast.querySelector('.toast-close').addEventListener('click', () => {
             clearTimeout(timer);
             dismissToast(toast);
@@ -90,9 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.innerHTML;
     }
 
-    // ==========================================================================
-    // LOADING STATE HELPERS
-    // ==========================================================================
+    function generateSlug(headline) {
+        if (!headline) return '';
+        return headline
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .trim()
+            .split(/\s+/)
+            .slice(0, 4)
+            .join('-');
+    }
+
     function setLoading(button, loading = true) {
         if (!button) return;
         if (loading) {
@@ -107,38 +104,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================================================
-        // STATE
-        // ==========================================================================
-        let allArticles = [];
-        let searchFilterQuery = "";
+    let allArticles = [];
+    let searchFilterQuery = "";
 
-        // Pagination state (uses new UI: per-page select + prev/next + page indicator)
-        let currentPage = 1;
-        let pageSize = 22; // Default, will be overridden by #admin-per-page-select
-        let totalPages = 1;
-        let totalArticles = 0;
-        let currentSortBy = 'publishdate';
-        let currentSortOrder = 'desc';
+    let currentPage = 1;
+    let pageSize = 22;
+    let totalPages = 1;
+    let totalArticles = 0;
+    let currentSortBy = 'publishdate';
+    let currentSortOrder = 'desc';
 
-        // SELECT DOM ELEMENTS
-        const adminArticlesList = document.getElementById('admin-articles-list');
-        const cmsArticleForm = document.getElementById('cms-article-form');
-        const searchInput = document.getElementById('cms-search');
+    const adminArticlesList = document.getElementById('admin-articles-list');
+    const cmsArticleForm = document.getElementById('cms-article-form');
+    const searchInput = document.getElementById('cms-search');
 
-        // NEW Pagination UI elements (from admin.html)
-        const adminPerPageSelect = document.getElementById('admin-per-page-select');
-        const adminPrevPageBtn = document.getElementById('admin-prev-page');
-        const adminNextPageBtn = document.getElementById('admin-next-page');
-        const adminPageIndicator = document.getElementById('admin-page-indicator');
+    const adminPerPageSelect = document.getElementById('admin-per-page-select');
+    const adminPrevPageBtn = document.getElementById('admin-prev-page');
+    const adminNextPageBtn = document.getElementById('admin-next-page');
+    const adminPageIndicator = document.getElementById('admin-page-indicator');
 
-    // STATS METRIC LABELS
     const statTotal = document.getElementById('stat-total');
     const statEditorial = document.getElementById('stat-editorial');
     const statAi = document.getElementById('stat-ai');
     const statCategories = document.getElementById('stat-categories');
 
-    // FORM FIELDS - Article Form
     const cmsArticleId = document.getElementById('cms-article-id');
     const cmsCategory = document.getElementById('cms-category');
     const cmsRegion = document.getElementById('cms-region');
@@ -152,18 +141,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const cmsPreviewImg = document.getElementById('cms-preview-img');
     const cmsPublishDate = document.getElementById('cms-publish-date');
 
-    // FILE UPLOAD ELEMENTS - Article Form
     const cmsImageUpload = document.getElementById('cms-image-upload');
     const cmsImageUploadBtn = document.getElementById('cms-image-upload-btn');
     const cmsImageUploadStatus = document.getElementById('cms-image-upload-status');
 
-    // HEADERS AND SUBMIT BUTTONS
     const cmsFormTitle = document.getElementById('cms-form-title');
     const cmsFormSubtitle = document.getElementById('cms-form-subtitle');
     const btnCmsSubmit = document.getElementById('btn-cms-submit');
     const btnCmsReset = document.getElementById('btn-cms-reset');
 
-    // HERO FORM ELEMENTS
     const heroForm = document.getElementById('cms-hero-form');
     const heroEyebrow = document.getElementById('hero-eyebrow');
     const heroReadtime = document.getElementById('hero-readtime');
@@ -178,23 +164,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroImageUploadStatus = document.getElementById('hero-image-upload-status');
     const heroPreviewImg = document.getElementById('hero-preview-img');
 
-    // HIGHLIGHTS FORM ELEMENTS
     const highlightsForm = document.getElementById('cms-highlights-form');
     const highlightsInput = document.getElementById('cms-highlights-input');
     const btnHighlightsSubmit = document.getElementById('btn-highlights-submit');
 
-    // AUDIENCE DIRECTORY
     const subscribersList = document.getElementById('subscribers-list');
     const subCountBadge = document.getElementById('sub-count-badge');
     const btnExportSubscribers = document.getElementById('btn-export-subscribers');
 
-    // SORT CONTROLS
     const sortBySelect = document.getElementById('cms-sort-by');
     const sortOrderSelect = document.getElementById('cms-sort-order');
 
-    // ==========================================================================
-    // IMAGE UPLOAD TO SERVER (not base64)
-    // ==========================================================================
     async function uploadImageToServer(file, statusEl, btnEl) {
         const validation = validateImageFile(file);
         if (!validation.valid) {
@@ -213,7 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'X-CSRF-Token': getCsrfToken()
-                    // Basic Auth handled by browser natively
                 },
                 body: formData
             });
@@ -252,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statusEl.className = 'file-upload-status ' + type;
     }
 
-    // Setup file upload handlers
     function setupFileUpload(uploadInput, uploadBtn, statusEl, previewImg, urlInput) {
         if (!uploadInput || !uploadBtn) return;
 
@@ -269,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Drag and drop on preview area
         if (previewImg && previewImg.parentElement) {
             const wrapper = previewImg.parentElement;
             wrapper.addEventListener('dragover', (e) => {
@@ -298,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Sync URL input changes to preview (existing functionality)
     function setupUrlSync(urlInput, previewImg) {
         if (!urlInput) return;
         urlInput.addEventListener('input', () => {
@@ -312,15 +288,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Initialize file uploads
     setupFileUpload(cmsImageUpload, cmsImageUploadBtn, cmsImageUploadStatus, cmsPreviewImg, cmsImageUrl);
     setupFileUpload(heroImageUpload, heroImageUploadBtn, heroImageUploadStatus, heroPreviewImg, heroImageUrl);
     setupUrlSync(cmsImageUrl, cmsPreviewImg);
     setupUrlSync(heroImageUrl, heroPreviewImg);
 
-    // ==========================================================================
-    // API HELPER WITH CSRF
-    // ==========================================================================
     async function apiRequest(path, options = {}) {
         const csrf = getCsrfToken();
         const headers = {
@@ -328,7 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ...options.headers
         };
         if (csrf) headers['X-CSRF-Token'] = csrf;
-        // Basic Auth handled by browser natively after 401 challenge
 
         const res = await fetch(path, {
             ...options,
@@ -344,44 +315,38 @@ document.addEventListener('DOMContentLoaded', () => {
         return res;
     }
 
-    // ==========================================================================
-        // CMS DATA LOADING (fetch all, client-side pagination)
-        // ==========================================================================
-        async function loadCMSData() {
-            console.log("📡 Fetching CMS articles for hydration...");
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+    async function loadCMSData() {
+        console.log("📡 Fetching CMS articles for hydration...");
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-                const response = await fetch('/api/admin/articles?limit=2000&_t=' + Date.now(), {
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
+            const response = await fetch('/api/admin/articles?limit=2000&_t=' + Date.now(), {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
 
-                if (response.ok) {
-                    const data = await response.json();
-                    // Handle both old format (array) and new format (object with pagination)
-                    if (Array.isArray(data)) {
-                        allArticles = data;
-                    } else {
-                        allArticles = data.articles || [];
-                    }
-                    updateStatsMetrics();
-                    populateManagerList();
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    allArticles = data;
                 } else {
-                    console.error("Failed to load CMS articles:", response.status);
-                    showToast('Failed to load articles', 'error');
+                    allArticles = data.articles || [];
                 }
-            } catch (error) {
-                if (error.name !== 'AbortError') {
-                    console.error("CMS could not connect to server:", error);
-                    showToast('Cannot connect to server', 'error');
-                }
+                updateStatsMetrics();
+                populateManagerList();
+            } else {
+                console.error("Failed to load CMS articles:", response.status);
+                showToast('Failed to load articles', 'error');
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error("CMS could not connect to server:", error);
+                showToast('Cannot connect to server', 'error');
             }
         }
-    // ==========================================================================
-    // STATS & LIST RENDERING
-    // ==========================================================================
+    }
+
     function updateStatsMetrics() {
         if (!allArticles) return;
         const total = allArticles.length;
@@ -404,7 +369,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!adminArticlesList) return;
         adminArticlesList.innerHTML = '';
 
-        // Filter based on search input query
         const query = searchFilterQuery.toLowerCase().trim();
         const filtered = allArticles.filter(article => {
             const matchHeadline = article.aiheadline && article.aiheadline.toLowerCase().includes(query);
@@ -414,7 +378,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return matchHeadline || matchSource || matchCategory || matchAuthor;
         });
 
-        // Client-side pagination
         totalArticles = filtered.length;
         totalPages = Math.ceil(totalArticles / pageSize);
         if (currentPage > totalPages) currentPage = totalPages;
@@ -460,12 +423,10 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (article.region === 'berkshire') regionBadge = '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Berkshire';
 
             card.innerHTML = `
-                <!-- Thumbnail Cover Preview -->
                 <div class="admin-row-thumb" style="background-image: url('${escapeHtml(cardImageUrl)}')">
                     <span class="admin-row-tag">${escapeHtml(article.category || 'General')}</span>
                 </div>
                 
-                <!-- Card content meta -->
                 <div class="admin-row-body">
                     <h3 class="admin-row-title">${escapeHtml(headline)}</h3>
                     
@@ -477,7 +438,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 
-                <!-- Action triggers with built-in SVG icons -->
                 <div class="admin-row-actions">
                     <button class="btn-action act-edit" data-id="${escapeHtml(article.id)}" title="Refine Satirical Text">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -494,7 +454,6 @@ document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
         }
 
-        // Bind Edit buttons
         adminArticlesList.querySelectorAll('.act-edit').forEach(btn => {
             btn.addEventListener('click', () => {
                 const id = btn.getAttribute('data-id');
@@ -505,7 +464,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Bind Delete buttons with CSRF authentication
         adminArticlesList.querySelectorAll('.act-delete').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -547,9 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePaginationUI();
     }
 
-    // ==========================================================================
-    // PAGINATION UI UPDATE (uses new admin.html elements)
-    // ==========================================================================
     function updatePaginationUI() {
         if (adminPageIndicator) {
             adminPageIndicator.textContent = `${currentPage} / ${totalPages}`;
@@ -567,7 +522,6 @@ document.addEventListener('DOMContentLoaded', () => {
             adminNextPageBtn.style.cursor = currentPage >= totalPages ? 'not-allowed' : 'pointer';
         }
 
-        // Also remove any old pagination container if it exists
         const oldContainer = document.getElementById('pagination-container');
         if (oldContainer) {
             oldContainer.remove();
@@ -622,7 +576,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (res.ok) {
                 showToast('Article deleted', 'success');
-                // Update local state and re-render (client-side pagination)
                 allArticles = allArticles.filter(a => String(a.id) !== String(id));
                 updateStatsMetrics();
                 populateManagerList();
@@ -652,9 +605,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnCmsReset.style.display = "none";
     }
 
-    // ==========================================================================
-    // FORM SUBMISSIONS
-    // ==========================================================================
     if (cmsArticleForm) {
         cmsArticleForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -671,6 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fullblog: cmsFullBlog ? cmsFullBlog.value : "",
                 imageurl: cmsImageUrl.value || "./assets/hero-bg.png",
                 originalurl: cmsOriginalUrl.value || "#",
+                slug: generateSlug(cmsHeadline.value),
                 publishdate: cmsPublishDate && cmsPublishDate.value ? new Date(cmsPublishDate.value).toISOString() : null
             };
 
@@ -707,9 +658,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnCmsReset) btnCmsReset.addEventListener('click', cancelEditMode);
 
-    // ==========================================================================
-    // HERO FORM
-    // ==========================================================================
     if (heroForm) {
         heroForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -773,9 +721,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================================================
-    // HIGHLIGHTS FORM (NEW HANDLER)
-    // ==========================================================================
     if (highlightsForm) {
         highlightsForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -823,10 +768,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
-    // ==========================================================================
-    // AUDIENCE DIRECTORY
-    // ==========================================================================
     async function loadSubscribers() {
         if (!subscribersList) return;
         try {
@@ -860,26 +801,19 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSubscribers();
     setInterval(loadSubscribers, 10000);
 
-    // ==========================================================================
-    // SEARCH
-    // ==========================================================================
     if (searchInput) {
         searchInput.addEventListener('input', () => {
             searchFilterQuery = searchInput.value;
-            currentPage = 1; // Reset to first page on search
-            populateManagerList(); // Client-side filter + paginate
+            currentPage = 1;
+            populateManagerList();
         });
     }
 
-    // ==========================================================================
-    // SORT CONTROLS
-    // ==========================================================================
     if (sortBySelect) {
         sortBySelect.value = currentSortBy;
         sortBySelect.addEventListener('change', () => {
             currentSortBy = sortBySelect.value;
             currentPage = 1;
-            // Sort the allArticles array client-side
             allArticles.sort((a, b) => {
                 const aVal = a[currentSortBy] || '';
                 const bVal = b[currentSortBy] || '';
@@ -898,7 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
         sortOrderSelect.addEventListener('change', () => {
             currentSortOrder = sortOrderSelect.value;
             currentPage = 1;
-            // Re-sort with new order
             allArticles.sort((a, b) => {
                 const aVal = a[currentSortBy] || '';
                 const bVal = b[currentSortBy] || '';
@@ -912,13 +845,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================================================
-    // NEW PAGINATION UI EVENT LISTENERS (admin-per-page-select, admin-prev-page, admin-next-page)
-    // ==========================================================================
     if (adminPerPageSelect) {
         adminPerPageSelect.addEventListener('change', () => {
             pageSize = parseInt(adminPerPageSelect.value);
-            currentPage = 1; // Reset to first page
+            currentPage = 1;
             populateManagerList();
         });
     }
@@ -941,9 +871,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================================================
-    // INIT
-    // ==========================================================================
     (async function init() {
         await fetchCsrfToken();
         await loadHeroContent();

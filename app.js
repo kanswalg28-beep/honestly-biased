@@ -18,16 +18,11 @@ async function hydrateSiteContent() {
         // network down — fall through, blocks keep baked defaults
     }
 
-    // Walk all blocks. Each block scope makes bind keys scoped.
     for (const blockNode of document.querySelectorAll('[data-site-content-block]')) {
         const blockKey = blockNode.dataset.siteContentBlock;
         const data = payload[blockKey];
-        if (!data) continue; // no DB row -> keep HTML fallback
+        if (!data) continue;
 
-        // === Featured-cards: lookup matched doc by data-featured-id ===
-        // The CMS payload key is "featured" (one row, array of docs each with an
-        // id). Each card in the page declares data-featured-id="dpdp|varanasi|..."
-        // and we look the doc up by that id, so the bind spans reflect that doc.
         if (blockKey === 'featured' || blockKey === 'featured_card') {
             const fid = blockNode.dataset.featuredId;
             const docs = Array.isArray(data.docs) ? data.docs : [];
@@ -40,17 +35,14 @@ async function hydrateSiteContent() {
             continue;
         }
 
-        // === Poll: rebuild the option rows from data.options array ===
         if (blockKey === 'poll') {
             const form = blockNode.querySelector('.poll-form');
             if (form && Array.isArray(data.options)) {
-                // hydrate header / prompt text
                 blockNode.querySelectorAll('[data-bind]').forEach(node => {
                     if (node.dataset.bind === 'option_template') return;
                     const k = node.dataset.bind;
                     if (data[k] != null) node.textContent = String(data[k]);
                 });
-                // rebuild the three option buttons
                 form.innerHTML = '';
                 data.options.slice(0, 6).forEach(opt => {
                     const btn = document.createElement('button');
@@ -67,7 +59,6 @@ async function hydrateSiteContent() {
             continue;
         }
 
-        // === Standards list: rebuild the <ul> from data.items ===
         if (blockKey === 'standards' && Array.isArray(data.items)) {
             const ul = blockNode.querySelector('ul');
             if (ul) {
@@ -84,32 +75,22 @@ async function hydrateSiteContent() {
             continue;
         }
 
-        // === Generic scalar block: replace each leaf's textContent ===
         blockNode.querySelectorAll('[data-bind]').forEach(node => {
             const k = node.dataset.bind;
             if (data[k] != null) node.textContent = String(data[k]);
         });
 
-        // === Hero: update background image if present ===
         if (blockKey === 'hero' && data.image) {
             const lensContainer = document.getElementById('lens-canvas-container');
             if (lensContainer) {
-                // NOTE: Do NOT set lensContainer.dataset.src here — updateTexture()
-                // compares against data-src to detect changes. Setting it early
-                // causes updateTexture to skip loading the new image.
-                // lensContainer.dataset.src = data.image;
-                // Update all source/img elements inside
                 const picture = lensContainer.querySelector('picture');
                 if (picture) {
-                    // Update the fallback img
                     const fallbackImg = picture.querySelector('img.hero-fallback-img');
                     if (fallbackImg) fallbackImg.src = data.image;
-                    // Update source elements - try to derive responsive variants
                     const sources = picture.querySelectorAll('source');
                     sources.forEach(source => {
                         const srcset = source.getAttribute('srcset');
                         if (srcset && srcset.includes('hero-bg')) {
-                            // Replace both ./assets/hero-bg-VARIANT.ext and /assets/hero-bg-VARIANT.ext
                             const newSrcset = srcset.replace(/(\.{0,1}\/?assets\/hero-bg[^"'\s]+)(\.[a-z0-9]+)/g, (match, prefix, ext) => {
                                 const newBase = data.image.replace(/\.[a-z0-9]+$/, '');
                                 return newBase + ext;
@@ -118,19 +99,10 @@ async function hydrateSiteContent() {
                         }
                     });
                 }
-                // NOTE: Do NOT set lensContainer.dataset.src here — updateTexture()
-                // sets it internally after confirming the texture changed. Setting
-                // it early causes updateTexture's sanitize() check to skip loading.
             }
-            // Update Three.js lens effect texture
             if (window.PerspectiveLens && typeof window.PerspectiveLens.updateTexture === 'function') {
                 console.log('[hydrateSiteContent] Calling PerspectiveLens.updateTexture with:', data.image);
                 window.PerspectiveLens.updateTexture(data.image);
-            } else {
-                console.log('[hydrateSiteContent] PerspectiveLens not ready:', { 
-                    hasPerspectiveLens: !!window.PerspectiveLens, 
-                    hasUpdateTexture: window.PerspectiveLens ? typeof window.PerspectiveLens.updateTexture : 'N/A' 
-                });
             }
         }
     }
@@ -138,15 +110,12 @@ async function hydrateSiteContent() {
 
 function escapeHtml(s) {
     if (s === null || s === undefined) return '';
-    // Build entities from char codes so the file source itself never
-    // contains literal "<", ">", "&", """, "'" — those would be
-    // unescaped by editors / patch tools in transit.
     var E = {
-        amp:   String.fromCharCode(38),                                 // &
-        lt:    String.fromCharCode(38, 108, 116, 59),                   // <
-        gt:    String.fromCharCode(38, 103, 116, 59),                   // >
-        quot:  String.fromCharCode(38, 113, 117, 111, 116, 59),        // "
-        apos:  String.fromCharCode(38, 35, 51, 57, 59)             // &#39; (correct apostrophe entity)
+        amp:   String.fromCharCode(38),
+        lt:    String.fromCharCode(38, 108, 116, 59),
+        gt:    String.fromCharCode(38, 103, 116, 59),
+        quot:  String.fromCharCode(38, 113, 117, 111, 116, 59),
+        apos:  String.fromCharCode(38, 35, 51, 57, 59)
     };
     return String(s)
         .replace(/&/g, E.amp)
@@ -156,7 +125,6 @@ function escapeHtml(s) {
         .replace(/'/g, E.apos);
 }
 
-// Format date as "Jan 15, 2026" or similar readable format
 function formatDate(isoString) {
     if (!isoString) return '';
     try {
@@ -171,22 +139,36 @@ function formatDate(isoString) {
     }
 }
 
-// Derive a short, URL-friendly 8-hex identifier from a uuid (last 8 hex chars).
-// Must match the same derivation on the server (api/article.js).
 function shortIdFromUuid(uuid) {
     if (!uuid) return '';
     return String(uuid).replace(/-/g, '').slice(-8);
 }
 
+function getArticleSlug(article) {
+    if (article.slug && article.slug.trim()) return article.slug.trim();
+    const headline = article.aiheadline || article.aiHeadline || article.title || '';
+    const words = headline
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .split(/\s+/)
+        .slice(0, 4)
+        .join('-');
+    return words || shortIdFromUuid(article.id);
+}
+
+function getArticleUrl(article) {
+    const region = (article.region || 'indian').toLowerCase().trim();
+    const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+    const r = validRegions.includes(region) ? region : 'indian';
+    const slug = getArticleSlug(article);
+    return `/${r}/${slug}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // ==========================================================================
-    // 1. DUAL-THEME SWITCHER (Midnight Charcoal & Polar Wash Light Mode)
-    // ==========================================================================
     const themeToggleBtn = document.getElementById('theme-toggle-btn');
     const bodyElement = document.body;
 
-    // Retrieve previous theme preference from localStorage or default to system preference
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -197,14 +179,12 @@ document.addEventListener('DOMContentLoaded', () => {
         bodyElement.classList.remove('light-theme');
         bodyElement.classList.add('dark-theme');
     } else {
-        // Fallback to system preference
         if (!prefersDark) {
             bodyElement.classList.remove('dark-theme');
             bodyElement.classList.add('light-theme');
         }
     }
 
-    // Toggle theme on button press
     themeToggleBtn.addEventListener('click', () => {
         if (bodyElement.classList.contains('dark-theme')) {
             bodyElement.classList.remove('dark-theme');
@@ -216,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('theme', 'dark');
         }
         
-        // Dispatch custom event for Three.js shader adjustments
         window.dispatchEvent(new CustomEvent('themeChanged', { 
             detail: { theme: bodyElement.classList.contains('dark-theme') ? 'dark' : 'light' } 
         }));
@@ -226,12 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentRegion = 'indian';
     let currentCategory = 'all';
 
-    // ==========================================================================
-    // 3. LAZY SCROLL REVEALS FOR BENTO BOX GRID CARDS (IntersectionObserver)
-    // ==========================================================================
     const bentoCards = document.querySelectorAll('.bento-card');
     
-    // Initial loading states for smooth fades
     bentoCards.forEach((card, index) => {
         card.style.opacity = '0';
         card.style.transform = 'translateY(30px)';
@@ -248,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = entry.target;
                 card.style.opacity = '1';
                 card.style.transform = 'translateY(0)';
-                observer.unobserve(card); // Stop observing once loaded
+                observer.unobserve(card);
             }
         });
     };
@@ -263,9 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
         bentoObserver.observe(card);
     });
 
-    // ==========================================================================
-    // 4. INTERACTIVE NARRATIVE PULSE (CIVIC POLL ENGINE - PERSISTENT EDITION)
-    // ==========================================================================
     let currentPollData = null;
 
     function updatePollUI(pollData, votedIndex) {
@@ -315,9 +287,6 @@ document.addEventListener('DOMContentLoaded', () => {
             pollForm.appendChild(feedbackMsg);
             if (window.lucide) window.lucide.createIcons();
         }
-
-        // Cache the latest poll HTML state so category switches do not flash back to defaults
-        civicPollHTML = pollForm.outerHTML;
     }
 
     async function syncPollState() {
@@ -332,9 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================================================
-    // 5. EDITORIAL NEWSLETTER FORM INTERACTION
-    // ==========================================================================
     const newsletterForm = document.getElementById('newsletter-form');
     
     if (newsletterForm) {
@@ -346,7 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const submitIcon = submitBtn.querySelector('i');
             const userEmail = emailInput.value;
 
-            // Performant micro-animation during request
             submitBtn.disabled = true;
             emailInput.disabled = true;
             submitIcon.setAttribute('data-lucide', 'loader-2');
@@ -354,16 +319,14 @@ document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
 
             const styleSheet = document.createElement("style");
-            styleSheet.innerText = `@keyframes loader-spin { to { transform: rotate(360deg); } }
-                                    .spin-anim { animation: loader-spin 1s linear infinite; }`;
+            styleSheet.innerText = `@keyframes loader-spin { to { transform: rotate(360deg); } }\n.spin-anim { animation: loader-spin 1s linear infinite; }`;
             document.head.appendChild(styleSheet);
 
             try {
                 const res = await fetch('/api/newsletter/subscribe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: userEmail })
-                });
+                    body: JSON.stringify({ email: userEmail })\n                });
 
                 submitIcon.classList.remove('spin-anim');
                 
@@ -377,7 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     setTimeout(() => {
                         newsletterForm.style.display = 'none';
-                        
                         const successMsg = document.createElement('div');
                         successMsg.className = 'glass-element';
                         successMsg.style.padding = '16px';
@@ -401,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (err) {
                 console.error("Newsletter submission failed:", err);
-                // Fallback mock success if offline
                 submitIcon.classList.remove('spin-anim');
                 submitIcon.setAttribute('data-lucide', 'check');
                 lucide.createIcons();
@@ -412,7 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 setTimeout(() => {
                     newsletterForm.style.display = 'none';
-                    
                     const successMsg = document.createElement('div');
                     successMsg.className = 'glass-element';
                     successMsg.style.padding = '16px';
@@ -430,9 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================================================
-    // 6. DOCK STICKY NAVIGATION BLUR MODULATOR
-    // ==========================================================================
     const headerElement = document.getElementById('main-header');
     
     function updateHeaderState() {
@@ -454,11 +411,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     window.addEventListener('scroll', updateHeaderState);
-    updateHeaderState(); // Execute immediately on load to prevent initial load transition jumps
+    updateHeaderState();
 
-    // ==========================================================================
-    // 7. DYNAMIC LIVE NEWS INJECTION & INTERACTIVE BENTO CATEGORY FILTERS
-    // ==========================================================================
     let allArticles = [];
 
     const categoryMetadata = {
@@ -491,7 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridContainer = document.getElementById('dynamic-bento-grid');
 
     async function loadDynamicArticles() {
-        // Check if __SSR_DATA__ inline JSON exists (primary hydration source)
         const ssrDataEl = document.getElementById('__SSR_DATA__');
         if (ssrDataEl) {
             try {
@@ -499,12 +452,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (ssrData.articles && ssrData.articles.length > 0) {
                     console.log(`⚡ __SSR_DATA__ found with ${ssrData.articles.length} articles — instant hydration`);
                     allArticles = ssrData.articles.map(a => ({ ...a }));
-                    // Articles with hasBase64Image flag have gradient placeholder in SSR
-                    // Real images will be fetched when app.js re-renders cards from API
                     const base64Count = allArticles.filter(a => a.hasBase64Image).length;
-                    if (base64Count > 0) console.log(`🖼️ ${base64Count} articles have base64 images (gradient placeholder shown, real image on API re-fetch)`);
+                    if (base64Count > 0) console.log(`🖼️ ${base64Count} articles have base64 images`);
 
-                    // Hydrate highlights ticker from SSR data
                     if (allArticles.length > 0) {
                         const tickerTrack = document.querySelector('.ticker-track');
                         if (tickerTrack) {
@@ -515,21 +465,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    // Skip the API fetch — SSR data is already here!
-                    // This saves a 4.3MB / 4.5s API round-trip
                     console.log('✅ Skipping API fetch — using SSR data for instant load');
                     handleRouting(true);
                     
-                    // Background: fetch real images for base64 articles AND full article list for pagination
                     const base64Articles = allArticles.filter(a => a.hasBase64Image);
                     if (base64Articles.length > 0) {
-                        console.log(`🖼️ Background fetch: hydrating ${base64Articles.length} base64 images from API`);
                         setTimeout(async () => {
                             try {
                                 const res = await fetch('/api/honestly-biased-feed');
                                 const data = await res.json();
                                 const apiArticles = data.articles || [];
-                                // Update allArticles with real image URLs
                                 base64Articles.forEach(bs64 => {
                                     const match = apiArticles.find(a => a.id === bs64.id);
                                     if (match && match.imageurl && match.imageurl.startsWith('data:image')) {
@@ -537,28 +482,23 @@ document.addEventListener('DOMContentLoaded', () => {
                                         bs64.hasBase64Image = false;
                                     }
                                 });
-                                // Re-render cards with real images
                                 handleRouting(false);
-                                console.log('✅ Base64 images hydrated with real images');
                             } catch (e) {
                                 console.warn('Background image fetch failed:', e);
                             }
                         }, 2000);
                     }
                     
-                    // Also fetch FULL article list for pagination (SSR only has 22)
                     setTimeout(async () => {
                         try {
                             const res = await fetch('/api/honestly-biased-feed?limit=200');
                             const data = await res.json();
                             const apiArticles = data.articles || [];
                             if (apiArticles.length > allArticles.length) {
-                                // Merge - keep SSR articles (with hydration) but add missing ones
                                 const existingIds = new Set(allArticles.map(a => a.id));
                                 const newArticles = apiArticles.filter(a => !existingIds.has(a.id));
                                 if (newArticles.length > 0) {
                                     allArticles.push(...newArticles);
-                                    console.log(`📄 Pagination: added ${newArticles.length} more articles (total ${allArticles.length})`);
                                     handleRouting(false);
                                 }
                             }
@@ -567,21 +507,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }, 3000);
                     
-                    return; // ← EXIT EARLY, don't fetch from API
+                    return;
                 }
             } catch (e) {
                 console.warn('SSR data parse failed:', e);
             }
         }
 
-        // Check if SSR already populated the bento grid
-        const gridContainer = document.getElementById('dynamic-bento-grid');
         const ssrCards = gridContainer ? gridContainer.querySelectorAll('.bento-card') : [];
         const hasSSRContent = ssrCards.length > 0;
         
         if (hasSSRContent) {
-            console.log(`⚡ SSR detected ${ssrCards.length} pre-rendered cards, skipping initial render`);
-            // Extract articles from SSR cards for pagination
             ssrCards.forEach(card => {
                 const id = card.id;
                 const link = card.querySelector('a.stretched-link');
@@ -592,8 +528,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timeEl = card.querySelector('.card-time')?.textContent || '';
                 const bias = card.querySelector('.card-author')?.textContent?.replace('Bias Audit: ', '') || '';
                 const imgEl = card.querySelector('.card-image-bg');
-                // For base64 articles, SSR uses gradient placeholder (no bg image)
-                // Real image URL will be restored from __SSR_DATA__ or feed API
                 const bgMatch = imgEl?.style.backgroundImage?.match(/url\(['"]?([^'")]*)/);
                 const imgUrl = bgMatch ? bgMatch[1] : '';
                 const authortype = badge?.classList.contains('badge-admin') ? 'admin' :
@@ -610,14 +544,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     authortype
                 });
             });
-            console.log(`📦 Extracted ${allArticles.length} articles from SSR for pagination`);
         }
 
-        console.log("📡 Fetching site_content blocks first, then live feed...");
-
-        // ------------------------------------------------------------
-        // 1. Wait for PerspectiveLens to be ready, then hydrate site content
-        // ------------------------------------------------------------
         let lensReady = false;
         const maxWait = 5000;
         const startTime = Date.now();
@@ -630,27 +558,17 @@ document.addEventListener('DOMContentLoaded', () => {
             await new Promise(r => setTimeout(r, 100));
         }
         
-        if (!lensReady) {
-            console.warn('PerspectiveLens not ready after timeout, proceeding anyway');
-        }
-        
         try { await hydrateSiteContent(); }
         catch (e) { console.warn('site_content hydration failed:', e); }
 
-        console.log("📡 Attempting to fetch live AI-calibrated Honestly Biased feed...");
-
         try {
-            // Call the local backend server (running on port 3000)
             const response = await fetch('/api/honestly-biased-feed');
-            
             if (!response.ok) {
                 throw new Error(`API returned HTTP status ${response.status}`);
             }
 
             const data = await response.json();
-            console.log("🟢 Live feed loaded successfully. Calibrating bento boxes...");
 
-            // Store dynamic articles globally and clean headlines from "Refracted: " prefix
             allArticles = (data.articles || []).map(art => {
                 const headline = (art.aiheadline || art.aiHeadline || art.title || '').replace(/^Refracted:\s*/i, '');
                 const summary = art.aisummary || art.aiSummary || art.description || art.summary || '';
@@ -665,33 +583,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 return art;
             });
 
-            // Dynamically update the ticker highlights banner
             let highlightsToRender = data.highlights || [];
             if (highlightsToRender.length === 0 && allArticles.length > 0) {
-                // Automatically fall back to top 4 article headlines if highlights list is empty
                 highlightsToRender = allArticles.slice(0, 4).map(a => a.aiheadline || a.title);
             }
             if (highlightsToRender.length > 0) {
                 const tickerTrack = document.querySelector('.ticker-track');
                 if (tickerTrack) {
                     let html = highlightsToRender.map(text => `<span>• ${text}</span>`).join('');
-                    // Repeat the first item to ensure a seamless infinite CSS scrolling loop
                     html += `<span>• ${highlightsToRender[0]}</span>`;
                     tickerTrack.innerHTML = html;
                 }
             }
 
-            // B. Initial dynamic grid render based on the current hash route
             handleRouting(true);
 
         } catch (error) {
-            console.log("\n=============================================================");
-            console.log("ℹ️  INFO: Live backend API is not currently active.");
-            console.log("👉 The website is running beautifully in offline static mode.");
-            console.log("👉 Run 'node mock-server.js' in the background to activate AI rewrites!");
-            console.log("=============================================================\n");
-
-            // Populate fallback highlights ticker
             const tickerTrack = document.querySelector('.ticker-track');
             if (tickerTrack) {
                 const fallbackAlerts = [
@@ -710,12 +617,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Select modal DOM elements
     const auditModal = document.getElementById('audit-modal');
     const modalBackdrop = document.getElementById('modal-backdrop');
     const modalCloseBtn = document.getElementById('modal-close-btn');
 
-    // Modal elements to hydrate
     const modalCategory = document.getElementById('modal-category');
     const modalTime = document.getElementById('modal-time');
     const modalTitle = document.getElementById('modal-title');
@@ -724,17 +629,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalSummary = document.getElementById('modal-summary');
     const modalOriginalLink = document.getElementById('modal-original-link');
 
-    // Function to open modal and hydrate
     function openArticleModal(articleId) {
         const article = allArticles.find(a => String(a.id) === String(articleId));
         if (!article) return;
 
-        console.log(`👁️ Opening Honestly Biased audit modal for article: "${article.aiheadline}"`);
-
-        // Hydrate details
         if (modalCategory) {
             modalCategory.textContent = article.category;
-            // Align color tags based on category
             modalCategory.className = 'modal-tag ' + (article.category.toLowerCase().trim() === 'tech' ? 'green-bg' : 'saffron-bg');
         }
         if (modalTime) modalTime.innerHTML = `<i data-lucide="clock"></i> ${article.timeago}`;
@@ -744,22 +644,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modalSummary) modalSummary.textContent = article.aisummary;
         if (modalOriginalLink) modalOriginalLink.href = article.originalurl;
 
-        // Dynamic Author Badging in Modal Reader
         const modalAuthor = document.querySelector('.modal-author');
         if (modalAuthor) {
             if (article.authortype === 'admin') {
                 modalAuthor.innerHTML = `<i data-lucide="pen-tool" style="width:14px; height:14px;"></i> Honestly Biased Editorial Board (Admin)`;
-                modalAuthor.style.color = 'var(--accent-green)'; // Gold
+                modalAuthor.style.color = 'var(--accent-green)';
             } else if (article.authortype === 'instagram') {
                 modalAuthor.innerHTML = `<i data-lucide="instagram" style="width:14px; height:14px;"></i> Honestly Biased AI Engine (Instagram Ingestion)`;
-                modalAuthor.style.color = '#e1306c'; // Instagram Pink
+                modalAuthor.style.color = '#e1306c';
             } else {
                 modalAuthor.innerHTML = `<i data-lucide="shield-check" style="width:14px; height:14px;"></i> Audited by Honestly Biased AI Engine (Gemini)`;
-                modalAuthor.style.color = '#00E5FF'; // Neon Blue
+                modalAuthor.style.color = '#00E5FF';
             }
         }
 
-        // Dynamic Media Container Hydration
         const mediaContainer = document.getElementById('modal-media-container');
         if (mediaContainer) {
             if (article.authortype === 'instagram' && article.instagramShortcode) {
@@ -788,14 +686,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Open modal
         if (auditModal) {
             auditModal.classList.add('open');
             auditModal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('modal-open');
         }
 
-        // Re-compile Lucide icons inside the modal
         lucide.createIcons();
     }
 
@@ -806,7 +702,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('modal-open');
         }
         
-        // Dispose of media content to stop background iframe audio playback
         const mediaContainer = document.getElementById('modal-media-container');
         if (mediaContainer) {
             mediaContainer.innerHTML = '';
@@ -814,154 +709,129 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Modal click listeners
     if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeArticleModal);
     if (modalBackdrop) modalBackdrop.addEventListener('click', closeArticleModal);
 
-    // Escape key press to close modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeArticleModal();
-                    }
-                });
+        }
+    });
 
-                // Pagination state
-                let currentPage = 1;
-                let itemsPerPage = 22;
-                let totalPages = 1;
+    let currentPage = 1;
+    let itemsPerPage = 22;
+    let totalPages = 1;
 
-                // Dynamic Asymmetrical Bento Grid compiler
-                function renderArticles(regionFilter, categoryFilter) {
-            if (!gridContainer) return;
+    function renderArticles(regionFilter, categoryFilter) {
+        if (!gridContainer) return;
 
-            // Clear existing grid
-            gridContainer.innerHTML = "";
+        gridContainer.innerHTML = "";
 
-            // 1. Sort all articles newest-first by publishdate or ID
-            const sortedArticles = [...allArticles].sort((a, b) => {
-                const timeA = a.publishdate ? new Date(a.publishdate).getTime() : parseFloat(String(a.id).replace(/\D/g, '')) || 0;
-                const timeB = b.publishdate ? new Date(b.publishdate).getTime() : parseFloat(String(b.id).replace(/\D/g, '')) || 0;
-                return timeB - timeA;
-            });
+        const sortedArticles = [...allArticles].sort((a, b) => {
+            const timeA = a.publishdate ? new Date(a.publishdate).getTime() : parseFloat(String(a.id).replace(/\D/g, '')) || 0;
+            const timeB = b.publishdate ? new Date(b.publishdate).getTime() : parseFloat(String(b.id).replace(/\D/g, '')) || 0;
+            return timeB - timeA;
+        });
 
-            // 2. Filter articles by region and category
-            const filteredArticles = sortedArticles.filter(art => {
-                const matchRegion = (art.region || 'indian').toLowerCase().trim() === regionFilter.toLowerCase().trim();
-                const matchCategory = categoryFilter === 'all'
-                    ? true
-                    : art.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim();
+        const filteredArticles = sortedArticles.filter(art => {
+            const matchRegion = (art.region || 'indian').toLowerCase().trim() === regionFilter.toLowerCase().trim();
+            const matchCategory = categoryFilter === 'all'
+                ? true
+                : art.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim();
 
-                if (!matchRegion || !matchCategory) return false;
-                return true;
-            });
+            if (!matchRegion || !matchCategory) return false;
+            return true;
+        });
 
-            // 3. Pagination
-            totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
-            if (currentPage > totalPages) currentPage = totalPages;
-            if (currentPage < 1) currentPage = 1;
-        
-            const startIdx = (currentPage - 1) * itemsPerPage;
-            const endIdx = startIdx + itemsPerPage;
-            const paginatedArticles = filteredArticles.slice(startIdx, endIdx);
+        totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+    
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        const endIdx = startIdx + itemsPerPage;
+        const paginatedArticles = filteredArticles.slice(startIdx, endIdx);
 
-            console.log(`🎯 Filtering: Region "${regionFilter}", Category "${categoryFilter}", Page ${currentPage}/${totalPages} (${itemsPerPage} per page) matched ${filteredArticles.length} articles, showing ${paginatedArticles.length}.`);
+        updatePaginationUI();
 
-            // Update pagination UI
-            updatePaginationUI();
-
-            if (paginatedArticles.length === 0) {
-                // Display empty state
-                gridContainer.innerHTML = `
-                    <div class="bento-card bento-span-4x1 glass-element" style="grid-column: span 4; padding: 48px; text-align: center; justify-content: center; align-items: center; border-style: dashed; grid-row: span 1;">
-                        <i data-lucide="archive-x" style="width: 48px; height: 48px; color: var(--accent-saffron); margin-bottom: 16px;"></i>
-                        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin-bottom: 8px;">No Chronicles Found</h3>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 400px; margin: 0 auto;">Our AI Editorial desk hasn't logged any audited headlines under "${categoryFilter}" in this region. Check back shortly!</p>
-                    </div>
-                `;
-                lucide.createIcons();
-                return;
-            }
-
-            // Build list of final DOM nodes/strings dynamically to interlace widgets
-            const gridItems = [];
-
-            paginatedArticles.forEach((article, index) => {
-            // Layout pattern: 4 Featured horizontals (2x1) -> Standard cards (1x1) with images
-            if (index >= 0 && index <= 3) {
-                // FEATURED HORIZONTALS: First 4 articles as 2x1 cards with images
-                gridItems.push(`
-                                <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
-                                    <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.7) contrast(1.1);"></div>
-                                        <span class="card-tag saffron-bg">${article.category}</span>
-                                        ${article.authortype === 'instagram' ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
-                                    </div>
-                                    <div class="card-body">
-                                        <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
-                                            ${article.authortype === 'admin'
-                                                ? '<span class="author-type-badge badge-admin"><i data-lucide="pen-tool" style="width:10px;height:10px;"></i> Editorial</span>'
-                                                : (article.authortype === 'instagram'
-                                                    ? '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>'
-                                                    : '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>')}
-                                            ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:8px;"></i> ${formatDate(article.publishdate)}` : ''}
-                                            <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}
-                                        </span>
-                                        <h3 class="card-title" style="margin-top:10px;">
-                                            <a href="/article/${shortIdFromUuid(article.id)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
-                                        </h3>
-                                        <p class="card-summary">${article.aisummary}</p>
-                                        <div class="card-footer-meta">
-                                            <span class="card-author" style="font-size:0.75rem; color:var(--accent-green); font-weight:700;">Bias Audit: ${article.biasaudit}</span>
-                                        </div>
-                                    </div>
-                                </article>
-                            `);
-            } else {
-                            // STANDARD CARDS: 1x1 with images (not header-only)
-                            gridItems.push(`
-                                <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
-                                    <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.65) grayscale(0.15);"></div>
-                                        <span class="card-tag saffron-bg">${article.category}</span>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="card-tag-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-                                            <span class="card-tag saffron-bg" style="margin-bottom:0;">${article.category}</span>
-                                            <span class="card-time" style="font-size:0.65rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:2px;">
-                                                ${article.authortype === 'admin'
-                                                    ? '<span class="author-type-badge badge-admin" style="margin-right:2px; padding:2px 4px;"><i data-lucide="pen-tool" style="width:8px;height:8px;"></i> Edit</span>'
-                                                    : (article.authortype === 'instagram'
-                                                        ? '<span class="author-type-badge badge-instagram" style="margin-right:2px; padding:2px 4px;"><i data-lucide="instagram" style="width:8px;height:8px;"></i> IG Video</span>'
-                                                        : '<span class="author-type-badge badge-ai" style="margin-right:2px; padding:2px 4px;"><i data-lucide="cpu" style="width:8px;height:8px;"></i> AI</span>')}
-                                                ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:4px;"></i> ${formatDate(article.publishdate)}` : ''}
-                                                ${article.timeago}
-                                            </span>
-                                        </div>
-                                        <h3 class="card-title" style="margin-bottom:10px;">
-                                            <a href="/article/${shortIdFromUuid(article.id)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
-                                        </h3>
-                                        <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${article.aisummary}</p>
-                                        <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.03);">
-                                            <span class="card-author" style="font-size:0.68rem; color:var(--accent-green); font-weight:700; line-height:1.35; display:block;">Bias Audit: ${article.biasaudit}</span>
-                                        </div>
-                                    </div>
-                                </article>
-                            `);
-                        }
-                    });
-
-        // Interlace our layout fixtures dynamically based on the category filter
-        // If showing 'all', we interlace at perfect visual intervals.
-        if (categoryFilter === 'all') {
-            // No static widgets to interlace - only paginated articles
-        } else {
-            // "each tab should have its own space" - do not append global widgets to category-specific views!
+        if (paginatedArticles.length === 0) {
+            gridContainer.innerHTML = `
+                <div class="bento-card bento-span-4x1 glass-element" style="grid-column: span 4; padding: 48px; text-align: center; justify-content: center; align-items: center; border-style: dashed; grid-row: span 1;">
+                    <i data-lucide="archive-x" style="width: 48px; height: 48px; color: var(--accent-saffron); margin-bottom: 16px;"></i>
+                    <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin-bottom: 8px;">No Chronicles Found</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 400px; margin: 0 auto;">Our AI Editorial desk hasn't logged any audited headlines under "${categoryFilter}" in this region. Check back shortly!</p>
+                </div>
+            `;
+            lucide.createIcons();
+            return;
         }
 
-        // Hydrate grid container
+        const gridItems = [];
+
+        paginatedArticles.forEach((article, index) => {
+            const articleUrl = getArticleUrl(article);
+            if (index >= 0 && index <= 3) {
+                gridItems.push(`
+                    <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
+                        <div class="card-visual">
+                            <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.7) contrast(1.1);"></div>
+                            <span class="card-tag saffron-bg">${article.category}</span>
+                            ${article.authortype === 'instagram' ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
+                        </div>
+                        <div class="card-body">
+                            <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
+                                ${article.authortype === 'admin'
+                                    ? '<span class="author-type-badge badge-admin"><i data-lucide="pen-tool" style="width:10px;height:10px;"></i> Editorial</span>'
+                                    : (article.authortype === 'instagram'
+                                        ? '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>'
+                                        : '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>')}
+                                ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:8px;"></i> ${formatDate(article.publishdate)}` : ''}
+                                <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}
+                            </span>
+                            <h3 class="card-title" style="margin-top:10px;">
+                                <a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                            </h3>
+                            <p class="card-summary">${article.aisummary}</p>
+                            <div class="card-footer-meta">
+                                <span class="card-author" style="font-size:0.75rem; color:var(--accent-green); font-weight:700;">Bias Audit: ${article.biasaudit}</span>
+                            </div>
+                        </div>
+                    </article>
+                `);
+            } else {
+                gridItems.push(`
+                    <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
+                        <div class="card-visual">
+                            <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.65) grayscale(0.15);"></div>
+                            <span class="card-tag saffron-bg">${article.category}</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                                <span class="card-tag saffron-bg" style="margin-bottom:0;">${article.category}</span>
+                                <span class="card-time" style="font-size:0.65rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:2px;">
+                                    ${article.authortype === 'admin'
+                                        ? '<span class="author-type-badge badge-admin" style="margin-right:2px; padding:2px 4px;"><i data-lucide="pen-tool" style="width:8px;height:8px;"></i> Edit</span>'
+                                        : (article.authortype === 'instagram'
+                                            ? '<span class="author-type-badge badge-instagram" style="margin-right:2px; padding:2px 4px;"><i data-lucide="instagram" style="width:8px;height:8px;"></i> IG Video</span>'
+                                            : '<span class="author-type-badge badge-ai" style="margin-right:2px; padding:2px 4px;"><i data-lucide="cpu" style="width:8px;height:8px;"></i> AI</span>')}
+                                    ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:4px;"></i> ${formatDate(article.publishdate)}` : ''}
+                                    ${article.timeago}
+                                </span>
+                            </div>
+                            <h3 class="card-title" style="margin-bottom:10px;">
+                                <a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                            </h3>
+                            <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${article.aisummary}</p>
+                            <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.03);">
+                                <span class="card-author" style="font-size:0.68rem; color:var(--accent-green); font-weight:700; line-height:1.35; display:block;">Bias Audit: ${article.biasaudit}</span>
+                            </div>
+                        </div>
+                    </article>
+                `);
+            }
+        });
+
         gridContainer.innerHTML = gridItems.join('');
 
-        // Apply staggered scroll reveal animations
         const cards = gridContainer.querySelectorAll('.bento-card, blockquote, section, aside');
         cards.forEach((card, index) => {
             card.style.opacity = '0';
@@ -972,7 +842,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                      border-color var(--transition-medium),
                                      box-shadow var(--transition-medium)`;
             
-            // RequestAnimationFrame ensures transition triggers cleanly after insertion
             requestAnimationFrame(() => {
                 setTimeout(() => {
                     card.style.opacity = '1';
@@ -981,17 +850,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Refresh icons and play logic binding
         lucide.createIcons();
         bindDynamicEvents();
 
-        // Re-bind scroll-reveal observer: dynamically rendered bento cards start
-        // with opacity:0; transform:translateY(30px) inline so they animate in.
-        // Without re-observing them they would never reveal on reload when the
-        // grid is rebuilt from the API response.
         const freshCards = gridContainer.querySelectorAll('.bento-card');
         freshCards.forEach(card => {
-            // skip ones the static observer already captured
             if (!card.classList.contains('reveal-attached')) {
                 card.classList.add('reveal-attached');
                 card.dataset.revealAttached = '1';
@@ -1001,11 +864,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Safety net: if any card is still invisible after 800ms (e.g. user has
-        // reduced motion or the observer never fired because the card was rendered
-        // already in-view but the entry was missed), reveal them. Prevents
-        // reload returning a "clear space" if the network call landed
-        // after the IntersectionObserver attached only to the static markup.
         setTimeout(() => {
             freshCards.forEach(card => {
                 if (getComputedStyle(card).opacity === '0') {
@@ -1016,7 +874,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
     }
 
-    // Region Tabs Event Listeners (Triggers Hash Change to route through SPA)
     const regionButtons = document.querySelectorAll('.region-tab-btn');
     regionButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1029,7 +886,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Category Tabs Event Listeners (Triggers Hash Change to route through SPA)
     const tabButtons = document.querySelectorAll('.category-tab-btn');
     tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1042,9 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Re-bind interactive events for dynamic cards (like poll buttons or play buttons)
     function bindDynamicEvents() {
-        // Re-bind podcast micro player
         const playBtn = gridContainer.querySelector('.play-btn-circle');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
@@ -1062,20 +916,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Re-bind HTML5 video component controls (Card 6)
         const videoElement = gridContainer.querySelector('#card-6-video');
         const videoPlayBtn = gridContainer.querySelector('.video-play-overlay');
 
         if (videoElement && videoPlayBtn) {
             const videoIcon = videoPlayBtn.querySelector('i');
             
-            // Toggle play/pause state when overlay button is clicked
             videoPlayBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent card selection triggering
+                e.stopPropagation();
                 toggleVideoPlayback();
             });
 
-            // Toggle play/pause state when video element itself is clicked
             videoElement.addEventListener('click', (e) => {
                 e.stopPropagation();
                 toggleVideoPlayback();
@@ -1098,7 +949,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 lucide.createIcons();
             }
 
-            // Sync icon and class if video finishes playing or is paused/played externally
             videoElement.addEventListener('pause', () => {
                 videoPlayBtn.classList.remove('playing');
                 if (videoIcon) videoIcon.setAttribute('data-lucide', 'play');
@@ -1112,26 +962,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Bind article page routing to all audit-trigger items
         const triggers = gridContainer.querySelectorAll('.audit-trigger');
         triggers.forEach(t => {
             t.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Use the SEO-friendly /article/<shortId> URL so social shares,
-                // search indexers, and link previews all see a real article page
-                // rather than a hash anchor that crawlers often ignore.
                 const href = t.getAttribute('href');
-                if (href && href.startsWith('/article/')) {
+                if (href && (href.startsWith('/article/') || href.startsWith('/berkshire/') || href.startsWith('/indian/') || href.startsWith('/world/') || href.startsWith('/uk/'))) {
                     window.location.href = href;
                 } else {
                     const id = t.getAttribute('data-id');
-                    const shortId = shortIdFromUuid(id) || id;
-                    window.location.href = `/article/${shortId}`;
+                    const article = allArticles.find(a => String(a.id) === String(id));
+                    if (article) {
+                        window.location.href = getArticleUrl(article);
+                    } else {
+                        const shortId = shortIdFromUuid(id) || id;
+                        window.location.href = `/article/${shortId}`;
+                    }
                 }
             });
         });
 
-        // Re-bind civic poll click listeners
         const pollForm = gridContainer.querySelector('#civic-poll-form');
         if (pollForm) {
             const pollButtons = pollForm.querySelectorAll('.poll-option-btn');
@@ -1150,7 +1000,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             currentPollData = await res.json();
                             updatePollUI(currentPollData, index);
                         } else {
-                            // Fallback if rate limited or server error
                             const fallbackData = currentPollData || { votes: [74, 18, 8], total: 100 };
                             fallbackData.votes[index] += 1;
                             fallbackData.total += 1;
@@ -1165,17 +1014,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            // Update UI with existing fetched poll data or localStorage
             if (currentPollData) {
                 updatePollUI(currentPollData);
             } else {
-                // Fetch initially if not done yet
                 syncPollState();
             }
         }
     }
 
-    // SPA Router Implementation
     function parseHashRoute() {
         const hash = window.location.hash;
         if (!hash || hash === '#' || hash === '#/') {
@@ -1184,7 +1030,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const path = hash.replace(/^#\/?/, '').toLowerCase().trim();
         
-        // Handle article details and special pages separately
         if (path.startsWith('article/') || path === 'our-bias' || path === 'manifesto') {
             return null;
         }
@@ -1228,19 +1073,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleRouting(isInitialLoad = false) {
         const hash = window.location.hash;
-        console.log(`🌐 SPA Routing event triggered: hash="${hash}", isInitialLoad=${isInitialLoad}`);
 
-        // Check if SSR content exists and we should preserve it on initial load
         const hasSSRContent = document.getElementById('dynamic-bento-grid')?.querySelector('.bento-card');
         
-        // Handle Article Detail Page Routing
         if (hash.startsWith('#/article/')) {
             const articleId = hash.replace('#/article/', '').trim();
             showArticleDetailPage(articleId);
             return;
         }
 
-        // Restore visibility of standard sections
         const heroSection = document.querySelector('.hero-section');
         const bentoSection = document.querySelector('.bento-section');
         const detailSection = document.getElementById('article-detail-section');
@@ -1249,23 +1090,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bentoSection) bentoSection.style.display = 'block';
         if (detailSection) detailSection.style.display = 'none';
 
-        // If SSR content exists and it's initial load, skip re-render — just update active tab styles
         if (isInitialLoad && hasSSRContent) {
-            console.log('📋 SSR content preserved on initial load');
-            // Update tab button active states without re-rendering cards
             try {
                 const routeParams = parseHashRoute();
                 if (routeParams) {
                     currentRegion = routeParams.region;
                     currentCategory = routeParams.category;
                 }
-                // Highlight region tab
                 document.querySelectorAll('.region-tab-btn').forEach(btn => {
                     const btnReg = btn.getAttribute('data-region')?.toLowerCase().trim();
                     if (btnReg === currentRegion) btn.classList.add('active');
                     else btn.classList.remove('active');
                 });
-                // Highlight category tab
                 document.querySelectorAll('.category-tab-btn').forEach(btn => {
                     const btnCat = btn.getAttribute('data-category')?.toLowerCase();
                     if (btnCat === currentCategory.toLowerCase()) btn.classList.add('active');
@@ -1275,7 +1111,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Handle "Our Bias" / Manifesto special case
         if (hash === '#/our-bias' || hash === '#manifesto') {
             document.querySelectorAll('.nav-link').forEach(link => {
                 const href = link.getAttribute('href');
@@ -1293,7 +1128,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Check if legacy single category hash was requested, and redirect to region/category structure
         if (hash && !hash.startsWith('#/article/')) {
             const path = hash.replace(/^#\/?/, '').toLowerCase().trim();
             const parts = path.split('/').filter(p => p.trim());
@@ -1311,7 +1145,6 @@ document.addEventListener('DOMContentLoaded', () => {
             currentCategory = routeParams.category;
         }
 
-        // Highlight correct region tab button
         const regionButtons = document.querySelectorAll('.region-tab-btn');
         regionButtons.forEach(btn => {
             const btnReg = btn.getAttribute('data-region').toLowerCase().trim();
@@ -1322,7 +1155,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Highlight correct category tab button in bento grid
         const tabButtons = document.querySelectorAll('.category-tab-btn');
         tabButtons.forEach(btn => {
             const btnCat = btn.getAttribute('data-category');
@@ -1333,7 +1165,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Dynamically update Section Title & Subtitle based on metadata and region name
         const sectionHeader = document.querySelector('.bento-section .section-header');
         if (sectionHeader) {
             const titleEl = sectionHeader.querySelector('.section-title');
@@ -1352,10 +1183,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (subtitleEl) subtitleEl.textContent = meta.subtitle;
         }
 
-        // Render matching articles
         renderArticles(currentRegion, currentCategory);
 
-        // Scroll to Bento Grid section only if explicitly navigated via header click
         if (isHeaderClick) {
             const bentoSection = document.querySelector('.bento-section');
             if (bentoSection) {
@@ -1366,12 +1195,10 @@ document.addEventListener('DOMContentLoaded', () => {
             isHeaderClick = false;
         }
 
-        // Sync the premium sliding active indicator pills
         setTimeout(syncActiveIndicators, 60);
     }
 
     function syncActiveIndicators() {
-        // Region active indicator
         const activeRegionBtn = document.querySelector('.region-tab-btn.active');
         const regionPill = document.getElementById('region-active-pill');
         const regionContainer = document.getElementById('region-tabs-container');
@@ -1390,7 +1217,6 @@ document.addEventListener('DOMContentLoaded', () => {
             regionPill.className = 'active-indicator-pill ' + 'active-' + currentReg;
         }
 
-        // Category active indicator
         const activeCatBtn = document.querySelector('.category-tab-btn.active');
         const catPill = document.getElementById('category-active-pill');
         const catContainer = document.getElementById('category-tabs-container');
@@ -1407,7 +1233,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 catPill.style.height = `${btnRect.height}px`;
                 catPill.style.top = `${topOffset}px`;
                 
-                // Clear inline horizontal styles to allow CSS stylesheet to apply (left/width)
                 catPill.style.width = '';
                 catPill.style.left = '';
             } else {
@@ -1417,7 +1242,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 catPill.style.width = `${btnRect.width}px`;
                 catPill.style.left = `${leftOffset}px`;
                 
-                // Clear inline vertical styles to allow CSS stylesheet to apply (top/height)
                 catPill.style.height = '';
                 catPill.style.top = '';
             }
@@ -1427,7 +1251,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Bind window resize listener to reflow active indicators
     window.addEventListener('resize', syncActiveIndicators);
 
     function showArticleDetailPage(articleId) {
@@ -1461,26 +1284,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!article) {
-            // Fallback to home if article not found
             window.location.hash = '#/';
             return;
         }
 
-        console.log(`👁️ Routing to full blog page for article: "${article.aiheadline}"`);
-
-        // Hide Hero, Bento grid, and other sections
         const heroSection = document.querySelector('.hero-section');
         const bentoSection = document.querySelector('.bento-section');
         
         if (heroSection) heroSection.style.display = 'none';
         if (bentoSection) bentoSection.style.display = 'none';
         
-        // Show detail section
         const detailSection = document.getElementById('article-detail-section');
         if (detailSection) {
             detailSection.style.display = 'block';
             
-            // Hydrate detail fields
             const detailCategory = document.getElementById('detail-category');
             const detailTime = document.getElementById('detail-time');
             const detailTitle = document.getElementById('detail-title');
@@ -1490,7 +1307,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailSource = document.getElementById('detail-source');
             const detailOriginalLink = document.getElementById('detail-original-link');
 
-            // Strip "Refracted: " prefix from headline when displaying
             const rawHeadline = article.aiheadline || article.aiHeadline || article.title || '';
             const cleanedHeadline = rawHeadline.replace(/^Refracted:\s*/i, '');
 
@@ -1504,17 +1320,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (detailAuthor) {
                 if (article.authortype === 'admin') {
                     detailAuthor.innerHTML = `<i data-lucide="pen-tool" style="width:16px; height:16px;"></i> Honestly Biased Editorial Board (Admin)`;
-                    detailAuthor.style.color = 'var(--accent-green)'; // Gold
+                    detailAuthor.style.color = 'var(--accent-green)';
                 } else if (article.authortype === 'instagram') {
                     detailAuthor.innerHTML = `<i data-lucide="instagram" style="width:16px; height:16px;"></i> Honestly Biased AI Engine (Instagram Ingestion)`;
-                    detailAuthor.style.color = '#e1306c'; // Instagram Pink
+                    detailAuthor.style.color = '#e1306c';
                 } else {
                     detailAuthor.innerHTML = `<i data-lucide="shield-check" style="width:16px; height:16px;"></i> Audited by Honestly Biased AI Engine (Gemini)`;
-                    detailAuthor.style.color = '#00E5FF'; // Neon Blue
+                    detailAuthor.style.color = '#00E5FF';
                 }
             }
 
-            // Hydrate Media
             if (detailMediaContainer) {
                 if (article.authortype === 'instagram' && article.instagramShortcode) {
                     detailMediaContainer.style.display = 'block';
@@ -1542,10 +1357,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Hydrate Blog content paragraphs
             if (detailContent) {
                 if (article.fullblog) {
-                    // Split content by newlines to wrap in paragraphs or render HTML directly if pre-formatted
                     if (article.fullblog.includes('<p>')) {
                         detailContent.innerHTML = article.fullblog;
                     } else {
@@ -1553,7 +1366,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         detailContent.innerHTML = paras.map(p => `<p>${p}</p>`).join('');
                     }
                 } else {
-                    // Call fallback blog generator
                     detailContent.innerHTML = generateFallbackBlog(article);
                 }
             }
@@ -1566,10 +1378,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailOriginalLink.href = article.originalurl;
             }
 
-            // Scroll window to top smoothly
             window.scrollTo({ top: 0, behavior: 'smooth' });
-
-            // Render Lucide icons
             lucide.createIcons();
         }
     }
@@ -1591,7 +1400,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    // Pagination UI update function
     function updatePaginationUI() {
         const pageIndicator = document.getElementById('page-indicator');
         const prevBtn = document.getElementById('prev-page');
@@ -1614,7 +1422,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Pagination event listeners
     const perPageSelect = document.getElementById('per-page-select');
     const prevPageBtn = document.getElementById('prev-page');
     const nextPageBtn = document.getElementById('next-page');
@@ -1622,7 +1429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (perPageSelect) {
         perPageSelect.addEventListener('change', () => {
             itemsPerPage = parseInt(perPageSelect.value);
-            currentPage = 1; // Reset to first page
+            currentPage = 1;
             const route = parseHashRoute() || { region: 'indian', category: 'all' };
             renderArticles(route.region, route.category);
         });
@@ -1650,19 +1457,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Set up router event listeners
     window.addEventListener('hashchange', () => handleRouting(false));
 
-    // Path-to-hash redirect: only runs when the SPA shell (index.html) is
-    // served for a path-based URL that doesn't have a static HTML page. We
-    // detect the SPA shell by the presence of #dynamic-bento-grid — if that
-    // element exists, we're on the homepage shell; if not, we're on a static
-    // page that just happens to load app.js, and should NOT redirect.
     (function() {
         const isBentoGridPresent = !!document.getElementById('dynamic-bento-grid');
         if (isBentoGridPresent) {
             const path = window.location.pathname;
-            if (path && path !== '/' && !path.startsWith('/api/') && !path.startsWith('/admin')) {
+            if (path && path !== '/' && !path.startsWith('/api/') && !path.startsWith('/admin') && !path.startsWith('/berkshire/') && !path.startsWith('/indian/') && !path.startsWith('/world/') && !path.startsWith('/uk/') && !path.startsWith('/article/')) {
                 const pathParts = path.split('/').filter(p => p.trim());
                 if (pathParts.length > 0) {
                     console.log(`🔄 Path-to-hash redirect: converting pathname "${path}" to hash route`);
@@ -1671,11 +1472,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-        // Already on homepage — run initial routing
         handleRouting(true);
     })();
 
-    // Initialize reading progress bar scroll listener
     window.addEventListener('scroll', function() {
         const progressBar = document.getElementById('read-progress-bar');
         if (progressBar) {
@@ -1686,7 +1485,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { passive: true });
 
-    // Initialize fetching routine
     loadDynamicArticles();
 
     console.log('Honestly Biased Core Platform Logic initialized successfully. Grid observers, forms and interactive voting channels fully functional.');

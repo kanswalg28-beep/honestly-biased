@@ -8,7 +8,6 @@
 const { supabase } = require('../../db/client');
 const { requireAuth, checkCsrfToken, setAdminCors } = require('./_auth');
 
-// Simple Basic Auth helper (optional)
 function basicAuth(req) {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return false;
@@ -21,13 +20,22 @@ function basicAuth(req) {
   );
 }
 
-// Simple CSRF validation
 function validateCsrf(req) {
   const csrf = req.headers['x-csrf-token'];
   return !!csrf;
 }
 
-// HTML sanitization for fullblog field
+function generateSlug(headline) {
+  if (!headline) return '';
+  return headline
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .join('-');
+}
+
 function sanitizeHtml(html) {
   if (!html || typeof html !== 'string') return '';
   
@@ -75,7 +83,6 @@ function formatTimeAgo(dateStr) {
 }
 
 module.exports = async (req, res) => {
-  // Optional auth – if env vars are set, enforce auth for mutating operations only
   const isMutating = ['POST', 'PUT', 'DELETE'].includes(req.method);
   if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && isMutating) {
     if (!requireAuth(req, res)) return;
@@ -83,13 +90,11 @@ module.exports = async (req, res) => {
 
   const { method, query, body, url } = req;
   
-  // Extract article ID from path (e.g., /api/admin/articles/123) or query param
   const pathMatch = url?.match(/\/api\/admin\/articles\/([^/?]+)/);
   const articleId = pathMatch ? pathMatch[1] : query.id;
 
   try {
     if (method === 'GET') {
-      // Support pagination and sorting
       const page = Math.max(1, parseInt(query.page) || 1);
       const limit = Math.min(2000, Math.max(1, parseInt(query.limit) || 50));
       const from = (page - 1) * limit;
@@ -97,17 +102,15 @@ module.exports = async (req, res) => {
       const sortBy = query.sortBy || 'publishdate';
       const sortOrder = query.sortOrder === 'asc' ? { ascending: true } : { ascending: false };
       
-      // Get total count for pagination
       const { count, error: countError } = await supabase
         .from('articles')
         .select('id', { count: 'exact', head: true })
         .eq('archived', false);
       if (countError) throw countError;
       
-      // Fetch paginated, sorted articles
       const { data, error } = await supabase
         .from('articles')
-        .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+        .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
         .eq('archived', false)
         .order(sortBy, sortOrder)
         .range(from, to);
@@ -125,15 +128,15 @@ module.exports = async (req, res) => {
     }
 
     if (method === 'POST') {
-      // CSRF validation
       if (!validateCsrf(req)) {
         return res.status(403).json({ error: 'CSRF token missing or invalid' });
       }
       
-      // Create new article
       const resolvedPublishDate = resolvePublishDate(body.publishdate);
+      const headline = body.aiheadline || body.aiHeadline || body.title || '';
       const payload = {
         ...body,
+        slug: body.slug || generateSlug(headline),
         fullblog: sanitizeHtml(body.fullblog || ''),
         authortype: 'admin',
         author: 'CMS Admin',
@@ -150,12 +153,10 @@ module.exports = async (req, res) => {
     }
 
     if (method === 'PUT') {
-      // CSRF validation
       if (!validateCsrf(req)) {
         return res.status(403).json({ error: 'CSRF token missing or invalid' });
       }
       
-      // Update existing article - supports both ?id= and body.id
       const id = articleId || body?.id;
       if (!id) {
         return res.status(400).json({ error: 'Missing article ID' });
@@ -168,6 +169,9 @@ module.exports = async (req, res) => {
         updatePayload.aiheadline = headline;
         updatePayload.aiHeadline = headline;
         updatePayload.title = headline;
+        if (!body.slug) {
+          updatePayload.slug = generateSlug(headline);
+        }
       }
       if (summary) {
         updatePayload.aisummary = summary;
@@ -189,7 +193,6 @@ module.exports = async (req, res) => {
     }
 
     if (method === 'DELETE') {
-      // CSRF validation
       if (!validateCsrf(req)) {
         return res.status(403).json({ error: 'CSRF token missing or invalid' });
       }
@@ -211,7 +214,6 @@ module.exports = async (req, res) => {
       return res.json({ success: true, deletedId: id, deleted: data });
     }
 
-    // Unsupported method
     res.setHeader('Allow', 'GET,POST,PUT,DELETE');
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
