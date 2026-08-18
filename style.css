@@ -644,12 +644,20 @@ body.light-theme .icon-dark { opacity: 0; }
     border-color: var(--border-color-hover);
 }
 
+/* Shimmer Loading Skeleton for Media Frames */
 .card-visual {
     position: relative;
     width: 100%;
     aspect-ratio: 16/9;
     overflow: hidden;
-    background: var(--bg-secondary);
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 100%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 2.2s infinite ease-in-out;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 .card-image-bg {
@@ -906,9 +914,6 @@ body.light-theme .icon-dark { opacity: 0; }
         text-align: center;
         padding-bottom: max(24px, env(safe-area-inset-bottom));
     }
-    .modal-content {
-        padding-bottom: max(32px, env(safe-area-inset-bottom));
-    }
     .card-time, .card-tag, .live-indicator, .read-time {
         font-size: 0.75rem !important;
     }
@@ -976,6 +981,49 @@ body.light-theme .icon-dark { opacity: 0; }
         -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
         mask-image: linear-gradient(to right, black 88%, transparent 100%);
         padding-right: 24px;
+    }
+
+    /* Smart Scroll Auto-Hiding Mobile Header */
+    .main-header {
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+    }
+
+    body.header-hidden .main-header {
+        transform: translateY(-100%);
+    }
+
+    body.header-hidden .top-region-bar {
+        top: 0;
+        transition: top 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Mobile Bottom-Sheet Modal */
+    .audit-modal {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .modal-content {
+        border-radius: 24px 24px 0 0;
+        max-height: 92vh;
+        width: 100%;
+        padding: 24px 20px max(32px, env(safe-area-inset-bottom));
+        animation: slide-up-sheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        border-bottom: none;
+    }
+
+    .modal-drag-handle {
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 2px;
+        margin: 0 auto 16px auto;
+        display: block;
+    }
+
+    @keyframes slide-up-sheet {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
     }
 }
 
