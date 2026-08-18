@@ -608,7 +608,7 @@ async function handleImgProxy(req, res) {
     return res.status(403).json({ error: 'Forbidden: only public storage paths allowed' });
   }
 
-  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mprxrtesqgtznsinsezs.supabase.co';
   if (!SUPABASE_URL) {
     return res.status(503).json({ error: 'SUPABASE_URL env var not configured' });
   }
