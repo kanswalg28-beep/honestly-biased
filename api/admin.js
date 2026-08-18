@@ -448,9 +448,16 @@ module.exports = async (req, res) => {
   }
 
   // Parse target route from query param (via vercel.json rewrite) or URL
-  const rawRoute = (req.query && req.query.route) || '';
-  const urlPath = (req.url || '').replace(/^\/api\/admin\/?/, '').split('?')[0];
-  const route = (rawRoute || urlPath).toLowerCase();
+  const urlObj = new URL(req.url || '/', 'https://honestlybiased.com');
+  const routeParam = (req.query && req.query.route) || urlObj.searchParams.get('route') || '';
+  const pathnameClean = urlObj.pathname.replace(/^\/api\/admin\/?/, '').replace(/^\//, '');
+  const route = (routeParam || pathnameClean || 'articles').toLowerCase();
+
+  // Populate req.query from search params if not already set
+  req.query = req.query || {};
+  for (const [k, v] of urlObj.searchParams.entries()) {
+    if (req.query[k] === undefined) req.query[k] = v;
+  }
 
   try {
     if (route.startsWith('articles') || route === '') {
