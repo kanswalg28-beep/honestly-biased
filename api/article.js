@@ -1,11 +1,8 @@
-// api/article.js — Server-Side Rendered Article Detail Page with SEO Meta Tags
+// api/article.js — Server-Side Rendered Article Page with Full Dynamic Metadata
 const { supabase } = require('../db/client');
 
-const SITE = 'https://www.honestlybiased.com';
 const SITE_NAME = 'Honestly Biased';
-const SITE_TAGLINE = 'Independent Commentary, Satire & Political Audit';
-
-const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat, slug';
+const BASE_URL = 'https://www.honestlybiased.com';
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -14,7 +11,7 @@ function shortIdFromUuid(uuid) {
 
 function getArticleSlug(article) {
   if (article.slug && article.slug.trim()) return article.slug.trim();
-  const headline = article.aiheadline || article.aiHeadline || article.title || '';
+  const headline = article.aiheadline || article.title || '';
   const words = headline
     .toLowerCase()
     .replace(/[^\w\s-]/g, '')
@@ -33,386 +30,326 @@ function getArticleUrl(article) {
   return `/${r}/${slug}`;
 }
 
-function escapeHtml(s) {
-  if (s === null || s === undefined) return '';
-  const E = {
-    amp:   String.fromCharCode(38),
-    lt:    String.fromCharCode(38, 108, 116, 59),
-    gt:    String.fromCharCode(38, 103, 116, 59),
-    quot:  String.fromCharCode(38, 113, 117, 111, 116, 59),
-    apos:  String.fromCharCode(38, 35, 51, 57, 59)
-  };
-  return String(s)
-    .replace(/&/g, E.amp)
-    .replace(/</g, E.lt)
-    .replace(/>/g, E.gt)
-    .replace(/"/g, E.quot)
-    .replace(/'/g, E.apos);
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
-function escapeAttr(s) {
-  return escapeHtml(s).replace(/[\u0000-\u001F\u007F]/g, '');
+function getBiasColor(bias) {
+  const b = (bias || '').toLowerCase();
+  if (b.includes('left') || b.includes('liberal')) return { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5', label: 'Left Bias' };
+  if (b.includes('right') || b.includes('conservative')) return { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd', label: 'Right Bias' };
+  if (b.includes('center') || b.includes('neutral') || b.includes('balanced')) return { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Balanced' };
+  return { bg: '#f3f4f6', text: '#374151', border: '#d1d5db', label: bias || 'Analyzed' };
 }
 
-function stripTags(s) {
-  if (!s) return '';
-  return String(s).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+function getProxiedImageUrl(originalUrl) {
+  if (!originalUrl) return '';
+  if (originalUrl.startsWith('data:image')) return originalUrl;
+  return `/img-proxy/${encodeURIComponent(originalUrl)}`;
 }
 
-function truncate(s, n) {
-  if (!s) return '';
-  s = String(s);
-  if (s.length <= n) return s;
-  return s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…';
-}
+module.exports = async (req, res) => {
+  const urlObj = new URL(req.url || '/', BASE_URL);
+  
+  // Extract slug and optional region from query or URL pathname
+  let slug = (req.query && req.query.slug) || '';
+  let region = (req.query && req.query.region) || '';
 
-function formatDate(isoString) {
-  if (!isoString) return '';
+  if (!slug) {
+    const parts = urlObj.pathname.split('/').filter(Boolean);
+    if (parts.length >= 2) {
+      region = parts[0];
+      slug = parts[1];
+    } else if (parts.length === 1) {
+      slug = parts[0];
+    }
+  }
+
+  if (!slug) {
+    res.statusCode = 404;
+    return res.end('Article Not Found');
+  }
+
   try {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
+    // 1. Look up article by slug OR short ID OR full UUID
+    let query = supabase.from('articles').select('*').eq('archived', false);
+    
+    // First try exact slug match
+    let { data: articles, error } = await query.eq('slug', slug);
+
+    // If not found, try matching by first 4 words of headline or ID
+    if (!articles || articles.length === 0) {
+      const { data: allArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('archived', false)
+        .order('publishdate', { ascending: false })
+        .limit(500);
+
+      if (allArticles) {
+        articles = allArticles.filter(a => {
+          const s = getArticleSlug(a);
+          const shortId = shortIdFromUuid(a.id);
+          return s === slug || shortId === slug || String(a.id) === slug;
+        });
+      }
+    }
+
+    const article = articles && articles[0];
+
+    if (!article) {
+      res.statusCode = 404;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.end(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head><meta charset="UTF-8"><title>Article Not Found | Honestly Biased</title><link rel="stylesheet" href="/assets/tailwind-built.css"></head>
+        <body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+          <div class="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center">
+            <h1 class="text-2xl font-serif font-bold text-slate-900 mb-2">Article Not Found</h1>
+            <p class="text-sm text-slate-500 mb-6">The story you are looking for may have been archived or moved.</p>
+            <a href="/" class="px-6 py-2.5 bg-slate-900 text-white font-medium text-sm rounded-xl hover:bg-indigo-600 transition-colors">Return to Home</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Canonical link & region formatting
+    const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+    const articleRegion = (article.region || 'indian').toLowerCase().trim();
+    const finalRegion = validRegions.includes(articleRegion) ? articleRegion : 'indian';
+    const canonicalSlug = getArticleSlug(article);
+    const canonicalUrl = `${BASE_URL}/${finalRegion}/${canonicalSlug}`;
+
+    // Bias formatting
+    const bias = getBiasColor(article.biasaudit);
+    const imgUrl = article.imageurl ? (article.imageurl.startsWith('data:image') ? '' : getProxiedImageUrl(article.imageurl)) : '';
+    const headline = article.aiheadline || article.title || 'Honestly Biased Chronicle';
+    const summary = article.aisummary || article.summary || '';
+    const fullBlog = article.fullblog || article.aisummary || article.summary || '';
+    const author = article.author || 'CMS Admin';
+    const authorType = article.authortype || 'Editorial Staff';
+    const source = article.originalsource || 'Independent Wire';
+    const pubDate = article.publishdate ? new Date(article.publishdate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent';
+    const isoPubDate = article.publishdate ? new Date(article.publishdate).toISOString() : new Date().toISOString();
+    const isoModDate = article.updatedat ? new Date(article.updatedat).toISOString() : isoPubDate;
+
+    // JSON-LD NewsArticle Structured Data
+    const schemaOrgArticle = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'NewsArticle',
+      'mainEntityOfPage': {
+        '@type': 'WebPage',
+        '@id': canonicalUrl
+      },
+      'headline': headline,
+      'description': summary,
+      'image': [
+        article.imageurl || `${BASE_URL}/assets/og-image.png`
+      ],
+      'datePublished': isoPubDate,
+      'dateModified': isoModDate,
+      'author': {
+        '@type': 'Person',
+        'name': author,
+        'url': BASE_URL
+      },
+      'publisher': {
+        '@type': 'Organization',
+        'name': SITE_NAME,
+        'url': BASE_URL,
+        'logo': {
+          '@type': 'ImageObject',
+          'url': `${BASE_URL}/assets/logo.png`,
+          'width': 512,
+          'height': 512
+        }
+      },
+      'articleSection': article.category || 'News',
+      'inLanguage': 'en-IN'
     });
-  } catch (e) {
-    return '';
-  }
-}
 
-function formatIso(isoString) {
-  if (!isoString) return new Date().toISOString();
-  try {
-    return new Date(isoString).toISOString();
-  } catch (e) {
-    return new Date().toISOString();
-  }
-}
+    const schemaOrgBreadcrumb = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      'itemListElement': [
+        {
+          '@type': 'ListItem',
+          'position': 1,
+          'name': 'Home',
+          'item': BASE_URL
+        },
+        {
+          '@type': 'ListItem',
+          'position': 2,
+          'name': finalRegion.toUpperCase(),
+          'item': `${BASE_URL}/${finalRegion}`
+        },
+        {
+          '@type': 'ListItem',
+          'position': 3,
+          'name': headline,
+          'item': canonicalUrl
+        }
+      ]
+    });
 
-async function findArticle(param, regionHint) {
-  if (!param) return null;
-  const p = String(param).trim();
-
-  if (regionHint) {
-    const { data: exactRegionMatch } = await supabase
-      .from('articles')
-      .select(ARTICLE_SELECT)
-      .eq('region', regionHint.toLowerCase())
-      .eq('slug', p)
-      .limit(1)
-      .maybeSingle();
-    if (exactRegionMatch) return exactRegionMatch;
-  }
-
-  const { data: slugMatch } = await supabase
-    .from('articles')
-    .select(ARTICLE_SELECT)
-    .eq('slug', p)
-    .limit(1)
-    .maybeSingle();
-  if (slugMatch) return slugMatch;
-
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (uuidRegex.test(p)) {
-    const { data } = await supabase
-      .from('articles')
-      .select(ARTICLE_SELECT)
-      .eq('id', p)
-      .maybeSingle();
-    return data;
-  }
-
-  if (/^[0-9a-f]{8}$/i.test(p)) {
-    const { data } = await supabase
-      .from('articles')
-      .select(ARTICLE_SELECT)
-      .ilike('id', `%${p}`)
-      .limit(1)
-      .maybeSingle();
-    return data;
-  }
-
-  return null;
-}
-
-function renderHtml(article) {
-  const headline  = article.aiheadline || 'Untitled Chronicle';
-  const summary   = article.aisummary || '';
-  const rawBody   = article.fullblog || article.aisummary || '';
-  const isHtml    = /<p>|<br\s*\/?>/i.test(rawBody);
-  const bodyHtml  = isHtml ? rawBody : rawBody.split('\n\n').map(p => `<p>${escapeHtml(p.trim())}</p>`).join('');
-  const category  = article.category || 'Politics';
-  const region    = (article.region || 'indian').toLowerCase();
-  const datePub   = formatIso(article.publishdate);
-  const dateMod   = formatIso(article.updatedat || article.publishdate);
-  const dateHuman = formatDate(article.publishdate);
-  const author    = article.author || 'Honestly Biased Team';
-  const authorRole = article.authortype === 'admin'
-    ? 'Honestly Biased Editorial Board (Admin)'
-    : (article.authortype === 'instagram'
-        ? 'Honestly Biased AI Engine (Instagram Ingestion)'
-        : 'Audited by Honestly Biased AI Engine (Gemini)');
-  const biasAudit = article.biasaudit || 'Narrative calibration in progress.';
-  const source    = article.originalsource || 'Editorial Desk';
-  const origUrl   = article.originalurl || '#';
-
-  const image     = article.imageurl || '/assets/hero-bg.png';
-  const absImage  = image.startsWith('http') ? image : (SITE + image);
-
-  const canonicalUrl = `${SITE}${getArticleUrl(article)}`;
-  const metaDesc     = escapeAttr(truncate(stripTags(summary), 200));
-
-  const schemaOrgArticle = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
-    'mainEntityOfPage': {
-      '@type': 'WebPage',
-      '@id': canonicalUrl
-    },
-    'headline': truncate(headline, 110),
-    'description': truncate(stripTags(summary), 200),
-    'image': [absImage],
-    'datePublished': datePub,
-    'dateModified': dateMod,
-    'author': {
-      '@type': article.authortype === 'admin' ? 'Person' : 'Organization',
-      'name': author,
-      'url': SITE
-    },
-    'publisher': {
-      '@type': 'Organization',
-      'name': SITE_NAME,
-      'url': SITE,
-      'logo': {
-        '@type': 'ImageObject',
-        'url': `${SITE}/assets/logo.png`,
-        'width': 512,
-        'height': 512
-      }
-    },
-    'articleSection': category,
-    'inLanguage': 'en-IN'
-  });
-
-  const schemaOrgBreadcrumb = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    'itemListElement': [
-      {
-        '@type': 'ListItem',
-        'position': 1,
-        'name': 'Home',
-        'item': SITE
-      },
-      {
-        '@type': 'ListItem',
-        'position': 2,
-        'name': `${region.charAt(0).toUpperCase() + region.slice(1)} Edition`,
-        'item': `${SITE}/#/${region}`
-      },
-      {
-        '@type': 'ListItem',
-        'position': 3,
-        'name': category,
-        'item': `${SITE}/#/${region}/${category.toLowerCase()}`
-      },
-      {
-        '@type': 'ListItem',
-        'position': 4,
-        'name': truncate(headline, 60),
-        'item': canonicalUrl
-      }
-    ]
-  });
-
-  return `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>${escapeHtml(headline)} | ${escapeHtml(SITE_NAME)}</title>
-<meta name="description" content="${metaDesc}">
-<meta name="author" content="${escapeAttr(author)}">
-<meta name="keywords" content="${escapeAttr(category)}, Honestly Biased, Media Critique, Bias Audit, Indian Politics, Satire">
-
+<title>${escapeHtml(headline)} | ${SITE_NAME}</title>
+<meta name="description" content="${escapeHtml(summary)}">
 <link rel="canonical" href="${canonicalUrl}">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
 
+<!-- OpenGraph -->
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="${escapeAttr(SITE_NAME)}">
+<meta property="og:site_name" content="${escapeHtml(SITE_NAME)}">
+<meta property="og:title" content="${escapeHtml(headline)}">
+<meta property="og:description" content="${escapeHtml(summary)}">
 <meta property="og:url" content="${canonicalUrl}">
-<meta property="og:title" content="${escapeAttr(headline)}">
-<meta property="og:description" content="${metaDesc}">
-<meta property="og:image" content="${escapeAttr(absImage)}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="${escapeAttr(headline)}">
-<meta property="article:published_time" content="${datePub}">
-<meta property="article:modified_time" content="${dateMod}">
-<meta property="article:section" content="${escapeAttr(category)}">
-<meta property="article:publisher" content="${SITE}">
+<meta property="og:image" content="${escapeHtml(article.imageurl || `${BASE_URL}/assets/og-image.png`)}">
+<meta property="article:published_time" content="${isoPubDate}">
+<meta property="article:section" content="${escapeHtml(article.category || 'News')}">
+<meta property="article:author" content="${escapeHtml(author)}">
 
+<!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@honestlybiased">
-<meta name="twitter:title" content="${escapeAttr(headline)}">
-<meta name="twitter:description" content="${metaDesc}">
-<meta name="twitter:image" content="${escapeAttr(absImage)}">
-<meta name="twitter:image:alt" content="${escapeAttr(headline)}">
+<meta name="twitter:title" content="${escapeHtml(headline)}">
+<meta name="twitter:description" content="${escapeHtml(summary)}">
+<meta name="twitter:image" content="${escapeHtml(article.imageurl || `${BASE_URL}/assets/og-image.png`)}">
 
-<meta name="theme-color" content="#0a0e1a">
-<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
-<link rel="apple-touch-icon" href="/assets/logo.png">
+<!-- Fonts & Tailwind -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/tailwind-built.css">
 
+<!-- Structured Data -->
 <script type="application/ld+json">${schemaOrgArticle}</script>
 <script type="application/ld+json">${schemaOrgBreadcrumb}</script>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-
+<style>
+  .font-serif { font-family: 'Newsreader', serif; }
+  .font-brand { font-family: 'Cinzel', serif; }
+</style>
 <script src="/assets/lucide-local.js" defer></script>
 <script defer src="/_vercel/insights/script.js"></script>
-
-<link rel="preload" href="/style.css" as="style">
-<link rel="stylesheet" href="/style.css">
+<script defer src="/_vercel/speed-insights/script.js"></script>
 </head>
-<body class="dark-theme">
-<div id="read-progress-bar"></div>
-<a href="#main-content" class="skip-to-content">Skip to main content</a>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col justify-between">
 
-<header class="main-header glass-element" id="main-header">
-  <div class="header-container">
-    <div class="header-left">
-      <a href="/" class="brand-logo" aria-label="Honestly Biased Home">
-        <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2">
+        <span class="font-brand font-bold text-2xl tracking-tight text-slate-950">HONESTLY BIASED</span>
+      </a>
+      <a href="/" class="text-xs font-semibold text-slate-600 hover:text-indigo-600 flex items-center gap-1">
+        &larr; Back to Front Page
       </a>
     </div>
-    <div class="header-center">
-      <nav class="breadcrumb-nav" aria-label="Breadcrumb" style="font-size:0.75rem; color:var(--text-muted);">
-        <a href="/" style="color:var(--text-muted); text-decoration:none;">Home</a>
-        <span style="margin:0 6px;">/</span>
-        <a href="/#/${region}" style="color:var(--text-muted); text-decoration:none; text-transform:capitalize;">${escapeHtml(region)}</a>
-        <span style="margin:0 6px;">/</span>
-        <span style="color:var(--accent-saffron); font-weight:600;">${escapeHtml(category)}</span>
-      </nav>
-    </div>
-    <div class="header-right">
-      <a href="/" class="btn btn-secondary" style="padding:6px 14px; font-size:0.75rem; display:inline-flex; align-items:center; gap:6px; text-decoration:none; border-radius:6px; background:var(--bg-card); border:1px solid var(--border-glass); color:var(--text-primary);">
-        <i data-lucide="arrow-left" style="width:12px;height:12px;"></i>
-        <span>The Ledger</span>
-      </a>
-    </div>
-  </div>
-</header>
+  </header>
 
-<main id="main-content" style="padding:120px 0 80px 0; min-height:85vh;">
-  <div class="container" style="max-width:1100px; margin:0 auto; padding:0 24px;">
+  <!-- Article Hero & Body -->
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-10 w-full">
     
-    <div style="margin-bottom:24px;">
-      <a href="/#/${region}" class="btn btn-secondary back-btn" style="display:inline-flex; align-items:center; gap:8px; font-weight:600; text-decoration:none; padding:8px 16px; border-radius:6px; background:var(--bg-card); border:1px solid var(--border-glass); color:var(--text-primary); font-size:0.8rem;">
-        <i data-lucide="arrow-left" style="width:14px; height:14px;"></i>
-        <span>Back to ${region.toUpperCase()} Chronicles</span>
-      </a>
+    <!-- Meta Badges -->
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <span class="px-3 py-1 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider rounded-md">${escapeHtml(article.category || 'News')}</span>
+      <span class="px-3 py-1 text-xs font-bold rounded-md border" style="background-color: ${bias.bg}; color: ${bias.text}; border-color: ${bias.border};">${escapeHtml(bias.label)}</span>
+      <span class="text-xs text-slate-400">•</span>
+      <span class="text-xs text-slate-500 font-medium">${escapeHtml(pubDate)}</span>
     </div>
 
-    <article class="article-detail-card glass-element" style="padding:48px; border-radius:16px; border:1.5px solid var(--border-glass); box-shadow:var(--glass-shadow); position:relative; background:var(--bg-card); backdrop-filter:blur(20px);">
-      
-      <div style="display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-        <span class="modal-tag saffron-bg" style="font-size:0.7rem; padding:4px 12px; border-radius:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-primary); background-color:var(--accent-saffron);">${escapeHtml(category)}</span>
-        <span style="font-size:0.75rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;"><i data-lucide="calendar" style="width:12px;height:12px;"></i> ${dateHuman}</span>
-        <span style="font-size:0.75rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> ${escapeHtml(article.timeago || 'Audited Chronicle')}</span>
-        <span style="font-size:0.75rem; color:var(--accent-green); font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> ${escapeHtml(authorRole)}</span>
+    <!-- Title -->
+    <h1 class="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-slate-950 leading-tight mb-6">
+      ${escapeHtml(headline)}
+    </h1>
+
+    <!-- Author & Attribution Header -->
+    <div class="flex items-center justify-between py-4 border-y border-slate-200 mb-8 text-xs text-slate-600">
+      <div>
+        By <span class="font-semibold text-slate-900">${escapeHtml(author)}</span> (${escapeHtml(authorType)})
       </div>
-
-      <h1 style="font-family:var(--font-heading); font-size:clamp(1.75rem, 4vw, 2.75rem); font-weight:800; line-height:1.2; margin-bottom:20px; color:var(--text-primary); text-shadow:0 2px 10px var(--shadow-color);">${escapeHtml(headline)}</h1>
-
-      ${absImage ? `
-      <div id="detail-media-container" style="margin-bottom:36px; width:100%; border-radius:8px; overflow:hidden; border:1.5px solid var(--border-glass);">
-        <img src="${escapeAttr(absImage)}" alt="${escapeAttr(headline)}" style="width:100%; max-height:500px; object-fit:cover; display:block;">
+      <div>
+        Source: <span class="font-semibold text-slate-900">${escapeHtml(source)}</span>
       </div>
-      ` : ''}
+    </div>
 
-      <div class="bias-audit-callout" style="margin-bottom:36px; padding:20px 24px; border-left:4px solid var(--accent-green); background:rgba(0, 229, 255, 0.04); border-radius:0 8px 8px 0;">
-        <h4 class="callout-heading" style="font-size:0.8rem; font-weight:800; color:var(--accent-green); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-          <i data-lucide="search-code" style="width:14px;height:14px;"></i> AI NARRATIVE AUDIT
-        </h4>
-        <p class="callout-text" style="font-size:1rem; line-height:1.6; color:var(--text-primary); font-weight:500; margin:0;">${escapeHtml(biasAudit)}</p>
+    <!-- Featured Image -->
+    ${imgUrl ? `
+      <div class="rounded-2xl overflow-hidden mb-10 shadow-sm border border-slate-200 bg-slate-900">
+        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(headline)}" class="w-full max-h-[500px] object-cover" loading="eager" fetchpriority="high">
       </div>
+    ` : ''}
 
-      <div class="blog-post-content" style="font-size:1.15rem; line-height:1.85; color:var(--text-secondary); margin-bottom:40px; font-weight:400; letter-spacing:-0.003em;">
-        ${bodyHtml}
+    <!-- Executive Summary / Bias Audit Box -->
+    <div class="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-6 sm:p-8 mb-10">
+      <div class="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-widest mb-3">
+        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        AI Bias Audit & Summary
       </div>
+      <p class="text-slate-700 text-sm sm:text-base leading-relaxed">
+        ${escapeHtml(summary)}
+      </p>
+    </div>
 
-      <div style="padding-top:28px; border-top:1.5px solid var(--border-glass); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-        <span style="font-size:0.85rem; color:var(--text-muted); font-weight:500;">Attribution Source: <strong>${escapeHtml(source)}</strong></span>
-        ${origUrl && origUrl !== '#' ? `<a href="${escapeAttr(origUrl)}" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; color:var(--accent-red); font-weight:600; display:inline-flex; align-items:center; gap:6px; text-decoration:none;"><span>Inspect Raw Corporate Press</span><i data-lucide="external-link" style="width:14px; height:14px;"></i></a>` : ''}
-      </div>
-
+    <!-- Full Article Body -->
+    <article class="prose prose-slate max-w-none font-serif text-lg leading-relaxed text-slate-800 space-y-6">
+      ${escapeHtml(fullBlog).split('\n\n').map(p => `<p>${p.trim()}</p>`).join('')}
     </article>
 
-  </div>
-</main>
+    <!-- Source Link -->
+    ${article.originalurl ? `
+      <div class="mt-12 pt-6 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+        <span>Original Publication: <a href="${escapeHtml(article.originalurl)}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline font-medium">${escapeHtml(article.originaltitle || source)}</a></span>
+        <button onclick="navigator.clipboard.writeText(window.location.href); alert('Link copied to clipboard!');" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium rounded-lg transition-colors">
+          Share Story
+        </button>
+      </div>
+    ` : ''}
 
-<footer class="editorial-footer">
-  <div class="footer-bottom">
-    <p class="copyright">&copy; 2026 Honestly Biased Digital Media Trust. Reader supported, fiercely independent.</p>
-  </div>
-</footer>
+  </main>
 
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-  if (window.lucide) lucide.createIcons();
-});
-</script>
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-10 mt-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
+      <p>&copy; ${new Date().getFullYear()} Honestly Biased Media. All rights reserved.</p>
+      <div class="flex gap-6">
+        <a href="/manifesto" class="hover:text-slate-600">Manifesto</a>
+        <a href="/standards" class="hover:text-slate-600">Audit Standards</a>
+        <a href="/rss.xml" class="hover:text-slate-600">RSS Feed</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) lucide.createIcons();
+    });
+  </script>
 </body>
 </html>`;
-}
-
-module.exports = async (req, res) => {
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).send('Method Not Allowed');
-
-  if (!supabase) {
-    res.setHeader('X-Robots-Tag', 'noindex');
-    return res.status(503).send('Article service unavailable');
-  }
-
-  const slugParam   = req.query && req.query.slug;
-  const regionParam = req.query && req.query.region;
-
-  if (!slugParam) {
-    return res.status(404).send('Article slug required');
-  }
-
-  try {
-    const article = await findArticle(slugParam, regionParam);
-
-    if (!article) {
-      res.setHeader('X-Robots-Tag', 'noindex');
-      return res.status(404).send('Article Not Found');
-    }
-
-    const canonicalSlug = getArticleSlug(article);
-    const canonicalRegion = (article.region || 'indian').toLowerCase();
-    const isLegacyRoute = req.url && req.url.startsWith('/article/');
-
-    if (isLegacyRoute || (slugParam !== canonicalSlug && /^[0-9a-f]{8}$/i.test(slugParam))) {
-      const targetUrl = `/${canonicalRegion}/${canonicalSlug}`;
-      res.setHeader('Location', targetUrl);
-      return res.status(301).end();
-    }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
-    res.setHeader('Vary', 'User-Agent');
-
-    const html = renderHtml(article);
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=600');
     return res.status(200).send(html);
 
   } catch (err) {
-    console.error('Article render error:', err.message);
-    res.setHeader('X-Robots-Tag', 'noindex');
-    return res.status(500).send('Internal Server Error rendering chronicle');
+    console.error('Article SSR error:', err);
+    res.statusCode = 500;
+    return res.end('Internal Server Error rendering article');
   }
 };
