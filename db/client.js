@@ -13,21 +13,22 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL;
+const DEFAULT_SUPABASE_URL = 'https://mprxrtesqgtznsinsezs.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wcnhydGVzcWd0em5zaW5zZXpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NTY0NzAsImV4cCI6MjA5ODAzMjQ3MH0.4miNOnjt1ME2avLbzwWjB5CbcRs5eNIWcaQDvISdBYU';
+
+const supabaseUrl = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
 const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  DEFAULT_SUPABASE_ANON_KEY;
 
 // Reuse client across hot reloads (dev) and warm invocations (prod)
 const GLOBAL_KEY = '__HONESTLYBIASED_SUPABASE_CLIENT__';
 
 let supabase = globalThis[GLOBAL_KEY];
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn(
-    '[supabase] SUPABASE_URL / SUPABASE_*_KEY env vars are not set. ' +
-      'Set them in Vercel project settings. Client left as null.'
-  );
-} else if (!supabase) {
+if (!supabase) {
   supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false },
     // Connection pool tuning: smaller pool per serverless instance
