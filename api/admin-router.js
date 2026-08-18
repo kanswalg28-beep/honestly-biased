@@ -1,4 +1,12 @@
-// api/admin-router.js — Unified Serverless Controller for all CMS Admin operations
+function sendJson(res, status, data) {
+  if (res.status && typeof res.status === 'function') {
+    return res.status(status).json(data);
+  }
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  return res.end(JSON.stringify(data));
+}
+// api/admin.js — Unified Serverless Controller for all CMS Admin operations
 // Handles: articles, auth, csrf, highlights, site-content, subscribers, upload
 // Reduces total serverless function count to keep deployment within Vercel Hobby limits (<12).
 
@@ -19,7 +27,7 @@ function requireAuth(req, res) {
   const p = process.env.ADMIN_PASSWORD;
   if (!u || !p) {
     // If not configured, fail-closed for safety
-    res.status(503).json({ error: 'Admin not configured (ADMIN_USERNAME/ADMIN_PASSWORD missing)' });
+    sendJson(res, 503, { error: 'Admin not configured (ADMIN_USERNAME/ADMIN_PASSWORD missing)' });
     return false;
   }
   const h = req.headers['authorization'] || '';
@@ -35,7 +43,7 @@ function requireAuth(req, res) {
   })();
   if (!ok) {
     res.setHeader('WWW-Authenticate', 'Basic realm="CMS Admin"');
-    res.status(401).json({ error: 'Authentication required' });
+    sendJson(res, 401, { error: 'Authentication required' });
     return false;
   }
   return true;
@@ -91,7 +99,7 @@ function generateSlug(headline) {
 async function handleArticles(req, res) {
   if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) {
     res.setHeader('Allow', 'GET, POST, PUT, DELETE');
-    return res.status(405).json({ error: 'Method not allowed' });
+    return sendJson(res, 405, { error: 'Method not allowed' });
   }
 
   // GET is public/cacheable
@@ -139,7 +147,7 @@ async function handleArticles(req, res) {
     const { data, count, error } = await query;
     if (error) throw error;
 
-    return res.status(200).json({
+    return sendJson(res, 200, {
       articles: data || [],
       pagination: {
         page: parsedPage,
@@ -168,7 +176,7 @@ async function handleArticles(req, res) {
     }
 
     if (!sanitized.aiheadline) {
-      return res.status(400).json({ error: 'aiheadline is required' });
+      return sendJson(res, 400, { error: 'aiheadline is required' });
     }
 
     if (!sanitized.slug) {
@@ -187,12 +195,12 @@ async function handleArticles(req, res) {
       .single();
 
     if (error) throw error;
-    return res.status(201).json(data);
+    return sendJson(res, 201, data);
   }
 
   if (req.method === 'PUT') {
     const id = req.query.id || (req.body && req.body.id);
-    if (!id) return res.status(400).json({ error: 'Article id is required for update' });
+    if (!id) return sendJson(res, 400, { error: 'Article id is required for update' });
 
     const body = req.body || {};
     const sanitized = {};
@@ -213,12 +221,12 @@ async function handleArticles(req, res) {
       .single();
 
     if (error) throw error;
-    return res.status(200).json(data);
+    return sendJson(res, 200, data);
   }
 
   if (req.method === 'DELETE') {
     const id = req.query.id || (req.body && req.body.id);
-    if (!id) return res.status(400).json({ error: 'Article id is required for deletion' });
+    if (!id) return sendJson(res, 400, { error: 'Article id is required for deletion' });
 
     const { data, error } = await supabase
       .from('articles')
@@ -228,23 +236,23 @@ async function handleArticles(req, res) {
       .single();
 
     if (error) throw error;
-    return res.status(200).json({ success: true, deleted: data });
+    return sendJson(res, 200, { success: true, deleted: data });
   }
 }
 
 // 2. AUTH & CSRF
 async function handleAuth(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
   if (!requireAuth(req, res)) return;
 
   const token = makeCsrfToken();
-  return res.json({ token, expiresIn: 3600 });
+  return sendJson(res, 200, { token, expiresIn: 3600 });
 }
 
 async function handleCsrf(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
   const token = makeCsrfToken();
-  return res.json({ csrfToken: token || 'hb-csrf-token' });
+  return sendJson(res, 200, { csrfToken: token || 'hb-csrf-token' });
 }
 
 // 3. TICKER HIGHLIGHTS
@@ -252,20 +260,20 @@ async function handleHighlights(req, res) {
   const TABLE = 'site_content';
   const KEY = 'highlights';
 
-  if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
+  if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'Method not allowed' });
   if (!requireAuth(req, res)) return;
 
   if (req.method === 'GET') {
     const { data, error } = await supabase.from(TABLE).select('value').eq('key', KEY).single();
     if (error && error.code !== 'PGRST116') throw error;
     const highlights = data?.value || [];
-    return res.json(Array.isArray(highlights) ? highlights : []);
+    return sendJson(res, 200, Array.isArray(highlights) ? highlights : []);
   }
 
   if (req.method === 'POST') {
     const { highlights } = req.body || {};
     if (!Array.isArray(highlights)) {
-      return res.status(400).json({ error: 'highlights must be an array' });
+      return sendJson(res, 400, { error: 'highlights must be an array' });
     }
     const { data, error } = await supabase
       .from(TABLE)
@@ -274,41 +282,41 @@ async function handleHighlights(req, res) {
       .single();
 
     if (error) throw error;
-    return res.json({ ok: true, highlights: data.value });
+    return sendJson(res, 200, { ok: true, highlights: data.value });
   }
 }
 
 // 4. SITE CONTENT & HERO
 async function handleSiteContent(req, res) {
   const TABLE = 'site_content';
-  if (!['GET', 'POST', 'PUT'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
+  if (!['GET', 'POST', 'PUT'].includes(req.method)) return sendJson(res, 405, { error: 'Method not allowed' });
   if (!requireAuth(req, res)) return;
 
   if (req.method === 'GET') {
     const { data, error } = await supabase.from(TABLE).select('*');
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return sendJson(res, 500, { error: error.message });
     const content = {};
     for (const row of data || []) content[row.key] = row.value;
-    return res.json({ content });
+    return sendJson(res, 200, { content });
   }
 
   const updates = req.body && typeof req.body === 'object' ? req.body : {};
   const keys = Object.keys(updates);
-  if (!keys.length) return res.status(400).json({ error: 'No content to update' });
+  if (!keys.length) return sendJson(res, 400, { error: 'No content to update' });
 
   for (const key of keys) {
     const { error } = await supabase
       .from(TABLE)
       .upsert({ key, value: updates[key], updated_at: new Date().toISOString() }, { onConflict: 'key' });
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return sendJson(res, 500, { error: error.message });
   }
-  return res.json({ success: true, updated: keys });
+  return sendJson(res, 200, { success: true, updated: keys });
 }
 
 // 5. SUBSCRIBERS
 async function handleSubscribers(req, res) {
   const TABLE = 'subscribers';
-  if (!['GET', 'POST', 'DELETE'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
+  if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'Method not allowed' });
   if (!requireAuth(req, res)) return;
 
   if (req.method === 'GET') {
@@ -318,7 +326,7 @@ async function handleSubscribers(req, res) {
       .select('id, email, created_at, active')
       .order('created_at', { ascending: false });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return sendJson(res, 500, { error: error.message });
 
     if (format === 'csv') {
       let csv = 'ID,Email,SubscribedAt,Active\n';
@@ -329,21 +337,21 @@ async function handleSubscribers(req, res) {
       res.setHeader('Content-Disposition', 'attachment; filename="honestly-biased-subscribers.csv"');
       return res.status(200).send(csv);
     }
-    return res.json({ subscribers: data || [] });
+    return sendJson(res, 200, { subscribers: data || [] });
   }
 
   if (req.method === 'DELETE') {
     const id = req.query.id || (req.body && req.body.id);
-    if (!id) return res.status(400).json({ error: 'Subscriber ID is required' });
+    if (!id) return sendJson(res, 400, { error: 'Subscriber ID is required' });
     const { data, error } = await supabase.from(TABLE).delete().eq('id', id).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json({ success: true, deleted: data });
+    if (error) return sendJson(res, 500, { error: error.message });
+    return sendJson(res, 200, { success: true, deleted: data });
   }
 }
 
 // 6. IMAGE UPLOAD
 async function handleUpload(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
   if (!requireAuth(req, res)) return;
 
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -353,7 +361,7 @@ async function handleUpload(req, res) {
   try {
     const contentType = req.headers['content-type'] || '';
     if (!contentType.includes('multipart/form-data')) {
-      return res.status(400).json({ error: 'Content-Type must be multipart/form-data' });
+      return sendJson(res, 400, { error: 'Content-Type must be multipart/form-data' });
     }
 
     const chunks = [];
@@ -364,7 +372,7 @@ async function handleUpload(req, res) {
     const body = buffer.toString('binary');
     
     const boundaryMatch = contentType.match(/boundary=([^;]+)/);
-    if (!boundaryMatch) return res.status(400).json({ error: 'No boundary in multipart' });
+    if (!boundaryMatch) return sendJson(res, 400, { error: 'No boundary in multipart' });
     const boundary = boundaryMatch[1];
     
     const parts = body.split(`--${boundary}`).map(p => p.trim()).filter(p => p && p !== '--');
@@ -388,12 +396,12 @@ async function handleUpload(req, res) {
       }
     }
     
-    if (!fileBuffer) return res.status(400).json({ error: 'No image file provided' });
+    if (!fileBuffer) return sendJson(res, 400, { error: 'No image file provided' });
     if (!ALLOWED_TYPES.includes(fileType)) {
-      return res.status(400).json({ error: `Invalid file type: ${fileType}` });
+      return sendJson(res, 400, { error: `Invalid file type: ${fileType}` });
     }
     if (fileBuffer.length > MAX_SIZE) {
-      return res.status(400).json({ error: 'File too large' });
+      return sendJson(res, 400, { error: 'File too large' });
     }
 
     const timestamp = Date.now();
@@ -423,7 +431,7 @@ async function handleUpload(req, res) {
     if (error) throw error;
 
     const { data: pubData } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
-    return res.json({
+    return sendJson(res, 200, {
       url: pubData.publicUrl,
       path: filePath,
       size: uploadBuffer.length,
@@ -432,7 +440,7 @@ async function handleUpload(req, res) {
 
   } catch (err) {
     console.error('Upload error:', err);
-    return res.status(500).json({ error: err.message || 'Upload failed' });
+    return sendJson(res, 500, { error: err.message || 'Upload failed' });
   }
 }
 
@@ -444,7 +452,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (!supabase) {
-    return res.status(503).json({ error: 'Database client not initialized' });
+    return sendJson(res, 503, { error: 'Database client not initialized' });
   }
 
   // Parse target route from query param (via vercel.json rewrite) or URL
@@ -486,9 +494,9 @@ module.exports = async (req, res) => {
       return await handleUpload(req, res);
     }
 
-    return res.status(404).json({ error: `Admin route '/${route}' not found` });
+    return sendJson(res, 404, { error: `Admin route '/${route}' not found` });
   } catch (err) {
     console.error(`Admin dispatch error on '/${route}':`, err);
-    return res.status(500).json({ error: err.message || 'Internal admin error' });
+    return sendJson(res, 500, { error: err.message || 'Internal admin error' });
   }
 };
