@@ -271,6 +271,7 @@ async function renderHomepageHtml(articles) {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 
 <script src="/assets/lucide-local.js" defer></script>
+<script defer src="/_vercel/insights/script.js"></script>
 
 <link rel="preload" as="image" href="${escapeAttr(heroImage)}" type="image/webp">
 
