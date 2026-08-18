@@ -1,8 +1,9 @@
-// api/article.js — Server-Side Rendered Article Page (Exact 1:1 Match with www.honestlybiased.com Production Layout)
+// api/article.js — Server-Side Rendered Article Page with Direct Supabase CDN Images
 const { supabase } = require('../db/client');
 
 const SITE_NAME = 'Honestly Biased';
 const BASE_URL = 'https://www.honestlybiased.com';
+const SUPABASE_PROJECT_URL = process.env.SUPABASE_URL || 'https://mprxrtesqgtznsinsezs.supabase.co';
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -54,15 +55,18 @@ function formatDate(dateStr) {
   }
 }
 
-function getProxiedImageUrl(originalUrl) {
-  if (!originalUrl) return '/assets/hero-bg.png';
-  if (originalUrl.startsWith('data:image')) return '/assets/hero-bg.png';
-  if (originalUrl.startsWith('/')) return originalUrl;
-  if (originalUrl.includes('supabase.co')) {
-    const match = originalUrl.match(/storage\/v1\/object\/public\/.+$/);
-    if (match) return `/img-proxy/${match[0]}`;
+function formatImageUrl(url) {
+  if (!url) return '/assets/hero-bg.png';
+  if (url.startsWith('data:image')) return '/assets/hero-bg.png';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/storage/v1/object/public/')) {
+    return `${SUPABASE_PROJECT_URL}${url}`;
   }
-  return `/img-proxy/${encodeURIComponent(originalUrl)}`;
+  if (url.startsWith('storage/v1/object/public/')) {
+    return `${SUPABASE_PROJECT_URL}/${url}`;
+  }
+  if (url.startsWith('/')) return url;
+  return url;
 }
 
 module.exports = async (req, res) => {
@@ -133,7 +137,7 @@ module.exports = async (req, res) => {
     const canonicalSlug = getArticleSlug(article);
     const canonicalUrl = `${BASE_URL}/${finalRegion}/${canonicalSlug}`;
 
-    const imgUrl = getProxiedImageUrl(article.imageurl);
+    const imgUrl = formatImageUrl(article.imageurl);
     const headline = article.aiheadline || article.title || 'Honestly Biased Chronicle';
     const summary = article.aisummary || article.summary || '';
     const fullBlog = article.fullblog || article.aisummary || article.summary || '';
