@@ -10,6 +10,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.110.1",
+    "@vercel/analytics": "^1.5.0",
     "compression": "^1.8.1",
     "debug": "^4.4.3",
     "dotenv": "^17.4.2",
