@@ -11,6 +11,26 @@ const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 let cached = null;
 let cacheTime = 0;
 
+const SUPABASE_PROJECT_URL = process.env.SUPABASE_URL || 'https://mprxrtesqgtznsinsezs.supabase.co';
+
+function formatImageUrl(url) {
+  if (!url || typeof url !== 'string') return '/assets/hero-bg.png';
+  const trimmed = url.trim();
+  if (!trimmed) return '/assets/hero-bg.png';
+  if (trimmed.startsWith('data:image')) return trimmed;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if (trimmed.startsWith('/storage/v1/object/public/')) {
+    return `${SUPABASE_PROJECT_URL}${trimmed}`;
+  }
+  if (trimmed.startsWith('storage/v1/object/public/')) {
+    return `${SUPABASE_PROJECT_URL}/${trimmed}`;
+  }
+  if (trimmed.startsWith('./assets/')) return '/' + trimmed.slice(2);
+  if (trimmed.startsWith('assets/')) return '/' + trimmed;
+  if (trimmed.startsWith('/')) return trimmed;
+  return trimmed;
+}
+
 async function getCustomArticles(limit = 500) {
   if (!supabase) return [];
   const { data, error } = await supabase
@@ -24,10 +44,7 @@ async function getCustomArticles(limit = 500) {
     return [];
   }
   return (data || []).map(a => {
-    if (a.imageurl && a.imageurl.startsWith('data:image')) {
-      a.hasBase64Image = true;
-      a.imageurl = '';
-    }
+    a.imageurl = formatImageUrl(a.imageurl);
     return a;
   });
 }

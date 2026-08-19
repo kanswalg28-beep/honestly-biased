@@ -583,7 +583,7 @@ async function renderHomepageHtml(articles) {
 </div>
 
 <!-- Pre-hydration data for instant SSR → SPA transition -->
-<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
+<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => ({ ...a, shortId: shortIdFromUuid(a.id), imageurl: formatImageUrl(a.imageurl) })) })}</script>
 
 <!-- Three.js is vendored locally and lazy-loaded by lens-effect.js when the hero scrolls into view -->
 
@@ -617,13 +617,7 @@ const SUPABASE_STORAGE_HOSTS = [
 const STORAGE_PATH = '/storage/v1/object/public/';
 
 function proxyImageUrls(text) {
-  if (!text || typeof text !== 'string') return text;
-  let out = text;
-  for (const host of SUPABASE_STORAGE_HOSTS) {
-    // Replace host + storage path with local proxy path
-    out = out.split(host + STORAGE_PATH).join('/img-proxy' + STORAGE_PATH);
-  }
-  return out;
+  return text;
 }
 
 let cachedHtml = null;
@@ -642,11 +636,7 @@ async function handleImgProxy(req, res) {
     return res.status(403).json({ error: 'Forbidden: only public storage paths allowed' });
   }
 
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  if (!SUPABASE_URL) {
-    return res.status(503).json({ error: 'SUPABASE_URL env var not configured' });
-  }
-
+  const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mprxrtesqgtznsinsezs.supabase.co';
   const targetUrl = `${SUPABASE_URL.replace(/\/$/, '')}/${supabasePath}`;
 
   try {
@@ -714,17 +704,12 @@ module.exports = async (req, res) => {
       return res.status(200).json(cachedJson);
     }
     const articles = await fetchLatestArticles(100);
-    const feed = articles.map(a => {
-      const stripped = { ...a, shortId: shortIdFromUuid(a.id), timeago: formatTimeAgo(a.publishdate) };
-      if (a.imageurl && a.imageurl.startsWith('data:image')) {
-        stripped.hasBase64Image = true;
-        stripped.imageurl = '';
-      } else if (a.imageurl) {
-        // Route through Vercel image proxy to reduce Supabase egress
-        stripped.imageurl = proxyImageUrls(a.imageurl);
-      }
-      return stripped;
-    });
+    const feed = articles.map(a => ({
+      ...a,
+      shortId: shortIdFromUuid(a.id),
+      timeago: formatTimeAgo(a.publishdate),
+      imageurl: formatImageUrl(a.imageurl)
+    }));
     cachedJson = { articles: feed };
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');

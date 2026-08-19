@@ -1322,21 +1322,13 @@ app.get('/api/site-content', publicApiLimiter, (req, res) => {
     res.json(readSiteContent());
 });
 
-// POST: Save/update site content (Admin only)
-app.post('/api/admin/site-content', adminAuthLimiter, basicAuth, (req, res) => {
-    const { updates } = req.body;
-    if (!Array.isArray(updates)) {
-        return res.status(400).json({ error: "Updates must be an array." });
-    }
-    const current = readSiteContent();
-    for (const item of updates) {
-        if (item && typeof item.key === 'string' && item.value !== undefined) {
-            current[item.key] = item.value;
-        }
-    }
-    fs.writeFileSync(SITE_CONTENT_FILE, JSON.stringify(current, null, 2), 'utf-8');
-    console.log(`📡 Site content updated keys: ${updates.map(u => u.key).join(', ')}`);
-    res.json({ ok: true, updated: updates });
+const cmsApi = require('./api/cms');
+app.all('/api/admin/upload', (req, res) => {
+    req.query.route = 'upload';
+    return cmsApi(req, res);
+});
+app.all('/api/cms', (req, res) => {
+    return cmsApi(req, res);
 });
 
 // ==========================================================================

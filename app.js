@@ -518,11 +518,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ssrData = JSON.parse(ssrDataEl.textContent);
                 if (ssrData.articles && ssrData.articles.length > 0) {
                     console.log(`⚡ __SSR_DATA__ found with ${ssrData.articles.length} articles — instant hydration`);
-                    allArticles = ssrData.articles.map(a => ({ ...a }));
-                    // Articles with hasBase64Image flag have gradient placeholder in SSR
-                    // Real images will be fetched when app.js re-renders cards from API
-                    const base64Count = allArticles.filter(a => a.hasBase64Image).length;
-                    if (base64Count > 0) console.log(`🖼️ ${base64Count} articles have base64 images (gradient placeholder shown, real image on API re-fetch)`);
+                    allArticles = ssrData.articles.map(a => ({
+                        ...a,
+                        imageurl: formatImageUrl(a.imageurl || a.imageUrl)
+                    }));
 
                     // Hydrate highlights ticker from SSR data
                     if (allArticles.length > 0) {
@@ -535,59 +534,43 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    // Skip the API fetch — SSR data is already here!
-                    // This saves a 4.3MB / 4.5s API round-trip
-                    console.log('✅ Skipping API fetch — using SSR data for instant load');
+                    console.log('✅ Skipping initial API fetch — using SSR data for instant load');
                     handleRouting(true);
                     
-                    // Background: fetch real images for base64 articles AND full article list for pagination
-                    const base64Articles = allArticles.filter(a => a.hasBase64Image);
-                    if (base64Articles.length > 0) {
-                        console.log(`🖼️ Background fetch: hydrating ${base64Articles.length} base64 images from API`);
-                        setTimeout(async () => {
-                            try {
-                                const res = await fetch('/api/honestly-biased-feed');
-                                const data = await res.json();
-                                const apiArticles = data.articles || [];
-                                // Update allArticles with real image URLs
-                                base64Articles.forEach(bs64 => {
-                                    const match = apiArticles.find(a => a.id === bs64.id);
-                                    if (match && match.imageurl && match.imageurl.startsWith('data:image')) {
-                                        bs64.imageurl = match.imageurl;
-                                        bs64.hasBase64Image = false;
-                                    }
-                                });
-                                // Re-render cards with real images
-                                handleRouting(false);
-                                console.log('✅ Base64 images hydrated with real images');
-                            } catch (e) {
-                                console.warn('Background image fetch failed:', e);
-                            }
-                        }, 2000);
-                    }
-                    
-                    // Also fetch FULL article list for pagination (SSR only has 22)
+                    // Background: fetch full article list for pagination and real-time updates
                     setTimeout(async () => {
                         try {
-                            const res = await fetch('/api/honestly-biased-feed?limit=200');
+                            const res = await fetch('/api/honestly-biased-feed?limit=500');
                             const data = await res.json();
-                            const apiArticles = data.articles || [];
-                            if (apiArticles.length > allArticles.length) {
-                                // Merge - keep SSR articles (with hydration) but add missing ones
-                                const existingIds = new Set(allArticles.map(a => a.id));
-                                const newArticles = apiArticles.filter(a => !existingIds.has(a.id));
-                                if (newArticles.length > 0) {
-                                    allArticles.push(...newArticles);
-                                    console.log(`📄 Pagination: added ${newArticles.length} more articles (total ${allArticles.length})`);
+                            const apiArticles = (data.articles || []).map(a => ({
+                                ...a,
+                                imageurl: formatImageUrl(a.imageurl || a.imageUrl)
+                            }));
+                            if (apiArticles.length > 0) {
+                                const existingMap = new Map(allArticles.map(a => [a.id, a]));
+                                let hasNew = false;
+                                apiArticles.forEach(apiArt => {
+                                    if (existingMap.has(apiArt.id)) {
+                                        const existing = existingMap.get(apiArt.id);
+                                        if (apiArt.imageurl && (!existing.imageurl || existing.imageurl.includes('hero-bg.png'))) {
+                                            existing.imageurl = apiArt.imageurl;
+                                            hasNew = true;
+                                        }
+                                    } else {
+                                        allArticles.push(apiArt);
+                                        hasNew = true;
+                                    }
+                                });
+                                if (hasNew) {
                                     handleRouting(false);
                                 }
                             }
                         } catch (e) {
-                            console.warn('Background full article fetch failed:', e);
+                            console.warn('Background article fetch failed:', e);
                         }
-                    }, 3000);
+                    }, 1000);
                     
-                    return; // ← EXIT EARLY, don't fetch from API
+                    return; // ← EXIT EARLY, don't block
                 }
             } catch (e) {
                 console.warn('SSR data parse failed:', e);
@@ -679,7 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 art.aisummary = summary;
                 art.aiSummary = summary;
                 art.description = summary;
-                art.imageurl = art.imageurl || art.imageUrl || './assets/hero-bg.png';
+                art.imageurl = formatImageUrl(art.imageurl || art.imageUrl);
                 art.imageUrl = art.imageurl;
                 return art;
             });
