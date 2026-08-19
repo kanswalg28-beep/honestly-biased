@@ -91,8 +91,12 @@ app.get('/admin', adminAuthLimiter, basicAuth, (req, res) => {
 // Import serverless page handlers for local parity with Vercel deployment
 const homeApi = require('./api/home');
 const articleApi = require('./api/article');
-const rssApi = require('./api/rss');
-const sitemapApi = require('./api/sitemap');
+let feedApi;
+try {
+    feedApi = require('./api/feed');
+} catch (e) {
+    feedApi = (req, res) => res.status(200).send('<xml></xml>');
+}
 
 // Clean category & static page route rewrites (matching vercel.json)
 const staticPages = [
@@ -110,18 +114,24 @@ app.get('/', homeApi);
 app.get('/index.html', homeApi);
 app.get('/api/home', homeApi);
 
+app.get('/(berkshire|indian|world|uk)/:slug', (req, res) => {
+    req.query.region = req.params[0];
+    req.query.slug = req.params.slug;
+    return articleApi(req, res);
+});
+
 app.get('/article/:slug', (req, res) => {
     req.query.slug = req.params.slug;
     return articleApi(req, res);
 });
 app.get('/api/article', articleApi);
 
-app.get('/rss.xml', rssApi);
-app.get('/feed.xml', rssApi);
-app.get('/api/rss', rssApi);
+app.get('/rss.xml', (req, res) => { req.query.type = 'rss'; return feedApi(req, res); });
+app.get('/feed.xml', (req, res) => { req.query.type = 'rss'; return feedApi(req, res); });
+app.get('/api/rss', (req, res) => { req.query.type = 'rss'; return feedApi(req, res); });
 
-app.get('/sitemap.xml', sitemapApi);
-app.get('/api/sitemap', sitemapApi);
+app.get('/sitemap.xml', (req, res) => { req.query.type = 'sitemap'; return feedApi(req, res); });
+app.get('/api/sitemap', (req, res) => { req.query.type = 'sitemap'; return feedApi(req, res); });
 
 // Serve static frontend template files directly from the Express server!
 // This solves local browser CORS blocks when loading WebGL image textures.
