@@ -51,6 +51,29 @@ function shortIdFromUuid(uuid) {
   return String(uuid).replace(/-/g, '').slice(-8);
 }
 
+function getArticleSlug(article) {
+  if (!article) return '';
+  if (article.slug && String(article.slug).trim()) return String(article.slug).trim();
+  const headline = article.aiheadline || article.aiHeadline || article.title || '';
+  const words = headline
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .join('-');
+  return words || shortIdFromUuid(article.id);
+}
+
+function getArticleUrl(article) {
+  if (!article) return '#';
+  const region = (article.region || 'indian').toLowerCase().trim();
+  const validRegions = ['berkshire', 'indian', 'world', 'uk'];
+  const r = validRegions.includes(region) ? region : 'indian';
+  const slug = getArticleSlug(article);
+  return `/${r}/${slug}`;
+}
+
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
   const E = {
@@ -129,8 +152,8 @@ function cardTimeHtml(article) {
 }
 
 function cardLinkHtml(article) {
-  const shortId = shortIdFromUuid(article.id);
-  return `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
+  const url = getArticleUrl(article);
+  return `<a href="${escapeAttr(url)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}" data-url="${escapeAttr(url)}">${escapeHtml(article.aiheadline)}</a>`;
 }
 
 const SUPABASE_PROJECT_URL = process.env.SUPABASE_URL || 'https://mprxrtesqgtznsinsezs.supabase.co';
@@ -156,10 +179,10 @@ function formatImageUrl(url) {
 // Build a single bento card HTML (mirrors app.js exactly)
 function buildBentoCard(article, index) {
   const isInstagram = article.authortype === 'instagram';
-  const shortId = shortIdFromUuid(article.id);
   const rawHeadline = article.aiheadline || article.aiHeadline || article.title || 'Untitled Chronicle';
   const rawSummary = article.aisummary || article.aiSummary || article.description || article.summary || '';
-  const cardLink = `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(rawHeadline)}</a>`;
+  const articleUrl = getArticleUrl(article);
+  const cardLink = `<a href="${escapeAttr(articleUrl)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}" data-url="${escapeAttr(articleUrl)}">${escapeHtml(rawHeadline)}</a>`;
   const badgeHtml = authorBadgeHtml(article.authortype);
   const catTag = categoryTagHtml(article.category);
   const timeHtml = cardTimeHtml(article);
@@ -254,7 +277,7 @@ async function fetchLatestArticles(limit = 22) {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+      .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(limit);
@@ -309,7 +332,7 @@ async function renderHomepageHtml(articles) {
       if (img.startsWith('data:image')) img = SITE + '/assets/hero-bg.png';
       return {
         '@type': 'ListItem', 'position': i + 1,
-        'item': { '@type': 'NewsArticle', 'url': SITE + '/article/' + shortIdFromUuid(a.id), 'headline': a.aiheadline, 'image': img, 'datePublished': a.publishdate }
+        'item': { '@type': 'NewsArticle', 'url': SITE + getArticleUrl(a), 'headline': a.aiheadline, 'image': img, 'datePublished': a.publishdate }
       };
     })
   });
@@ -445,7 +468,7 @@ async function renderHomepageHtml(articles) {
               <span class="author-title" data-bind="byline_role">${escapeHtml(heroRole)}</span>
             </div>
           </div>
-          <a href="/article/${escapeAttr(shortIdFromUuid(heroArticle ? heroArticle.id : ''))}" class="btn btn-primary" aria-label="Read full analysis">
+          <a href="${escapeAttr(getArticleUrl(heroArticle))}" class="btn btn-primary" aria-label="Read full analysis">
             <span data-bind="cta">Read Audit</span>
             <i data-lucide="arrow-up-right"></i>
           </a>
@@ -601,7 +624,7 @@ async function renderHomepageHtml(articles) {
 </div>
 
 <!-- Pre-hydration data for instant SSR → SPA transition -->
-<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => ({ ...a, shortId: shortIdFromUuid(a.id), imageurl: formatImageUrl(a.imageurl) })) })}</script>
+<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => ({ ...a, url: getArticleUrl(a), shortId: shortIdFromUuid(a.id), imageurl: formatImageUrl(a.imageurl) })) })}</script>
 
 <!-- Three.js is vendored locally and lazy-loaded by lens-effect.js when the hero scrolls into view -->
 
@@ -635,13 +658,21 @@ const SUPABASE_STORAGE_HOSTS = [
 const STORAGE_PATH = '/storage/v1/object/public/';
 
 function proxyImageUrls(text) {
-  return text;
+  if (!text) return '';
+  let result = text;
+  for (const host of SUPABASE_STORAGE_HOSTS) {
+    const target = host + STORAGE_PATH;
+    if (result.includes(target)) {
+      result = result.split(target).join('/img-proxy/storage/v1/object/public/');
+    }
+  }
+  return result;
 }
 
 let cachedHtml = null;
 let cachedJson = null;
 let cacheTime = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
 // --------------------------------------------------------------------------
 // Image proxy handler — intercepts /img-proxy/* requests to cache Supabase

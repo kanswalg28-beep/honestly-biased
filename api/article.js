@@ -11,11 +11,12 @@ function shortIdFromUuid(uuid) {
 }
 
 function getArticleSlug(article) {
-  if (article.slug && article.slug.trim()) return article.slug.trim();
-  const headline = article.aiheadline || article.title || '';
+  if (!article) return '';
+  if (article.slug && String(article.slug).trim()) return String(article.slug).trim();
+  const headline = article.aiheadline || article.aiHeadline || article.title || '';
   const words = headline
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .split(/\s+/)
     .slice(0, 4)
