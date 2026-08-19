@@ -403,10 +403,10 @@ async function renderHomepageHtml(articles) {
     <div class="top-region-container">
       <div class="region-tabs-container" id="region-tabs-container">
         <div class="active-indicator-pill" id="region-active-pill"></div>
-        <button class="region-tab-btn active" data-region="indian"><i data-lucide="map-pin"></i><span>Indian Edition</span></button>
-        <button class="region-tab-btn" data-region="world"><i data-lucide="globe"></i><span>World Edition</span></button>
-        <button class="region-tab-btn" data-region="uk"><i data-lucide="flag"></i><span>UK Edition</span></button>
-        <button class="region-tab-btn" data-region="berkshire"><i data-lucide="home"></i><span>Berkshire Local</span></button>
+        <button class="region-tab-btn active" data-region="indian" aria-label="Indian Edition"><i data-lucide="map-pin"></i><span class="region-label"><span class="region-full">Indian Edition</span><span class="region-short">India</span></span></button>
+        <button class="region-tab-btn" data-region="world" aria-label="World Edition"><i data-lucide="globe"></i><span class="region-label"><span class="region-full">World Edition</span><span class="region-short">World</span></span></button>
+        <button class="region-tab-btn" data-region="uk" aria-label="UK Edition"><i data-lucide="flag"></i><span class="region-label"><span class="region-full">UK Edition</span><span class="region-short">UK</span></span></button>
+        <button class="region-tab-btn" data-region="berkshire" aria-label="Berkshire Local"><i data-lucide="home"></i><span class="region-label"><span class="region-full">Berkshire Local</span><span class="region-short">Berkshire</span></span></button>
       </div>
     </div>
   </nav>
@@ -485,12 +485,30 @@ async function renderHomepageHtml(articles) {
       <aside class="bento-sidebar">
         <div class="category-tabs-container" id="category-tabs-container">
           <div class="active-indicator-pill" id="category-active-pill"></div>
-          <button class="category-tab-btn active" data-category="all"><i data-lucide="layout-grid"></i><span>All Chronicles</span></button>
-          <button class="category-tab-btn" data-category="Politics"><i data-lucide="landmark"></i><span>Politics</span></button>
-          <button class="category-tab-btn" data-category="Tech"><i data-lucide="cpu"></i><span>Tech</span></button>
-          <button class="category-tab-btn" data-category="Finance"><i data-lucide="circle-dollar-sign"></i><span>Finance</span></button>
-          <button class="category-tab-btn" data-category="Entertainment"><i data-lucide="clapperboard"></i><span>Entertainment</span></button>
-          <button class="category-tab-btn" data-category="Health"><i data-lucide="heart-pulse"></i><span>Health</span></button>
+          <button class="category-tab-btn active" data-category="all" aria-label="All Chronicles">
+            <span class="category-icon-box cat-all"><i data-lucide="layout-grid"></i></span>
+            <span class="category-text">All Chronicles</span>
+          </button>
+          <button class="category-tab-btn" data-category="Politics" aria-label="Politics">
+            <span class="category-icon-box cat-politics"><i data-lucide="landmark"></i></span>
+            <span class="category-text">Politics</span>
+          </button>
+          <button class="category-tab-btn" data-category="Tech" aria-label="Tech">
+            <span class="category-icon-box cat-tech"><i data-lucide="cpu"></i></span>
+            <span class="category-text">Tech</span>
+          </button>
+          <button class="category-tab-btn" data-category="Finance" aria-label="Finance">
+            <span class="category-icon-box cat-finance"><i data-lucide="circle-dollar-sign"></i></span>
+            <span class="category-text">Finance</span>
+          </button>
+          <button class="category-tab-btn" data-category="Entertainment" aria-label="Entertainment">
+            <span class="category-icon-box cat-entertainment"><i data-lucide="clapperboard"></i></span>
+            <span class="category-text">Entertainment</span>
+          </button>
+          <button class="category-tab-btn" data-category="Health" aria-label="Health">
+            <span class="category-icon-box cat-health"><i data-lucide="heart-pulse"></i></span>
+            <span class="category-text">Health</span>
+          </button>
         </div>
       </aside>
 
