@@ -3,6 +3,26 @@
    Handles: Theme Toggling, Mobile Nav, Scroll Reveals, Civic Poll, Form Submit
    ========================================================================== */
 
+const SUPABASE_PROJECT_URL = 'https://mprxrtesqgtznsinsezs.supabase.co';
+
+function formatImageUrl(url) {
+    if (!url || typeof url !== 'string') return './assets/hero-bg.png';
+    const trimmed = url.trim();
+    if (!trimmed) return './assets/hero-bg.png';
+    if (trimmed.startsWith('data:image')) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('/storage/v1/object/public/')) {
+        return `${SUPABASE_PROJECT_URL}${trimmed}`;
+    }
+    if (trimmed.startsWith('storage/v1/object/public/')) {
+        return `${SUPABASE_PROJECT_URL}/${trimmed}`;
+    }
+    if (trimmed.startsWith('./assets/')) return trimmed;
+    if (trimmed.startsWith('assets/')) return './' + trimmed;
+    if (trimmed.startsWith('/')) return trimmed;
+    return trimmed;
+}
+
 // ============================================================================
 // SITE CONTENT HYDRATION - replace [data-bind=...] text nodes with values
 // fetched from /api/site-content on DOMContentLoaded. Each block exists in
@@ -592,10 +612,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timeEl = card.querySelector('.card-time')?.textContent || '';
                 const bias = card.querySelector('.card-author')?.textContent?.replace('Bias Audit: ', '') || '';
                 const imgEl = card.querySelector('.card-image-bg');
-                // For base64 articles, SSR uses gradient placeholder (no bg image)
-                // Real image URL will be restored from __SSR_DATA__ or feed API
                 const bgMatch = imgEl?.style.backgroundImage?.match(/url\(['"]?([^'")]*)/);
-                const imgUrl = bgMatch ? bgMatch[1] : '';
+                const rawSrc = imgEl?.getAttribute('src') || imgEl?.src || (bgMatch ? bgMatch[1] : '') || './assets/hero-bg.png';
+                const imgUrl = formatImageUrl(rawSrc);
                 const authortype = badge?.classList.contains('badge-admin') ? 'admin' :
                                    badge?.classList.contains('badge-instagram') ? 'instagram' : 'ai';
                 
@@ -889,10 +908,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Layout pattern: 4 Featured horizontals (2x1) -> Standard cards (1x1) with images
             if (index >= 0 && index <= 3) {
                 // FEATURED HORIZONTALS: First 4 articles as 2x1 cards with images
+                const thumbUrl = formatImageUrl(article.imageurl);
                 gridItems.push(`
                                 <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
                                     <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.7) contrast(1.1);"></div>
+                                        <img class="card-image-bg" src="${thumbUrl}" alt="${article.aiheadline || ''}" loading="lazy" onerror="this.onerror=null;this.src='./assets/hero-bg.png';" style="filter: brightness(0.7) contrast(1.1); width:100%; height:100%; object-fit:cover; display:block;">
                                         <span class="card-tag saffron-bg">${article.category}</span>
                                         ${article.authortype === 'instagram' ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
                                     </div>
@@ -918,10 +938,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             `);
             } else {
                             // STANDARD CARDS: 1x1 with images (not header-only)
+                            const thumbUrl = formatImageUrl(article.imageurl);
                             gridItems.push(`
                                 <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
                                     <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.65) grayscale(0.15);"></div>
+                                        <img class="card-image-bg" src="${thumbUrl}" alt="${article.aiheadline || ''}" loading="lazy" onerror="this.onerror=null;this.src='./assets/hero-bg.png';" style="filter: brightness(0.65) grayscale(0.15); width:100%; height:100%; object-fit:cover; display:block;">
                                         <span class="card-tag saffron-bg">${article.category}</span>
                                     </div>
                                     <div class="card-body">

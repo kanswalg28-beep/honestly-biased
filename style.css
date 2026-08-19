@@ -1712,8 +1712,11 @@ body.light-theme .active-indicator-pill {
 .card-image-bg {
     width: 100%;
     height: 100%;
+    object-fit: cover;
+    object-position: center;
     background-size: cover;
     background-position: center;
+    display: block;
     transition: transform var(--transition-slow);
 }
 

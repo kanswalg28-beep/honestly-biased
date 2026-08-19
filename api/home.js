@@ -133,6 +133,26 @@ function cardLinkHtml(article) {
   return `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
 }
 
+const SUPABASE_PROJECT_URL = process.env.SUPABASE_URL || 'https://mprxrtesqgtznsinsezs.supabase.co';
+
+function formatImageUrl(url) {
+  if (!url || typeof url !== 'string') return '/assets/hero-bg.png';
+  const trimmed = url.trim();
+  if (!trimmed) return '/assets/hero-bg.png';
+  if (trimmed.startsWith('data:image')) return trimmed;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if (trimmed.startsWith('/storage/v1/object/public/')) {
+    return `${SUPABASE_PROJECT_URL}${trimmed}`;
+  }
+  if (trimmed.startsWith('storage/v1/object/public/')) {
+    return `${SUPABASE_PROJECT_URL}/${trimmed}`;
+  }
+  if (trimmed.startsWith('./assets/')) return '/' + trimmed.slice(2);
+  if (trimmed.startsWith('assets/')) return '/' + trimmed;
+  if (trimmed.startsWith('/')) return trimmed;
+  return trimmed;
+}
+
 // Build a single bento card HTML (mirrors app.js exactly)
 function buildBentoCard(article, index) {
   const isInstagram = article.authortype === 'instagram';
@@ -145,21 +165,14 @@ function buildBentoCard(article, index) {
   const timeHtml = cardTimeHtml(article);
   const biasHtml = biasAuditHtml(article.biasaudit || article.biasAudit);
   const summary = escapeHtml(rawSummary);
-  // Strip base64 data URIs from SSR — they bloat HTML by ~1MB
-  // Use gradient placeholder; app.js will restore from real Supabase URL on hydration
-  const rawImg = article.imageurl || '/assets/hero-bg.png';
-  const isBase64 = rawImg.startsWith('data:image');
-  const imgUrl = isBase64 ? '' : escapeAttr(rawImg);
-  const bgStyle = imgUrl
-    ? `background-image: url('${imgUrl}')`
-    : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
+  const imgUrl = formatImageUrl(article.imageurl);
 
   if (index === 0) {
     // FIRST POST: Same size as posts 2,3,4 (2x1 horizontal card)
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
+          <img class="card-image-bg" src="${escapeAttr(imgUrl)}" alt="${escapeAttr(rawHeadline)}" loading="lazy" onerror="this.onerror=null;this.src='/assets/hero-bg.png';" style="filter: brightness(0.7) contrast(1.1); width:100%; height:100%; object-fit:cover; display:block;">
           ${catTag}
           ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
@@ -185,7 +198,7 @@ function buildBentoCard(article, index) {
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
+          <img class="card-image-bg" src="${escapeAttr(imgUrl)}" alt="${escapeAttr(rawHeadline)}" loading="lazy" onerror="this.onerror=null;this.src='/assets/hero-bg.png';" style="filter: brightness(0.7) contrast(1.1); width:100%; height:100%; object-fit:cover; display:block;">
           ${catTag}
           ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
@@ -210,7 +223,7 @@ function buildBentoCard(article, index) {
   return `
     <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
       <div class="card-visual">
-        <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.65) grayscale(0.15);"></div>
+        <img class="card-image-bg" src="${escapeAttr(imgUrl)}" alt="${escapeAttr(rawHeadline)}" loading="lazy" onerror="this.onerror=null;this.src='/assets/hero-bg.png';" style="filter: brightness(0.65) grayscale(0.15); width:100%; height:100%; object-fit:cover; display:block;">
         ${catTag}
       </div>
       <div class="card-body">
