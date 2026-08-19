@@ -537,9 +537,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = imageUploadInput.files[0];
             if (!file) return;
 
+            if (file.size > 15 * 1024 * 1024) {
+                if (imageUploadStatus) imageUploadStatus.textContent = 'Image exceeds 15MB limit';
+                showToast('Image is too large (maximum size is 15MB)', 'error');
+                return;
+            }
+
             if (imageUploadStatus) imageUploadStatus.textContent = 'Uploading image...';
 
             const formData = new FormData();
+            formData.append('image', file);
             formData.append('file', file);
 
             try {
@@ -553,8 +560,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: formData
                 });
 
-                if (!res.ok) throw new Error(`Upload failed (HTTP ${res.status})`);
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || `Upload failed (HTTP ${res.status})`);
 
                 if (data.url) {
                     if (imageUrlInput) imageUrlInput.value = data.url;

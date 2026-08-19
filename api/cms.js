@@ -349,59 +349,117 @@ async function handleSubscribers(req, res) {
   }
 }
 
+// Helper: safely get raw body buffer whether streamed or pre-buffered by runtime
+async function getRawBodyBuffer(req) {
+  if (Buffer.isBuffer(req.body)) return req.body;
+  if (typeof req.body === 'string') return Buffer.from(req.body, 'binary');
+  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+    return Buffer.from(JSON.stringify(req.body));
+  }
+  const chunks = [];
+  try {
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+  } catch (err) {
+    console.warn('[upload] Stream read error:', err.message);
+  }
+  return Buffer.concat(chunks);
+}
+
+// Helper: robust binary multipart image extractor (boundary quote-safe, binary-safe)
+function parseMultipartImage(buffer, contentType) {
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!boundaryMatch) return null;
+  const boundary = (boundaryMatch[1] || boundaryMatch[2]).trim();
+  const boundaryBuffer = Buffer.from(`--${boundary}`);
+  
+  let offset = 0;
+  while (offset < buffer.length) {
+    const boundaryIndex = buffer.indexOf(boundaryBuffer, offset);
+    if (boundaryIndex === -1) break;
+
+    const partStart = boundaryIndex + boundaryBuffer.length;
+    // End of multipart message (--boundary--)
+    if (buffer.slice(partStart, partStart + 2).toString() === '--') break;
+
+    const headerEnd = buffer.indexOf(Buffer.from('\r\n\r\n'), partStart);
+    if (headerEnd === -1) {
+      offset = partStart;
+      continue;
+    }
+
+    const headersStr = buffer.slice(partStart, headerEnd).toString('utf8');
+    const nextBoundaryIndex = buffer.indexOf(boundaryBuffer, headerEnd + 4);
+    const contentEnd = nextBoundaryIndex !== -1 ? nextBoundaryIndex - 2 : buffer.length;
+
+    // Check if this part contains an image file (supports name="image", name="file", or filename="...")
+    const hasImageName = /name=["']?(?:image|file)["']?/i.test(headersStr);
+    const hasFilename = /filename=["']?[^"';\r\n]+\.[a-z0-9]+["']?/i.test(headersStr);
+
+    if (hasImageName || hasFilename) {
+      const fileNameMatch = headersStr.match(/filename=["']?([^"';\r\n]+)["']?/i);
+      const contentTypeMatch = headersStr.match(/Content-Type:\s*([^\r\n;]+)/i);
+
+      let fileType = contentTypeMatch ? contentTypeMatch[1].trim().toLowerCase() : '';
+      if (!fileType || fileType === 'application/octet-stream') {
+        const ext = (fileNameMatch ? fileNameMatch[1] : '').split('.').pop()?.toLowerCase();
+        if (ext === 'png') fileType = 'image/png';
+        else if (ext === 'webp') fileType = 'image/webp';
+        else if (ext === 'gif') fileType = 'image/gif';
+        else if (ext === 'avif') fileType = 'image/avif';
+        else if (ext === 'svg') fileType = 'image/svg+xml';
+        else fileType = 'image/jpeg';
+      }
+
+      return {
+        fileBuffer: buffer.slice(headerEnd + 4, contentEnd),
+        fileName: fileNameMatch ? fileNameMatch[1] : 'upload',
+        fileType
+      };
+    }
+
+    offset = nextBoundaryIndex !== -1 ? nextBoundaryIndex : buffer.length;
+  }
+  return null;
+}
+
 // 6. IMAGE UPLOAD
 async function handleUpload(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
   if (!requireAuth(req, res)) return;
 
-  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-  const MAX_SIZE = 4 * 1024 * 1024; // 4MB limit
+  const ALLOWED_TYPES = [
+    'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/jfif',
+    'image/png', 'image/x-png', 'image/webp', 'image/gif',
+    'image/avif', 'image/svg+xml'
+  ];
+  const MAX_SIZE = 15 * 1024 * 1024; // 15MB limit
   const BUCKET = 'article-images';
 
   try {
     const contentType = req.headers['content-type'] || '';
-    if (!contentType.includes('multipart/form-data')) {
+    if (!contentType.toLowerCase().includes('multipart/form-data')) {
       return sendJson(res, 400, { error: 'Content-Type must be multipart/form-data' });
     }
 
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
+    const rawBuffer = await getRawBodyBuffer(req);
+    if (!rawBuffer || rawBuffer.length === 0) {
+      return sendJson(res, 400, { error: 'No data received in request' });
     }
-    const buffer = Buffer.concat(chunks);
-    const body = buffer.toString('binary');
-    
-    const boundaryMatch = contentType.match(/boundary=([^;]+)/);
-    if (!boundaryMatch) return sendJson(res, 400, { error: 'No boundary in multipart' });
-    const boundary = boundaryMatch[1];
-    
-    const parts = body.split(`--${boundary}`).map(p => p.trim()).filter(p => p && p !== '--');
-    let fileBuffer = null;
-    let fileName = null;
-    let fileType = null;
-    
-    for (const part of parts) {
-      const headerEnd = part.indexOf('\r\n\r\n');
-      if (headerEnd === -1) continue;
-      const headers = part.slice(0, headerEnd);
-      const content = part.slice(headerEnd + 4);
-      
-      if (headers.includes('name="image"')) {
-        const fileNameMatch = headers.match(/filename="([^"]+)"/);
-        const contentTypeMatch = headers.match(/Content-Type: ([^\r\n]+)/);
-        fileName = fileNameMatch ? fileNameMatch[1] : 'upload';
-        fileType = contentTypeMatch ? contentTypeMatch[1].trim() : 'application/octet-stream';
-        const cleanContent = content.endsWith('\r\n') ? content.slice(0, -2) : content;
-        fileBuffer = Buffer.from(cleanContent, 'binary');
-      }
+
+    const parsed = parseMultipartImage(rawBuffer, contentType);
+    if (!parsed || !parsed.fileBuffer || parsed.fileBuffer.length === 0) {
+      return sendJson(res, 400, { error: 'No image file provided' });
     }
-    
-    if (!fileBuffer) return sendJson(res, 400, { error: 'No image file provided' });
+
+    const { fileBuffer, fileType } = parsed;
+
     if (!ALLOWED_TYPES.includes(fileType)) {
-      return sendJson(res, 400, { error: `Invalid file type: ${fileType}` });
+      return sendJson(res, 400, { error: `Invalid file type: ${fileType}. Allowed: JPEG, PNG, WebP, GIF, AVIF, SVG` });
     }
     if (fileBuffer.length > MAX_SIZE) {
-      return sendJson(res, 400, { error: 'File too large' });
+      return sendJson(res, 400, { error: `File too large (${(fileBuffer.length / (1024 * 1024)).toFixed(2)}MB). Max: 15MB` });
     }
 
     const timestamp = Date.now();
@@ -412,27 +470,42 @@ async function handleUpload(req, res) {
     let uploadBuffer = fileBuffer;
     let uploadMime = fileType;
 
-    if (sharp) {
+    if (sharp && fileType !== 'image/svg+xml') {
       try {
         uploadBuffer = await sharp(fileBuffer)
-          .resize(1200, null, { withoutEnlargement: true })
-          .webp({ quality: 80 })
+          .resize(1600, null, { withoutEnlargement: true })
+          .webp({ quality: 82 })
           .toBuffer();
         uploadMime = 'image/webp';
       } catch (err) {
-        console.warn('Sharp optimization skipped:', err.message);
+        console.warn('[upload] Sharp optimization skipped:', err.message);
+        uploadBuffer = fileBuffer;
+        uploadMime = fileType;
       }
     }
 
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .upload(filePath, uploadBuffer, { contentType: uploadMime, upsert: false });
+    let publicUrl = null;
 
-    if (error) throw error;
+    if (supabase) {
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .upload(filePath, uploadBuffer, { contentType: uploadMime, upsert: false });
 
-    const { data: pubData } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
+      if (!error) {
+        const { data: pubData } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
+        publicUrl = pubData?.publicUrl;
+      } else {
+        console.warn(`[upload] Supabase storage upload failed (${error.message}). Falling back to optimized base64 data URI.`);
+      }
+    }
+
+    // If Supabase upload didn't yield a URL (offline, RLS restriction, or bucket missing), fallback to base64 Data URI
+    if (!publicUrl) {
+      publicUrl = `data:${uploadMime};base64,${uploadBuffer.toString('base64')}`;
+    }
+
     return sendJson(res, 200, {
-      url: pubData.publicUrl,
+      url: publicUrl,
       path: filePath,
       size: uploadBuffer.length,
       type: uploadMime
