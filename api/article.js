@@ -280,6 +280,19 @@ module.exports = async (req, res) => {
 
 <link rel="preload" href="/style.css" as="style">
 <link rel="stylesheet" href="/style.css">
+<script>
+  (function() {
+    try {
+      var saved = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'light' || (!saved && !prefersDark)) {
+        document.documentElement.classList.add('light-theme');
+      } else {
+        document.documentElement.classList.add('dark-theme');
+      }
+    } catch(e) {}
+  })();
+</script>
 </head>
 <body class="dark-theme">
 <div id="read-progress-bar"></div>
@@ -301,7 +314,11 @@ module.exports = async (req, res) => {
         <span style="color:var(--accent-saffron); font-weight:600;">${escapeHtml(article.category || 'Politics')}</span>
       </nav>
     </div>
-    <div class="header-right">
+    <div class="header-right" style="display:flex; align-items:center; gap:10px;">
+      <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle visual theme" style="width:38px; height:38px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; cursor:pointer;">
+        <i data-lucide="sun" class="sun-icon"></i>
+        <i data-lucide="moon" class="moon-icon"></i>
+      </button>
       <a href="/" class="btn btn-secondary" style="padding:6px 14px; font-size:0.75rem; display:inline-flex; align-items:center; gap:6px; text-decoration:none; border-radius:6px; background:var(--bg-card); border:1px solid var(--border-glass); color:var(--text-primary);">
         <i data-lucide="arrow-left" style="width:12px;height:12px;"></i>
         <span>The Ledger</span>
@@ -366,9 +383,50 @@ module.exports = async (req, res) => {
 </footer>
 
 <script>
-window.addEventListener('DOMContentLoaded', () => {
-  if (window.lucide) lucide.createIcons();
-});
+(function() {
+  function syncTheme() {
+    var saved = localStorage.getItem('theme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var isLight = saved === 'light' || (!saved && !prefersDark);
+    if (isLight) {
+      document.body.classList.remove('dark-theme');
+      document.body.classList.add('light-theme');
+      document.documentElement.classList.remove('dark-theme');
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+      document.body.classList.add('dark-theme');
+      document.documentElement.classList.remove('light-theme');
+      document.documentElement.classList.add('dark-theme');
+    }
+  }
+  syncTheme();
+
+  document.addEventListener('DOMContentLoaded', () => {
+    syncTheme();
+    var toggleBtn = document.getElementById('theme-toggle-btn');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        var isLight = document.body.classList.contains('light-theme');
+        if (isLight) {
+          document.body.classList.remove('light-theme');
+          document.body.classList.add('dark-theme');
+          document.documentElement.classList.remove('light-theme');
+          document.documentElement.classList.add('dark-theme');
+          localStorage.setItem('theme', 'dark');
+        } else {
+          document.body.classList.remove('dark-theme');
+          document.body.classList.add('light-theme');
+          document.documentElement.classList.remove('dark-theme');
+          document.documentElement.classList.add('light-theme');
+          localStorage.setItem('theme', 'light');
+        }
+        if (window.lucide) lucide.createIcons();
+      });
+    }
+    if (window.lucide) lucide.createIcons();
+  });
+})();
 </script>
 </body>
 </html>`;

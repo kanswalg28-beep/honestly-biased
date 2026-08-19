@@ -3924,6 +3924,12 @@ div[itemprop="articleBody"] p {
         box-sizing: border-box !important;
     }
 
+    body.light-theme .region-tabs-container {
+        background: #f1f5f9 !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+    }
+
     #region-active-pill {
         display: none !important;
     }
@@ -3955,6 +3961,30 @@ div[itemprop="articleBody"] p {
         background: rgba(255, 255, 255, 0.12) !important;
         font-weight: 700 !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    body.light-theme .region-tab-btn,
+    body.light-theme button.region-tab-btn {
+        color: #64748b !important;
+        background: transparent !important;
+    }
+
+    body.light-theme .region-tab-btn:hover,
+    body.light-theme button.region-tab-btn:hover {
+        color: #0f172a !important;
+    }
+
+    body.light-theme .region-tab-btn.active,
+    body.light-theme button.region-tab-btn.active {
+        color: #0f172a !important;
+        background: #ffffff !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+    }
+
+    body.light-theme .region-tab-btn.active i,
+    body.light-theme .region-tab-btn.active svg {
+        color: #0f172a !important;
     }
 
     .region-label {
@@ -4138,4 +4168,65 @@ div[itemprop="articleBody"] p {
         padding: 1.2rem 1.2rem !important;
         font-size: 1.1rem !important;
     }
+}
+
+/* ==========================================================================
+   Article Detail Page - Polar Wash Light Mode Enhancements
+   ========================================================================== */
+body.light-theme .article-detail-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.06) !important;
+}
+
+body.light-theme .article-detail-card h1 {
+    color: #0f172a !important;
+    text-shadow: none !important;
+}
+
+body.light-theme .blog-post-content,
+body.light-theme .blog-post-content p {
+    color: #334155 !important;
+}
+
+body.light-theme .bias-audit-callout {
+    background: rgba(14, 165, 233, 0.06) !important;
+    border-left: 4px solid #0284c7 !important;
+}
+
+body.light-theme .bias-audit-callout .callout-heading {
+    color: #0284c7 !important;
+}
+
+body.light-theme .bias-audit-callout .callout-text {
+    color: #0f172a !important;
+}
+
+body.light-theme .breadcrumb-nav,
+body.light-theme .breadcrumb-nav a {
+    color: #64748b !important;
+}
+
+body.light-theme .back-btn,
+body.light-theme .header-right .btn-secondary {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: #0f172a !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.light-theme .back-btn:hover,
+body.light-theme .header-right .btn-secondary:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+body.light-theme .editorial-footer {
+    background: #f8fafc !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .copyright {
+    color: #64748b !important;
 }
