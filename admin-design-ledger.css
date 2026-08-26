@@ -42,8 +42,8 @@
 .metric-card.m-ai.is-empty { display: none; }
 .metric-card.m-categories .metric-icon-box { color: var(--crimson); }
 
-/* ---- Desktop column balance: let the shorter form column stretch to
-   match the inventory height instead of floating with dead space ---- */
+/* ---- Desktop column balance: equalize the two panel heights via grid
+   stretch (no aggressive textarea grow, which ballooned the form) ---- */
 .cms-grid { align-items: stretch; }
 .cms-left-col {
   display: flex; flex-direction: column; gap: 32px; height: 100%;
@@ -51,9 +51,6 @@
 .cms-left-col > .cms-panel-card {
   flex: 1; display: flex; flex-direction: column;
 }
-.cms-left-col > .cms-panel-card > form { flex: 1; display: flex; flex-direction: column; }
-/* Let the main commentary textarea grow to absorb the extra height */
-.cms-left-col #cms-full-blog { flex: 1; min-height: 200px; }
 .inventory-list-header {
   display: flex; justify-content: space-between; align-items: flex-end;
   flex-wrap: wrap; gap: 16px;
