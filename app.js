@@ -904,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                     ? '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>'
                                                     : '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>')}
                                             ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:8px;"></i> ${formatDate(article.publishdate)}` : ''}
-                                            <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago || (article.publishdate ? formatDate(article.publishdate) : '')}
+                                            ${article.timeago ? `<i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}` : ''}
                                         </span>
                                         <h3 class="card-title" style="margin-top:10px;">
                                             <a href="/article/${shortIdFromUuid(article.id)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
@@ -934,7 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                         ? '<span class="author-type-badge badge-instagram" style="margin-right:2px; padding:2px 4px;"><i data-lucide="instagram" style="width:8px;height:8px;"></i> IG Video</span>'
                                                         : '<span class="author-type-badge badge-ai" style="margin-right:2px; padding:2px 4px;"><i data-lucide="cpu" style="width:8px;height:8px;"></i> AI</span>')}
                                                 ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:4px;"></i> ${formatDate(article.publishdate)}` : ''}
-                                                ${article.timeago || (article.publishdate ? formatDate(article.publishdate) : '')}
+                                                ${article.timeago || ''}
                                             </span>
                                         </div>
                                         <h3 class="card-title" style="margin-bottom:10px;">
