@@ -737,9 +737,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Align color tags based on category
             modalCategory.className = 'modal-tag ' + (article.category.toLowerCase().trim() === 'tech' ? 'green-bg' : 'saffron-bg');
         }
-        if (modalTime) modalTime.innerHTML = `<i data-lucide="clock"></i> ${article.timeago}`;
+        if (modalTime) modalTime.innerHTML = `<i data-lucide="clock"></i> ${article.timeago || (article.publishdate ? formatDate(article.publishdate) : '')}`;
         if (modalTitle) modalTitle.textContent = article.aiheadline;
-        if (modalSource) modalSource.textContent = `Source: ${article.originalsource || article.originaltitle}`;
+        if (modalSource) modalSource.textContent = `Source: ${article.originalsource || article.originaltitle || article.author || 'Honestly Biased Editorial Board'}`;
         if (modalBiasAudit) modalBiasAudit.textContent = article.biasaudit;
         if (modalSummary) modalSummary.textContent = article.aisummary;
         if (modalOriginalLink) modalOriginalLink.href = article.originalurl;
@@ -904,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                     ? '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>'
                                                     : '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>')}
                                             ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:8px;"></i> ${formatDate(article.publishdate)}` : ''}
-                                            <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}
+                                            <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago || (article.publishdate ? formatDate(article.publishdate) : '')}
                                         </span>
                                         <h3 class="card-title" style="margin-top:10px;">
                                             <a href="/article/${shortIdFromUuid(article.id)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
@@ -934,7 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                         ? '<span class="author-type-badge badge-instagram" style="margin-right:2px; padding:2px 4px;"><i data-lucide="instagram" style="width:8px;height:8px;"></i> IG Video</span>'
                                                         : '<span class="author-type-badge badge-ai" style="margin-right:2px; padding:2px 4px;"><i data-lucide="cpu" style="width:8px;height:8px;"></i> AI</span>')}
                                                 ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:4px;"></i> ${formatDate(article.publishdate)}` : ''}
-                                                ${article.timeago}
+                                                ${article.timeago || (article.publishdate ? formatDate(article.publishdate) : '')}
                                             </span>
                                         </div>
                                         <h3 class="card-title" style="margin-bottom:10px;">
@@ -1498,7 +1498,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailCategory.textContent = article.category;
                 detailCategory.className = 'modal-tag ' + (article.category.toLowerCase().trim() === 'tech' ? 'green-bg' : 'saffron-bg');
             }
-            if (detailTime) detailTime.innerHTML = `<i data-lucide="clock" style="width: 14px; height: 14px;"></i> ${article.timeago}`;
+            if (detailTime) detailTime.innerHTML = `<i data-lucide="clock" style="width: 14px; height: 14px;"></i> ${article.timeago || (article.publishdate ? formatDate(article.publishdate) : '')}`;
             if (detailTitle) detailTitle.textContent = cleanedHeadline;
             
             if (detailAuthor) {
@@ -1559,7 +1559,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (detailSource) {
-                detailSource.textContent = `Source Attribution: ${article.originalsource || article.originaltitle}`;
+                detailSource.textContent = `Source Attribution: ${article.originalsource || article.originaltitle || article.author || 'Honestly Biased Editorial Board'}`;
             }
 
             if (detailOriginalLink) {
