@@ -376,6 +376,12 @@ p {
     .bento-grid {
         grid-template-columns: 1fr !important;
     }
+    /* Consistent mobile gutter: section already supplies 16px; drop the
+       wrapper's extra 24px so cards aren't lopsided against the edge. */
+    .bento-layout-wrapper {
+        padding-left: 0;
+        padding-right: 0;
+    }
     .bento-card {
         border-radius: var(--border-radius-md);
     }

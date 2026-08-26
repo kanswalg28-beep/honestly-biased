@@ -393,6 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
         animateCounter(statEditorial, customCount);
         animateCounter(statAi, aiCount);
         animateCounter(statCategories, categoriesSeen.size);
+        // Hide the AI Audited stat until there is real AI content (avoid a
+        // permanent "0" that reads as unfinished). Re-shown automatically if it grows.
+        const aiCard = statAi ? statAi.closest('.metric-card') : null;
+        if (aiCard) aiCard.classList.toggle('is-empty', aiCount === 0);
     }
 
     function animateCounter(element, targetValue) {
