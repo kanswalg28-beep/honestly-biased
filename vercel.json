@@ -1,158 +1,157 @@
 {
-    "outputDirectory":  ".",
-    "rewrites":  [
-                     {
-                         "source":  "/admin",
-                         "destination":  "/admin.html"
-                     },
-                     {
-                         "source":  "/api/(.*)",
-                         "destination":  "/api/$1"
-                     },
-                     {
-                         "source":  "/img-proxy/(.*)",
-                         "destination":  "/api/home?__imgproxy=1&__path=$1"
-                     },
-                     {
-                         "source":  "/api/admin/articles/(.+)",
-                         "destination":  "/api/admin/articles?id=$1"
-                     },
-                     {
-                         "source":  "/",
-                         "destination":  "/api/home"
-                     },
-                     {
-                         "source":  "/index.html",
-                         "destination":  "/api/home"
-                     },
-                     {
-                         "source":  "/rss.xml",
-                         "destination":  "/api/rss"
-                     },
-                     {
-                         "source":  "/feed.xml",
-                         "destination":  "/api/rss"
-                     },
-                     {
-                         "source":  "/sitemap.xml",
-                         "destination":  "/api/sitemap"
-                     },
-                     {
-                         "source":  "/article/:slug",
-                         "destination":  "/api/article?slug=:slug"
-                     },
-                     {
-                         "source":  "/politics",
-                         "destination":  "/api/category"
-                     },
-                     {
-                         "source":  "/tech",
-                         "destination":  "/api/category"
-                     },
-                     {
-                         "source":  "/finance",
-                         "destination":  "/api/category"
-                     },
-                     {
-                         "source":  "/entertainment",
-                         "destination":  "/api/category"
-                     },
-                     {
-                         "source":  "/health",
-                         "destination":  "/api/category"
-                     },
-                     {
-                         "source":  "/manifesto",
-                         "destination":  "/manifesto.html"
-                     },
-                     {
-                         "source":  "/standards",
-                         "destination":  "/standards.html"
-                     },
-                     {
-                         "source":  "/funding",
-                         "destination":  "/funding.html"
-                     },
-                     {
-                         "source":  "/finances",
-                         "destination":  "/finances.html"
-                     },
-                     {
-                         "source":  "/collective",
-                         "destination":  "/collective.html"
-                     }
-                 ],
-    "headers":  [
-                    {
-                        "source":  "/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';"
-                                        },
-                                        {
-                                            "key":  "X-Frame-Options",
-                                            "value":  "DENY"
-                                        },
-                                        {
-                                            "key":  "Referrer-Policy",
-                                            "value":  "strict-origin-when-cross-origin"
-                                        },
-                                        {
-                                            "key":  "Permissions-Policy",
-                                            "value":  "camera=(), microphone=(), geolocation=()"
-                                        },
-                                        {
-                                            "key":  "X-Content-Type-Options",
-                                            "value":  "nosniff"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/admin/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';"
-                                        },
-                                        {
-                                            "key":  "X-Frame-Options",
-                                            "value":  "DENY"
-                                        },
-                                        {
-                                            "key":  "Referrer-Policy",
-                                            "value":  "strict-origin-when-cross-origin"
-                                        },
-                                        {
-                                            "key":  "Permissions-Policy",
-                                            "value":  "camera=(), microphone=(), geolocation=()"
-                                        },
-                                        {
-                                            "key":  "X-Content-Type-Options",
-                                            "value":  "nosniff"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/assets/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Cache-Control",
-                                            "value":  "public, max-age=31536000, immutable"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/api/admin/upload",
-                        "headers":  [
-                                        {
-                                            "key":  "Cache-Control",
-                                            "value":  "no-store, max-age=0"
-                                        }
-                                    ]
-                    }
-                ],
-    "crons":  [
-
-              ]
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/img-proxy/(.*)",
+      "destination": "/api/home?__imgproxy=1&__path=$1"
+    },
+    {
+      "source": "/api/admin/articles/(.+)",
+      "destination": "/api/admin/articles?id=$1"
+    },
+    {
+      "source": "/",
+      "destination": "/api/home"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/api/home"
+    },
+    {
+      "source": "/rss.xml",
+      "destination": "/api/rss"
+    },
+    {
+      "source": "/feed.xml",
+      "destination": "/api/rss"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/article/:slug",
+      "destination": "/api/article?slug=:slug"
+    },
+    {
+      "source": "/politics",
+      "destination": "/politics.html"
+    },
+    {
+      "source": "/tech",
+      "destination": "/tech.html"
+    },
+    {
+      "source": "/finance",
+      "destination": "/finance.html"
+    },
+    {
+      "source": "/entertainment",
+      "destination": "/entertainment.html"
+    },
+    {
+      "source": "/health",
+      "destination": "/health.html"
+    },
+    {
+      "source": "/manifesto",
+      "destination": "/manifesto.html"
+    },
+    {
+      "source": "/standards",
+      "destination": "/standards.html"
+    },
+    {
+      "source": "/funding",
+      "destination": "/funding.html"
+    },
+    {
+      "source": "/finances",
+      "destination": "/finances.html"
+    },
+    {
+      "source": "/collective",
+      "destination": "/collective.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/admin/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/api/admin/upload",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ],
+  "crons": []
 }
+
