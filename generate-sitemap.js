@@ -65,7 +65,7 @@ async function fetchArticlesFromSupabase() {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { data, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, biasaudit, category, region, author, originalsource, imageurl, publishdate, updatedat, archived')
+      .select('id, aiheadline, aisummary, biasaudit, category, region, author, originalsource, imageurl, publishdate, updatedat, archived, slug')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(1000);
@@ -77,6 +77,7 @@ async function fetchArticlesFromSupabase() {
 
     return (data || []).map(a => ({
       shortId: shortIdFromUuid(a.id),
+      slug: a.slug,
       lastmod: a.updatedat || a.publishdate,
       headline: a.aiheadline,
       summary: a.aisummary || stripTags(a.biasaudit) || '',
@@ -114,8 +115,10 @@ function buildSitemap(articles) {
 
   // Article routes with full metadata + NewsArticle schema hook
   for (const a of articles) {
-    if (!a.shortId) continue;
-    const url = `${BASE_URL}/article/${a.shortId}`;
+    if (!a.shortId && !a.slug) continue;
+    const cat = String(a.category || 'politics').toLowerCase().trim();
+    const slug = a.slug || a.shortId;
+    const url = `${BASE_URL}/${cat}/${slug}`;
     const lastmod = (a.lastmod ? new Date(a.lastmod).toISOString().split('T')[0] : today);
     xml += '  <url>\n';
     xml += `    <loc>${url}</loc>\n`;

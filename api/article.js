@@ -35,11 +35,18 @@ const ARTICLE_CACHE_TTL_MS = 5 * 60 * 1000;
 // and the CMS write path). Do NOT add site_content hero fields (readtime, byline,
 // byline_role, cta, eyebrow) or `originaltitle` — they are not article columns
 // and requesting them makes PostgREST reject the query, which 404s every page.
-const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat';
+const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, originalsource, originalurl, updatedat, slug';
 
 // --------------------------------------------------------------------------
 // Helpers
 // --------------------------------------------------------------------------
+
+function getArticleUrl(article) {
+  if (!article) return '/';
+  const cat = String(article.category || 'politics').toLowerCase().trim();
+  const slug = article.slug || shortIdFromUuid(article.id);
+  return `/${cat}/${slug}`;
+}
 
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
@@ -141,12 +148,12 @@ async function resolveArticleBySlug(slug) {
   //    Populated by db/add_article_slug.sql for existing rows and auto-stamped
   //    on insert by a trigger. If the column doesn't exist yet (migration not
   //    run), the query returns no data and we fall through to the scan below.
-  if (slug.length <= 40) {
+  if (slug.length <= 120) {
     try {
       const { data: bySlug } = await supabase
         .from('articles')
         .select(ARTICLE_SELECT)
-        .eq('slug', slug)
+        .eq('slug', slug.toLowerCase())
         .eq('archived', false)
         .order('publishdate', { ascending: false })
         .limit(1);
@@ -219,7 +226,7 @@ function renderArticleHtml(article) {
     prettyDate = new Date(datePublished).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   } catch (e) { prettyDate = ''; }
 
-  const canonical = `${SITE}/article/${shortIdFromUuid(article.id)}`;
+  const canonical = `${SITE}${getArticleUrl(article)}`;
   const seoDesc   = truncate(summary, 200);
 
   // NewsArticle JSON-LD structured data
@@ -457,6 +464,24 @@ module.exports = async (req, res) => {
       `<p style="color: var(--text-muted); margin-bottom: 32px;">The chronicle you are looking for has been moved or archived. Try the latest stories in <a href="/" style="color: var(--accent-saffron);">The Ledger</a>.</p>` +
       `<a href="/" class="btn btn-primary">Back to Home</a></main></body></html>`
     );
+  }
+
+  // Canonical URL structure: /:category/:slug (e.g. /health/china-coastal-areas-get)
+  const targetCat = String(article.category || 'politics').toLowerCase().trim();
+  const targetSlug = String(article.slug || shortIdFromUuid(article.id)).toLowerCase().trim();
+  const targetPath = `/${targetCat}/${targetSlug}`;
+
+  const reqCat = req.query && req.query.category ? String(req.query.category).toLowerCase().trim() : null;
+  const reqSlug = String(slug).toLowerCase().trim();
+
+  // If request arrived via legacy /article/:slug route (no category parameter) or if category/slug
+  // doesn't match canonical (e.g. accessed via shortId), issue a 301 Permanent Redirect.
+  if (!reqCat || reqCat !== targetCat || reqSlug !== targetSlug) {
+    res.writeHead(301, {
+      Location: targetPath,
+      'Cache-Control': 'public, max-age=86400'
+    });
+    return res.end();
   }
 
   // Cache control: serve fresh for humans, allow 5min CDN cache for crawlers

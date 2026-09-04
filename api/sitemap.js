@@ -41,7 +41,7 @@ async function fetchArticles() {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, category, region, author, originalsource, imageurl, publishdate, updatedat, archived')
+      .select('id, aiheadline, category, region, author, originalsource, imageurl, publishdate, updatedat, archived, slug')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(2000);
@@ -75,8 +75,10 @@ function buildXml(articles) {
 
   for (const a of articles) {
     const shortId = shortIdFromUuid(a.id);
-    if (!shortId) continue;
-    const url = `${BASE_URL}/article/${shortId}`;
+    if (!shortId && !a.slug) continue;
+    const cat = String(a.category || 'politics').toLowerCase().trim();
+    const slug = a.slug || shortId;
+    const url = `${BASE_URL}/${cat}/${slug}`;
     const lastmod = (a.updatedat || a.publishdate || today).toString().split('T')[0];
     xml += '  <url>\n';
     xml += `    <loc>${url}</loc>\n`;

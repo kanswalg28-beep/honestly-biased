@@ -27,7 +27,7 @@ let cacheTime = 0;
 async function getCustomArticles() {
   const { data } = await supabase
     .from('articles')
-    .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+    .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
     .eq('archived', false)
     .order('publishdate', { ascending: false })
     .limit(100);

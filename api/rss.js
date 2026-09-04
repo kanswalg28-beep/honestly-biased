@@ -20,6 +20,13 @@ function shortIdFromUuid(uuid) {
   return String(uuid).replace(/-/g, '').slice(-8);
 }
 
+function getArticleUrl(article) {
+  if (!article) return '/';
+  const cat = String(article.category || 'politics').toLowerCase().trim();
+  const slug = article.slug || shortIdFromUuid(article.id);
+  return `/${cat}/${slug}`;
+}
+
 function escapeXml(s) {
   if (s === null || s === undefined) return '';
   return String(s)
@@ -47,7 +54,7 @@ async function fetchArticles() {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, fullblog, category, region, author, originalsource, imageurl, publishdate, biasaudit')
+      .select('id, aiheadline, aisummary, fullblog, category, region, author, originalsource, imageurl, publishdate, biasaudit, slug')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(100);
@@ -81,7 +88,7 @@ function buildRss(articles) {
   xml += `    </image>\n`;
 
   for (const a of articles) {
-    const url = `${SITE}/article/${shortIdFromUuid(a.id)}`;
+    const url = `${SITE}${getArticleUrl(a)}`;
     const title = a.aiheadline || a.title || 'Untitled';
     const desc = truncate(stripTags(a.aisummary) || stripTags(a.biasaudit) || stripTags(a.fullblog), 500);
     const content = truncate(

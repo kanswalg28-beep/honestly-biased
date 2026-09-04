@@ -51,6 +51,13 @@ function shortIdFromUuid(uuid) {
   return String(uuid).replace(/-/g, '').slice(-8);
 }
 
+function getArticleUrl(article) {
+  if (!article) return '/';
+  const cat = String(article.category || 'politics').toLowerCase().trim();
+  const slug = article.slug || shortIdFromUuid(article.id);
+  return `/${cat}/${slug}`;
+}
+
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
   const E = {
@@ -129,17 +136,16 @@ function cardTimeHtml(article) {
 }
 
 function cardLinkHtml(article) {
-  const shortId = shortIdFromUuid(article.id);
-  return `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
+  const url = getArticleUrl(article);
+  return `<a href="${escapeAttr(url)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
 }
 
 // Build a single bento card HTML (mirrors app.js exactly)
 function buildBentoCard(article, index) {
   const isInstagram = article.authortype === 'instagram';
-  const shortId = shortIdFromUuid(article.id);
   const rawHeadline = article.aiheadline || article.aiHeadline || article.title || 'Untitled Chronicle';
   const rawSummary = article.aisummary || article.aiSummary || article.description || article.summary || '';
-  const cardLink = `<a href="/article/${escapeAttr(shortId)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(rawHeadline)}</a>`;
+  const cardLink = `<a href="${escapeAttr(getArticleUrl(article))}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(rawHeadline)}</a>`;
   const badgeHtml = authorBadgeHtml(article.authortype);
   const catTag = categoryTagHtml(article.category);
   const timeHtml = cardTimeHtml(article);
@@ -241,7 +247,7 @@ async function fetchLatestArticles(limit = 22) {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+      .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
       .eq('archived', false)
       .order('publishdate', { ascending: false })
       .limit(limit);
@@ -296,7 +302,7 @@ async function renderHomepageHtml(articles) {
       if (img.startsWith('data:image')) img = SITE + '/assets/hero-bg.png';
       return {
         '@type': 'ListItem', 'position': i + 1,
-        'item': { '@type': 'NewsArticle', 'url': SITE + '/article/' + shortIdFromUuid(a.id), 'headline': a.aiheadline, 'image': img, 'datePublished': a.publishdate }
+        'item': { '@type': 'NewsArticle', 'url': SITE + getArticleUrl(a), 'headline': a.aiheadline, 'image': img, 'datePublished': a.publishdate }
       };
     })
   });
@@ -432,7 +438,7 @@ async function renderHomepageHtml(articles) {
               <span class="author-title" data-bind="byline_role">${escapeHtml(heroRole)}</span>
             </div>
           </div>
-          <a href="/article/${escapeAttr(shortIdFromUuid(heroArticle ? heroArticle.id : ''))}" class="btn btn-primary" aria-label="Read full analysis">
+          <a href="${escapeAttr(getArticleUrl(heroArticle))}" class="btn btn-primary" aria-label="Read full analysis">
             <span data-bind="cta">Read Audit</span>
             <i data-lucide="arrow-up-right"></i>
           </a>
@@ -570,7 +576,7 @@ async function renderHomepageHtml(articles) {
 </div>
 
 <!-- Pre-hydration data for instant SSR → SPA transition -->
-<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
+<script id="__SSR_DATA__" type="application/json">${JSON.stringify({ articles: articles.map(a => { const stripped = { ...a, shortId: shortIdFromUuid(a.id), slug: a.slug, url: getArticleUrl(a) }; if (a.imageurl && a.imageurl.startsWith('data:image')) { stripped.hasBase64Image = true; stripped.imageurl = ''; } return stripped; }) })}</script>
 
 <!-- Three.js is vendored locally and lazy-loaded by lens-effect.js when the hero scrolls into view -->
 
@@ -702,7 +708,7 @@ module.exports = async (req, res) => {
     }
     const articles = await fetchLatestArticles(100);
     const feed = articles.map(a => {
-      const stripped = { ...a, shortId: shortIdFromUuid(a.id), timeago: formatTimeAgo(a.publishdate) };
+      const stripped = { ...a, shortId: shortIdFromUuid(a.id), slug: a.slug, url: getArticleUrl(a), timeago: formatTimeAgo(a.publishdate) };
       if (a.imageurl && a.imageurl.startsWith('data:image')) {
         stripped.hasBase64Image = true;
         stripped.imageurl = '';
