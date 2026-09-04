@@ -117,7 +117,7 @@ function buildXml(articles) {
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).json({ error: 'Method not allowed' });
 
   const now = Date.now();
   if (_cache.xml && (now - _cache.at) < CACHE_MS) {
@@ -134,5 +134,6 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
   res.setHeader('X-Cache', 'MISS');
+  if (req.method === 'HEAD') return res.status(200).end();
   return res.status(200).send(xml);
 };

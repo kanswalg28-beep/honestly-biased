@@ -419,8 +419,8 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(200).end();
   }
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET');
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.setHeader('Allow', 'GET, HEAD');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -490,6 +490,9 @@ module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
   res.setHeader('Link', `<${SITE}/style.css>; rel=preload; as=style`);
 
+  if (req.method === 'HEAD') {
+    return res.status(200).end();
+  }
   return res.status(200).send(renderArticleHtml(article));
 };
 
