@@ -1,4 +1,4 @@
-﻿// api/category.js — Server-Side Rendered Category Page
+// api/category.js — Server-Side Rendered Category Page
 //
 // GET /api/category?category=<politics|tech|finance|entertainment|health>
 //
@@ -295,7 +295,9 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const categoryParam = String((req.query && req.query.category) || 'politics').toLowerCase().trim();
+  const rawPath = (req.headers && req.headers['x-matched-path']) || (req.url ? req.url.split('?')[0] : '');
+  const pathSegment = rawPath.replace(/^\//, '').split('/')[0];
+  const categoryParam = String((req.query && req.query.category) || pathSegment || 'politics').toLowerCase().trim();
   const now = Date.now();
   const cached = categoryCache.get(categoryParam);
 

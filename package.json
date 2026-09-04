@@ -1,22 +1,23 @@
-{
-  "engines": {
-    "node": "24.x"
-  },
-  "scripts": {
-    "build:sitemap": "node generate-sitemap.js",
-    "build:images": "node generate-images.js",
-    "build": "npm run build:images && npm run build:sitemap"
-  },
-  "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "@supabase/supabase-js": "^2.110.1",
-    "compression": "^1.8.1",
-    "debug": "^4.4.3",
-    "dotenv": "^17.4.2",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.1.5",
-    "sharp": "^0.35.3"
-  },
-  "devDependencies": {
-  }
+﻿{
+    "engines":  {
+                    "node":  "24.x"
+                },
+    "scripts":  {
+                    "build:sitemap":  "node generate-sitemap.js",
+                    "build:images":  "node generate-images.js",
+                    "build":  "npm run build:images"
+                },
+    "dependencies":  {
+                         "@google/generative-ai":  "^0.24.1",
+                         "@supabase/supabase-js":  "^2.110.1",
+                         "compression":  "^1.8.1",
+                         "debug":  "^4.4.3",
+                         "dotenv":  "^17.4.2",
+                         "express":  "^4.21.2",
+                         "express-rate-limit":  "^7.1.5",
+                         "sharp":  "^0.35.3"
+                     },
+    "devDependencies":  {
+
+                        }
 }

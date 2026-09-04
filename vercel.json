@@ -43,23 +43,23 @@
                      },
                      {
                          "source":  "/politics",
-                         "destination":  "/api/category?category=politics"
+                         "destination":  "/api/category"
                      },
                      {
                          "source":  "/tech",
-                         "destination":  "/api/category?category=tech"
+                         "destination":  "/api/category"
                      },
                      {
                          "source":  "/finance",
-                         "destination":  "/api/category?category=finance"
+                         "destination":  "/api/category"
                      },
                      {
                          "source":  "/entertainment",
-                         "destination":  "/api/category?category=entertainment"
+                         "destination":  "/api/category"
                      },
                      {
                          "source":  "/health",
-                         "destination":  "/api/category?category=health"
+                         "destination":  "/api/category"
                      },
                      {
                          "source":  "/manifesto",
