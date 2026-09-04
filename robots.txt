@@ -1,4 +1,4 @@
-﻿# Honestly Biased - robots.txt
+# Honestly Biased - robots.txt
 # https://www.honestlybiased.com
 
 User-agent: *
