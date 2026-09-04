@@ -693,7 +693,7 @@ module.exports = async (req, res) => {
     return handleImgProxy(req, res);
   }
 
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).json({ error: 'Method not allowed' });
 
   const now = Date.now();
   const cacheValid = cachedHtml && (now - cacheTime) < CACHE_TTL_MS;
@@ -704,6 +704,7 @@ module.exports = async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
       res.setHeader('X-Cache', 'HIT');
+      if (req.method === 'HEAD') return res.status(200).end();
       return res.status(200).json(cachedJson);
     }
     const articles = await fetchLatestArticles(100);
@@ -722,6 +723,7 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
     res.setHeader('X-Cache', 'MISS');
+    if (req.method === 'HEAD') return res.status(200).end();
     return res.status(200).json(cachedJson);
   }
 
@@ -730,6 +732,7 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
     res.setHeader('X-Cache', 'HIT');
+    if (req.method === 'HEAD') return res.status(200).end();
     return res.status(200).send(cachedHtml);
   }
 
@@ -744,6 +747,6 @@ module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
   res.setHeader('Vary', 'User-Agent');
   res.setHeader('X-Cache', 'MISS');
-
+  if (req.method === 'HEAD') return res.status(200).end();
   return res.status(200).send(html);
 };

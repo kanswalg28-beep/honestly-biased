@@ -127,7 +127,7 @@ function buildRss(articles) {
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).json({ error: 'Method not allowed' });
 
   const articles = await fetchArticles();
   const xml = buildRss(articles);
@@ -135,5 +135,6 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
   // RSS updates frequently — 15 min cache for crawlers, instant STALE on update
   res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900');
+  if (req.method === 'HEAD') return res.status(200).end();
   return res.status(200).send(xml);
 };
