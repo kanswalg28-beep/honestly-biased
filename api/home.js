@@ -123,7 +123,8 @@ function categoryTagHtml(category) {
 }
 
 function biasAuditHtml(biasaudit) {
-  return `<span class="card-author" style="font-size:0.75rem; color:var(--accent-green); font-weight:700;">Bias Audit: ${escapeHtml(biasaudit)}</span>`;
+  if (!biasaudit) return '';
+  return `<div class="card-bias-pill"><span class="bias-stamp-label"><i data-lucide="shield-alert" style="width:11px;height:11px;vertical-align:-1px;margin-right:2px;"></i> AUDIT</span><span class="bias-stamp-text">${escapeHtml(biasaudit)}</span></div>`;
 }
 
 function cardTimeHtml(article) {
@@ -158,14 +159,14 @@ function buildBentoCard(article, index) {
   const imgUrl = isBase64 ? '' : escapeAttr(rawImg);
   const bgStyle = imgUrl
     ? `background-image: url('${imgUrl}')`
-    : 'background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
+    : 'background: linear-gradient(135deg, #0A0E17 0%, #141B29 100%)';
 
   if (index === 0) {
-    // FIRST POST: Same size as posts 2,3,4 (2x1 horizontal card)
+    // FIRST POST: 2x1 horizontal card
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
+          <div class="card-image-bg" style="${bgStyle};"></div>
           ${catTag}
           ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
@@ -191,7 +192,7 @@ function buildBentoCard(article, index) {
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
         <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.7) contrast(1.1);"></div>
+          <div class="card-image-bg" style="${bgStyle};"></div>
           ${catTag}
           ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
@@ -216,7 +217,7 @@ function buildBentoCard(article, index) {
   return `
     <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
       <div class="card-visual">
-        <div class="card-image-bg" style="${bgStyle}; filter: brightness(0.65) grayscale(0.15);"></div>
+        <div class="card-image-bg" style="${bgStyle};"></div>
         ${catTag}
       </div>
       <div class="card-body">
@@ -231,7 +232,7 @@ function buildBentoCard(article, index) {
           ${cardLink}
         </h3>
         <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${summary}</p>
-        <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.03);">
+        <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06);">
           ${biasHtml}
         </div>
       </div>
@@ -344,8 +345,8 @@ async function renderHomepageHtml(articles) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-<!-- Google Fonts (UI/UX Pro Max Tri-Stack) -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<!-- Google Fonts (Editorial Triad: Fraunces / Inter / JetBrains Mono) -->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <!-- Lucide Icons (bundled locally — no CDN dependency) -->
 <script src="/assets/lucide-local.js" defer></script>

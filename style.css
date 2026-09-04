@@ -1,110 +1,111 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ==========================================================================
-   HONESTLY BIASED DESIGN SYSTEM & STYLE SHEET (UI/UX PRO MAX OVERHAUL)
-   Aesthetics: Sleek Neo-Brutalist Glassmorphic Editorial Journal
-   Colors: Midnight Charcoal Base (#080B10), Crimson Red, Emerald & Neon Accents
-   Typography: Syne (Display), Playfair Display (Serif), Inter (Body), JetBrains Mono (Meta/Data)
+   HONESTLY BIASED DESIGN SYSTEM & STYLE SHEET (EDITORIAL JOURNAL OVERHAUL)
+   Aesthetics: High-End Sharp Editorial Press & Investigative Journal
+   Colors: Deep Ink Charcoal (#080B10), Warm Paper (#F5F2EB), Saffron (#F0A92E), Crimson (#C73E35)
+   Typography: Fraunces (Headlines/Display), Inter (Body/UI), JetBrains Mono (Data/Audits)
    ========================================================================== */
 
 /* DESIGN TOKENS & CSS VARIABLE DEFINITIONS */
 :root {
-    /* Fonts - UI Pro Max Tri-Stack Journal Typography */
-    --font-display: 'Syne', 'Space Grotesk', -apple-system, sans-serif;
-    --font-serif: 'Playfair Display', Georgia, serif;
+    /* Fonts - Editorial Triad */
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-serif: 'Fraunces', Georgia, serif;
+    --font-heading: 'Fraunces', Georgia, serif;
+    --font-editorial: 'Fraunces', Georgia, serif;
     --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-editorial: 'Space Grotesk', 'Syne', sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
-    /* Reading Progress & UI Pro Max Glass Design System */
-    --glass-bg: rgba(14, 22, 34, 0.55);
+    /* Reading Progress & Editorial Glass/Card Design System */
+    --glass-bg: rgba(14, 20, 30, 0.75);
     --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-border-glow: rgba(0, 229, 255, 0.25);
-    --glass-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 229, 255, 0.05);
-    --glass-blur: blur(16px);
+    --glass-border-glow: rgba(240, 169, 46, 0.18);
+    --glass-shadow: 0 8px 30px -10px rgba(0, 0, 0, 0.6);
+    --glass-blur: blur(12px);
 
-    /* Brand-Inspired HSL Accents (Direct match to your official logo) */
-    --accent-red: hsl(358, 63%, 43%);
-    --accent-red-rgb: 178, 41, 46;
-    --accent-navy: hsl(212, 68%, 20%);
+    /* Brand Accents - Cohesive Editorial Palette */
+    --accent-red: #C73E35;
+    --accent-red-rgb: 199, 62, 53;
+    --accent-navy: #0E2A4A;
     --accent-navy-rgb: 14, 42, 74;
-    --accent-gold: hsl(45, 67%, 46%);
-    --accent-gold-rgb: 197, 155, 39;
+    --accent-gold: #F0A92E;
+    --accent-gold-rgb: 240, 169, 46;
     
     /* Semantic color aliases for components */
-    --instagram-pink: #e1306c;
+    --instagram-pink: #E1306C;
     --instagram-pink-rgb: 225, 48, 108;
-    --neon-cyan: #00E5FF;
-    --neon-cyan-rgb: 0, 229, 255;
-    --success-green: #00e676;
-    --success-green-rgb: 0, 230, 118;
+    --neon-cyan: #38BDF8;
+    --neon-cyan-rgb: 56, 189, 248;
+    --success-green: #37B27A;
+    --success-green-rgb: 55, 178, 122;
     
-    /* Re-map functional variables to your official Crimson Red & Navy Blue/Gold accents */
-    --accent-saffron: var(--accent-red);
-    --accent-saffron-rgb: var(--accent-red-rgb);
-    --accent-green: var(--accent-gold);
-    --accent-green-rgb: var(--accent-gold-rgb);
+    /* Re-map functional variables to official Crimson & Saffron accents */
+    --accent-saffron: #F0A92E;
+    --accent-saffron-rgb: 240, 169, 46;
+    --accent-green: #37B27A;
+    --accent-green-rgb: 55, 178, 122;
     
     /* Animation Speeds */
-    --transition-slow: 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
-    --transition-medium: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    --transition-fast: 0.15s ease;
+    --transition-slow: 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --transition-medium: 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --transition-fast: 0.12s ease;
 
-    /* LAYOUT SIZES */
-    --header-height: 80px;
-    --border-radius-lg: 24px;
-    --border-radius-md: 16px;
-    --border-radius-sm: 8px;
+    /* LAYOUT SIZES - Refined crisp editorial radius */
+    --header-height: 72px;
+    --border-radius-lg: 12px;
+    --border-radius-md: 8px;
+    --border-radius-sm: 4px;
 
     /* Nav/Tab backgrounds */
-    --region-bar-bg: rgba(10, 18, 30, 0.55);
-    --region-tabs-bg: rgba(5, 10, 20, 0.45);
-    --category-tabs-bg: rgba(10, 18, 30, 0.45);
+    --region-bar-bg: rgba(10, 18, 30, 0.65);
+    --region-tabs-bg: rgba(5, 10, 20, 0.55);
+    --category-tabs-bg: rgba(10, 18, 30, 0.55);
 
-    /* THEME VARIABLES (Default: Dark Theme - Deep Midnight Black / Navy) */
-    --bg-primary: hsl(212, 45%, 7%);
-    --bg-primary-rgb: 9, 14, 22;
-    --bg-secondary: hsl(212, 45%, 4%);
-    --bg-card: rgba(14, 22, 34, 0.55);
-    --bg-card-hover: rgba(20, 30, 48, 0.7);
-    --text-primary: hsl(210, 40%, 98%);
-    --text-secondary: hsl(215, 20%, 80%);
-    --text-muted: hsl(215, 12%, 55%);
+    /* THEME VARIABLES (Default: Dark Theme - Deep Midnight Charcoal / Ink) */
+    --bg-primary: #0A0E17;
+    --bg-primary-rgb: 10, 14, 23;
+    --bg-secondary: #060910;
+    --bg-card: rgba(16, 23, 36, 0.7);
+    --bg-card-hover: rgba(22, 32, 50, 0.85);
+    --text-primary: #F1EDE3;
+    --text-secondary: #C9C4B4;
+    --text-muted: #8891A3;
     --border-color: rgba(255, 255, 255, 0.08);
     --border-color-hover: rgba(255, 255, 255, 0.18);
-    --shadow-color: rgba(0, 0, 0, 0.45);
-    --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+    --shadow-color: rgba(0, 0, 0, 0.55);
     --accent-white-mix: rgba(255, 255, 255, 0.92);
 }
 
-/* LIGHT MODE OVERRIDES */
+/* LIGHT MODE OVERRIDES - High-authority warm paper press */
 body.light-theme {
-    --bg-primary: #f8fafc;
-    --bg-primary-rgb: 248, 250, 252;
-    --bg-secondary: #f1f5f9;
-    --bg-card: rgba(255, 255, 255, 0.88);
-    --bg-card-hover: rgba(255, 255, 255, 0.98);
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #64748b;
-    --border-color: rgba(0, 0, 0, 0.09);
-    --border-color-hover: rgba(0, 0, 0, 0.18);
-    --shadow-color: rgba(15, 23, 42, 0.08);
-    --glass-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08);
-    --glass-bg: rgba(255, 255, 255, 0.88);
-    --glass-border: rgba(0, 0, 0, 0.09);
-    --accent-white-mix: rgba(15, 23, 42, 0.92);
+    --bg-primary: #F8F6F0;
+    --bg-primary-rgb: 248, 246, 240;
+    --bg-secondary: #EFECE3;
+    --bg-card: rgba(255, 255, 255, 0.92);
+    --bg-card-hover: #FFFFFF;
+    --text-primary: #121620;
+    --text-secondary: #333D4F;
+    --text-muted: #667285;
+    --border-color: rgba(18, 22, 32, 0.1);
+    --border-color-hover: rgba(18, 22, 32, 0.22);
+    --shadow-color: rgba(18, 22, 32, 0.08);
+    --glass-shadow: 0 8px 24px -8px rgba(18, 22, 32, 0.08);
+    --glass-bg: rgba(255, 255, 255, 0.92);
+    --glass-border: rgba(18, 22, 32, 0.09);
+    --accent-white-mix: rgba(18, 22, 32, 0.92);
     
     /* Semantic color aliases for light mode */
-    --instagram-pink: #c1214d;
-    --neon-cyan: #0284c7;
+    --instagram-pink: #C1214D;
+    --neon-cyan: #0284C7;
     --success-green: #059669;
     
     /* Light mode fixes for nav/tabs */
-    --region-bar-bg: rgba(255, 255, 255, 0.85);
-    --region-tabs-bg: rgba(241, 245, 249, 0.9);
-    --category-tabs-bg: rgba(241, 245, 249, 0.9);
-    --border-glass: rgba(0, 0, 0, 0.08);
+    --region-bar-bg: rgba(248, 246, 240, 0.92);
+    --region-tabs-bg: rgba(239, 236, 227, 0.95);
+    --category-tabs-bg: rgba(239, 236, 227, 0.95);
+    --border-glass: rgba(18, 22, 32, 0.08);
 }
 
 /* ==========================================================================
@@ -1819,6 +1820,47 @@ body.light-theme .active-indicator-pill {
 .card-author {
     font-weight: 700;
     color: var(--text-secondary);
+}
+
+/* Editorial Bias Stamp Pill */
+.card-bias-pill {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(240, 169, 46, 0.08);
+    border: 1px solid rgba(240, 169, 46, 0.22);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.72rem;
+    line-height: 1.4;
+    width: 100%;
+}
+
+.bias-stamp-label {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    color: var(--accent-saffron);
+    white-space: nowrap;
+    padding-top: 1px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bias-stamp-text {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.73rem;
+}
+
+body.light-theme .card-bias-pill {
+    background: rgba(240, 169, 46, 0.12);
+    border-color: rgba(240, 169, 46, 0.35);
+}
+
+body.light-theme .bias-stamp-text {
+    color: var(--text-primary);
 }
 
 .card-action i {

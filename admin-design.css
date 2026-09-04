@@ -253,3 +253,112 @@ body.light-theme {
   --glass-shadow:   0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
+/* ---- Workspace Navigation Tabs ---------------------------------------- */
+.cms-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 28px;
+  padding-bottom: 0;
+  overflow-x: auto;
+}
+
+.cms-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.cms-tab-btn i {
+  width: 16px;
+  height: 16px;
+}
+
+.cms-tab-btn:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--hairline-2);
+}
+
+.cms-tab-btn.active {
+  color: var(--saffron);
+  border-bottom-color: var(--saffron);
+}
+
+.cms-tab-pane {
+  display: none;
+}
+
+.cms-tab-pane.active {
+  display: block;
+  animation: tabFadeIn 0.2s ease-out;
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Workspace Mode Layouts ------------------------------------------- */
+.cms-mode-all .cms-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1.85fr;
+  gap: 32px;
+  align-items: start;
+}
+.cms-mode-all #pane-dispatch,
+.cms-mode-all #pane-inventory,
+.cms-mode-all #pane-audience {
+  display: block;
+}
+
+.cms-mode-dispatch .cms-grid {
+  display: block;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.cms-mode-dispatch #pane-dispatch {
+  display: block;
+}
+.cms-mode-dispatch #pane-inventory,
+.cms-mode-dispatch #pane-audience {
+  display: none;
+}
+
+.cms-mode-inventory .cms-grid {
+  display: block;
+  width: 100%;
+}
+.cms-mode-inventory #pane-inventory {
+  display: block;
+  max-height: none;
+}
+.cms-mode-inventory #pane-dispatch,
+.cms-mode-inventory #pane-audience {
+  display: none;
+}
+
+.cms-mode-audience .cms-grid {
+  display: block;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.cms-mode-audience #pane-audience {
+  display: block;
+}
+.cms-mode-audience #pane-dispatch,
+.cms-mode-audience #pane-inventory {
+  display: none;
+}
+

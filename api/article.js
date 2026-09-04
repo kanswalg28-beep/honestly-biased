@@ -309,7 +309,7 @@ function renderArticleHtml(article) {
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="dark-theme">
@@ -330,47 +330,65 @@ function renderArticleHtml(article) {
   </div>
 </header>
 <main id="main-content" itemscope itemtype="https://schema.org/NewsArticle">
-  <article class="glass-element article-page" style="padding: 48px; border-radius: 24px; border: 1px solid var(--border-color); margin-top: 120px; max-width: 900px; margin-left: auto; margin-right: auto;">
-    <nav class="breadcrumbs" aria-label="Breadcrumb" style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 24px;">
-      <a href="/" style="color: var(--text-muted); text-decoration: none;">Home</a>
-      <span class="bc-sep" style="margin: 0 8px;">›</span>
-      <a href="/${escapeAttr(category.toLowerCase())}" style="color: var(--text-muted); text-decoration: none;">${escapeAttr(category)}</a>
-      <span class="bc-sep" style="margin: 0 8px;">›</span>
-      <span aria-current="page" style="color: var(--text-primary);">${escapeAttr(truncate(headline, 60))}</span>
+  <div class="article-reader-container" style="max-width: 820px; margin: 100px auto 40px; padding: 0 24px;">
+    <nav class="breadcrumbs" aria-label="Breadcrumb" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 24px; font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;">
+      <a href="/" style="color: var(--text-muted); text-decoration: none;">The Ledger</a>
+      <span class="bc-sep" style="margin: 0 8px; color: var(--border-color);">/</span>
+      <a href="/${escapeAttr(category.toLowerCase())}" style="color: var(--accent-saffron); text-decoration: none;">${escapeAttr(category)}</a>
+      <span class="bc-sep" style="margin: 0 8px; color: var(--border-color);">/</span>
+      <span aria-current="page" style="color: var(--text-muted);">${escapeAttr(truncate(headline, 40))}</span>
     </nav>
-    <header style="margin-bottom: 32px;">
-      <meta itemprop="mainEntityOfPage" content="${escapeAttr(canonical)}">
-      <meta itemprop="inLanguage" content="en-IN">
-      <h1 itemprop="headline" style="font-family: var(--font-display), 'Syne', sans-serif; font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: var(--text-primary); letter-spacing: -0.5px;">${escapeAttr(headline)}</h1>
-      <p itemprop="description" style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; font-family: var(--font-serif); font-style: italic;">${escapeAttr(seoDesc)}</p>
-      <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1.5px solid var(--border-glass); font-size: 0.78rem;">
-        <span class="article-category" itemprop="articleSection" style="font-size: 0.65rem; padding: 4px 10px; border-radius: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; background: var(--accent-saffron); color: var(--text-primary);">${escapeAttr(category)}</span>
-        <span style="color: var(--text-muted); white-space: nowrap;">${escapeAttr(regionLabel)}</span>
-        <time datetime="${escapeAttr(datePublished)}" itemprop="datePublished" content="${escapeAttr(datePublished)}" style="color: var(--text-muted); white-space: nowrap;">${escapeAttr(prettyDate)}</time>
-        <span itemprop="author" itemscope itemtype="https://schema.org/Person" style="color: var(--text-primary); white-space: nowrap;">By <strong itemprop="name">${escapeAttr(author)}</strong></span>
-        <meta itemprop="dateModified" content="${escapeAttr(dateModified)}">
+    <header style="margin-bottom: 28px;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <span class="article-category" itemprop="articleSection" style="font-family: var(--font-mono); font-size: 0.65rem; padding: 4px 8px; border-radius: 2px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; background: rgba(240, 169, 46, 0.12); color: var(--accent-saffron); border: 1px solid rgba(240, 169, 46, 0.25);">${escapeAttr(category)}</span>
+        <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">${escapeAttr(regionLabel)}</span>
+      </div>
+      <h1 itemprop="headline" style="font-family: var(--font-heading); font-size: clamp(2.1rem, 4.5vw, 3.2rem); font-weight: 800; line-height: 1.15; margin-bottom: 18px; color: var(--text-primary); letter-spacing: -0.03em; text-wrap: balance;">${escapeAttr(headline)}</h1>
+      <p itemprop="description" style="font-size: 1.22rem; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.55; font-style: italic; border-left: 2px solid var(--accent-saffron); padding-left: 16px;">${escapeAttr(seoDesc)}</p>
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 14px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); font-size: 0.8rem;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="author-avatar" style="width: 34px; height: 34px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-muted);"><i data-lucide="user" style="width:16px;height:16px;"></i></div>
+          <div>
+            <span itemprop="author" itemscope itemtype="https://schema.org/Person" style="color: var(--text-primary); font-weight: 600; display: block;"><strong itemprop="name">${escapeAttr(author)}</strong></span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">${escapeAttr(byline)}</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
+          <i data-lucide="calendar" style="width: 13px; height: 13px;"></i>
+          <time datetime="${escapeAttr(datePublished)}" itemprop="datePublished">${escapeAttr(prettyDate)}</time>
+        </div>
       </div>
     </header>
-    <figure style="margin-bottom: 36px; width: 100%; border-radius: 16px; overflow: hidden; border: 1.5px solid var(--border-color); box-shadow: var(--glass-shadow);">
-      <img src="${escapeAttr(absImage)}" alt="${escapeAttr(headline)}" itemprop="image" style="width: 100%; height: auto; display: block;">
-      <figcaption style="padding: 16px; background: var(--bg-card); font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border-color);">Source: ${escapeAttr(source)}</figcaption>
-    </figure>
-    ${biasAudit ? `<div class="bias-audit-callout" style="background: rgba(178, 41, 46, 0.08); border: 1px solid var(--accent-saffron); border-radius: 16px; padding: 22px 26px; margin-bottom: 36px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-      <h2 style="font-family: var(--font-display), sans-serif; font-size: 1.05rem; margin-bottom: 8px; color: var(--accent-saffron); display: flex; align-items: center; gap: 8px;"><span class="pulse-beacon"></span> 🕵 AI Narrative Audit</h2>
-      <p style="color: var(--text-secondary); line-height: 1.7; margin: 0; font-size: 0.98rem;">${escapeAttr(biasAudit)}</p>
+
+    ${biasAudit ? `<div class="bias-audit-dossier" style="background: rgba(240, 169, 46, 0.05); border: 1px solid rgba(240, 169, 46, 0.25); border-left: 3px solid var(--accent-saffron); border-radius: 4px; padding: 18px 22px; margin-bottom: 36px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <span style="font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; color: var(--accent-saffron); text-transform: uppercase;"><i data-lucide="shield-alert" style="width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px;"></i> AI Narrative Bias Audit</span>
+      </div>
+      <p style="color: var(--text-primary); line-height: 1.6; margin: 0; font-size: 0.96rem; font-weight: 500;">${escapeAttr(biasAudit)}</p>
     </div>` : ''}
-    <div itemprop="articleBody" class="blog-post-content article-content" style="font-size: 1.15rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 40px;">
+
+    <figure style="margin-bottom: 36px; width: 100%; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color);">
+      <img src="${escapeAttr(absImage)}" alt="${escapeAttr(headline)}" itemprop="image" style="width: 100%; height: auto; display: block;">
+      <figcaption style="padding: 10px 14px; background: var(--bg-card); font-size: 0.76rem; color: var(--text-muted); font-family: var(--font-mono); border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <span>Visual Reference</span>
+        <span>Source: ${escapeAttr(source)}</span>
+      </figcaption>
+    </figure>
+
+    <div itemprop="articleBody" class="blog-post-content article-content" style="font-size: 1.16rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 48px; max-width: 68ch;">
       ${body}
     </div>
-    <div style="padding-top: 28px; border-top: 1.5px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-      <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">Source: ${escapeAttr(source)}</span>
-      <a href="${escapeAttr(origUrl)}" target="_blank" rel="noopener noreferrer" style="font-size: 0.9rem; color: var(--accent-saffron); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">View Original Source →</a>
+
+    <div style="padding: 20px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; font-family: var(--font-mono); font-size: 0.78rem;">
+      <span style="color: var(--text-muted);">Attribution: ${escapeAttr(source)}</span>
+      <a href="${escapeAttr(origUrl)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-saffron); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">Examine Raw Source <i data-lucide="arrow-up-right" style="width: 13px; height: 13px;"></i></a>
     </div>
-  </article>
-  <nav style="margin-top: 32px; display: flex; justify-content: center; gap: 16px; max-width: 900px; margin-left: auto; margin-right: auto; padding: 0 24px 80px;">
-    <a href="/${escapeAttr(category.toLowerCase())}" class="btn btn-secondary">← Back to ${escapeAttr(category)}</a>
-    <a href="/" class="btn btn-primary">The Ledger</a>
-  </nav>
+
+    <nav style="margin-top: 40px; display: flex; justify-content: space-between; gap: 16px; padding-bottom: 40px;">
+      <a href="/${escapeAttr(category.toLowerCase())}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 10px 18px; border-radius: 4px;">← ${escapeAttr(category)} Chronicles</a>
+      <a href="/" class="btn btn-primary" style="font-size: 0.8rem; padding: 10px 22px; border-radius: 4px;">Front Page Ledger →</a>
+    </nav>
+  </div>
 </main>
 <footer class="editorial-footer">
   <div class="footer-grid">

@@ -895,13 +895,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const gridItems = [];
 
             paginatedArticles.forEach((article, index) => {
+            const biasHtml = article.biasaudit
+                ? `<div class="card-bias-pill"><span class="bias-stamp-label"><i data-lucide="shield-alert" style="width:11px;height:11px;vertical-align:-1px;margin-right:2px;"></i> AUDIT</span><span class="bias-stamp-text">${escapeHtml(article.biasaudit)}</span></div>`
+                : '';
+
             // Layout pattern: 4 Featured horizontals (2x1) -> Standard cards (1x1) with images
             if (index >= 0 && index <= 3) {
                 // FEATURED HORIZONTALS: First 4 articles as 2x1 cards with images
                 gridItems.push(`
                                 <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
                                     <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.7) contrast(1.1);"></div>
+                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}');"></div>
                                         <span class="card-tag saffron-bg">${article.category}</span>
                                         ${article.authortype === 'instagram' ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
                                     </div>
@@ -920,17 +924,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </h3>
                                         <p class="card-summary">${article.aisummary}</p>
                                         <div class="card-footer-meta">
-                                            <span class="card-author" style="font-size:0.75rem; color:var(--accent-green); font-weight:700;">Bias Audit: ${article.biasaudit}</span>
+                                            ${biasHtml}
                                         </div>
                                     </div>
                                 </article>
                             `);
             } else {
-                            // STANDARD CARDS: 1x1 with images (not header-only)
+                            // STANDARD CARDS: 1x1 with images
                             gridItems.push(`
                                 <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
                                     <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}'); filter: brightness(0.65) grayscale(0.15);"></div>
+                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}');"></div>
                                         <span class="card-tag saffron-bg">${article.category}</span>
                                     </div>
                                     <div class="card-body">
@@ -950,8 +954,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <a href="${getArticleUrl(article)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
                                         </h3>
                                         <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${article.aisummary}</p>
-                                        <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.03);">
-                                            <span class="card-author" style="font-size:0.68rem; color:var(--accent-green); font-weight:700; line-height:1.35; display:block;">Bias Audit: ${article.biasaudit}</span>
+                                        <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06);">
+                                            ${biasHtml}
                                         </div>
                                     </div>
                                 </article>

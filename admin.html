@@ -629,19 +629,19 @@
         }
 
         .btn-action.act-edit:hover {
-            background: rgba(197, 155, 39, 0.15);
+            background: rgba(240, 169, 46, 0.15);
             color: var(--accent-gold);
             border-color: var(--accent-gold);
-            transform: scale(1.08) rotate(-15deg);
-            box-shadow: 0 0 12px rgba(197, 155, 39, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .btn-action.act-delete:hover {
-            background: rgba(178, 41, 46, 0.15);
+            background: rgba(199, 62, 53, 0.15);
             color: var(--accent-crimson);
             border-color: var(--accent-crimson);
-            transform: scale(1.08) rotate(15deg);
-            box-shadow: 0 0 12px rgba(178, 41, 46, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         /* Hero form image upload */
@@ -809,7 +809,7 @@
     <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
     
-    <div class="cms-wrapper">
+    <div class="cms-wrapper cms-mode-all" id="cms-wrapper">
         <!-- HEADER CONTROL BANNER — THE AUDIT DESK MASTHEAD -->
         <header class="cms-masthead">
             <div class="brand-line">
@@ -868,11 +868,32 @@
             </div>
         </div>
 
+        <!-- WORKSPACE NAVIGATION TABS -->
+        <nav class="cms-nav-tabs" id="cms-nav-tabs" aria-label="CMS Workspace Navigation">
+            <button type="button" class="cms-tab-btn active" data-tab="all">
+                <i data-lucide="layout-grid"></i>
+                <span>Workbench (Dual View)</span>
+            </button>
+            <button type="button" class="cms-tab-btn" data-tab="dispatch">
+                <i data-lucide="pen-tool"></i>
+                <span>Dispatch Editor</span>
+            </button>
+            <button type="button" class="cms-tab-btn" data-tab="inventory">
+                <i data-lucide="newspaper"></i>
+                <span>Chronicle Inventory</span>
+            </button>
+            <button type="button" class="cms-tab-btn" data-tab="audience">
+                <i data-lucide="users"></i>
+                <span>Audience Directory</span>
+            </button>
+        </nav>
+
         <!-- MAIN DUAL GRID WORKSPACE -->
         <div class="cms-grid">
             <!-- LEFT COLUMN WRAPPER -->
             <div class="cms-left-col">
                 <!-- LEFT PANEL: Draft / Form Center -->
+                <div id="pane-dispatch">
                 <section class="cms-panel-card glass-element">
                     <div class="form-header-row">
                         <h2 class="modal-title" id="cms-form-title" style="font-size: 1.35rem; font-weight:800; font-family:var(--font-heading); margin-bottom: 4px;">Draft Custom Editorial</h2>
@@ -950,14 +971,15 @@
                             <div class="file-upload-group">
                                 <div class="file-upload-row">
                                     <div class="file-upload-input-wrapper">
-                                        <input type="text" id="cms-image-url" class="cms-input glass-element" placeholder="./assets/hero-bg.png or paste image URL..." readonly style="background: rgba(255,255,255,0.01);">
+                                        <input type="text" id="cms-image-url" class="cms-input glass-element" placeholder="./assets/hero-bg.png or paste image URL...">
                                         <input type="file" id="cms-image-upload" class="file-upload-input" accept="image/*" aria-label="Upload cover image">
                                     </div>
                                     <button type="button" class="file-upload-btn" id="cms-image-upload-btn" aria-label="Upload image file">
                                         <i data-lucide="upload"></i>
-                                        <span>Upload</span>
+                                        <span>Upload File</span>
                                     </button>
                                 </div>
+                                <span style="font-size:0.68rem; color:var(--text-muted); display:block; margin-top:4px;">Paste an image URL directly above or click Upload File to pick from your machine.</span>
                                 <div class="file-upload-status" id="cms-image-upload-status"></div>
                             </div>
                         </div>
@@ -973,12 +995,10 @@
                         </div>
                     </form>
                 </section>
-
-
-
-
+                </div> <!-- /#pane-dispatch -->
 
                 <!-- Audience Directory Panel -->
+                <div id="pane-audience">
                 <section class="cms-panel-card glass-element" id="audience-directory-section">
                     <div class="form-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1.5px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px;">
                         <div>
@@ -1006,9 +1026,11 @@
                         </button>
                     </div>
                 </section>
+                </div> <!-- /#pane-audience -->
             </div>
 
             <!-- RIGHT PANEL: Live Inventory Grid Manager -->
+            <div id="pane-inventory">
             <section class="cms-panel-card glass-element" style="display: flex; flex-direction: column; max-height: calc(100vh - 180px);">
                 <div class="inventory-list-header">
                     <div>
@@ -1064,6 +1086,7 @@
                     </div>
                 </div>
             </section>
+            </div> <!-- /#pane-inventory -->
         </div>
     </div>
 

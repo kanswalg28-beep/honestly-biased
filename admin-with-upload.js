@@ -607,6 +607,15 @@ document.addEventListener('DOMContentLoaded', () => {
             cmsImageUploadStatus.className = 'file-upload-status';
         }
 
+        // Auto-switch to dispatch tab if currently in inventory-only view
+        if (typeof switchWorkspaceTab === 'function') {
+            const wrapper = document.getElementById('cms-wrapper');
+            if (wrapper && wrapper.classList.contains('cms-mode-inventory')) {
+                switchWorkspaceTab('dispatch');
+            }
+        }
+        document.getElementById('pane-dispatch')?.scrollIntoView({ behavior: 'smooth' });
+
         cmsFormTitle.textContent = "Refine News Chronicle";
         cmsFormSubtitle.textContent = "Refine satirical headlines, critical summaries or narrative bias audits.";
         btnCmsSubmit.textContent = "Save Changes";
@@ -941,6 +950,44 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentPage < totalPages) {
                 currentPage++;
                 populateManagerList();
+            }
+        });
+    }
+
+    // ==========================================================================
+    // WORKSPACE TABS & MEDIA LIVE SYNC
+    // ==========================================================================
+    const cmsWrapper = document.getElementById('cms-wrapper');
+    const tabButtons = document.querySelectorAll('#cms-nav-tabs .cms-tab-btn');
+
+    function switchWorkspaceTab(tabName) {
+        if (!cmsWrapper) return;
+        cmsWrapper.classList.remove('cms-mode-all', 'cms-mode-dispatch', 'cms-mode-inventory', 'cms-mode-audience');
+        cmsWrapper.classList.add(`cms-mode-${tabName}`);
+
+        tabButtons.forEach(btn => {
+            if (btn.dataset.tab === tabName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            if (tab) switchWorkspaceTab(tab);
+        });
+    });
+
+    // Instant live preview when typing or pasting image URL
+    if (cmsImageUrl && cmsPreviewImg) {
+        cmsImageUrl.addEventListener('input', () => {
+            const val = cmsImageUrl.value.trim();
+            if (val) {
+                cmsPreviewImg.src = val;
+                if (cmsPreviewPlaceholder) cmsPreviewPlaceholder.style.display = 'none';
             }
         });
     }
