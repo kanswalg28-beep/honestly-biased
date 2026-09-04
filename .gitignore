@@ -9,3 +9,5 @@ site-content.json
 .DS_Store
 dist/
 .vercel
+
+sitemap.xml

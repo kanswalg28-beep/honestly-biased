@@ -1,30 +1,29 @@
-# Honestly Biased - robots.txt
-# https://www.robotstxt.org/
+﻿# Honestly Biased - robots.txt
+# https://www.honestlybiased.com
 
 User-agent: *
 Allow: /
 Allow: /article/*
+Allow: /politics
+Allow: /tech
+Allow: /finance
+Allow: /entertainment
+Allow: /health
+Allow: /manifesto
+Allow: /standards
+Allow: /funding
+Allow: /finances
+Allow: /collective
+Allow: /sitemap.xml
 Allow: /rss.xml
 Allow: /feed.xml
-Allow: /sitemap.xml
 
-# Block admin CMS, raw API endpoints, internal assets
+# Disallow internal admin CMS and sensitive backend assets
 Disallow: /admin
-Disallow: /api/
+Disallow: /admin.html
 Disallow: /db/
 Disallow: /node_modules/
-Disallow: /*.json$
-Disallow: /*.js$
-Disallow: /*.css$
-Disallow: /*.html$
 
-# Sitemap location — must be absolute URL
+# Sitemaps
 Sitemap: https://www.honestlybiased.com/sitemap.xml
-
-# RSS feed for fast indexing and news aggregators
-# (Many bots look for this — explicitly declared here too)
 Sitemap: https://www.honestlybiased.com/rss.xml
-
-# Crawl-delay (be respectful; Google's Mobile bot does not honor this
-# but legacy/crawler bots do, which decreases botspam)
-Crawl-delay: 5
