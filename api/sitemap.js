@@ -88,7 +88,8 @@ function buildXml(articles) {
       xml += `    <image:image><image:loc>${a.imageurl}</image:loc></image:image>\n`;
     }
 
-    if (a.publishdate) {
+    const isRecentNews = a.publishdate && (Date.now() - new Date(a.publishdate).getTime() < 48 * 60 * 60 * 1000);
+    if (isRecentNews) {
       try {
         const pubIso = new Date(a.publishdate).toISOString();
         const hl = (a.aiheadline || '').replace(/]]>/g, ']]]]><![CDATA[>');
