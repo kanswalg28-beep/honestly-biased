@@ -97,7 +97,15 @@ function buildXml(articles) {
     xml += '    <priority>0.8</priority>\n';
 
     if (a.imageurl && !a.imageurl.startsWith('data:image')) {
-      xml += `    <image:image><image:loc>${escapeXml(a.imageurl)}</image:loc></image:image>\n`;
+      let img = a.imageurl.trim();
+      if (img.startsWith('./')) {
+        img = `${BASE_URL}${img.slice(1)}`;
+      } else if (img.startsWith('/')) {
+        img = `${BASE_URL}${img}`;
+      }
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        xml += `    <image:image><image:loc>${escapeXml(img)}</image:loc></image:image>\n`;
+      }
     }
 
     const isRecentNews = a.publishdate && (Date.now() - new Date(a.publishdate).getTime() < 48 * 60 * 60 * 1000);

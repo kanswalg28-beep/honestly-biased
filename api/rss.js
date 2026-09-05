@@ -100,7 +100,19 @@ function buildRss(articles) {
     const pubDate = (() => {
       try { return new Date(a.publishdate).toUTCString(); } catch (e) { return now; }
     })();
-    const image = a.imageurl || '';
+    let image = (a.imageurl || '').trim();
+    if (image && !image.startsWith('data:image')) {
+      if (image.startsWith('./')) {
+        image = `${SITE}${image.slice(1)}`;
+      } else if (image.startsWith('/')) {
+        image = `${SITE}${image}`;
+      }
+      if (!image.startsWith('http://') && !image.startsWith('https://')) {
+        image = '';
+      }
+    } else {
+      image = '';
+    }
     const source = a.originalsource || SITE_NAME;
 
     xml += '    <item>\n';
