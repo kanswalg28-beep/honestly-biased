@@ -56,6 +56,16 @@ async function fetchArticles() {
   }
 }
 
+function escapeXml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 function buildXml(articles) {
   const today = new Date().toISOString().split('T')[0];
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -81,13 +91,13 @@ function buildXml(articles) {
     const url = `${BASE_URL}/${cat}/${slug}`;
     const lastmod = (a.updatedat || a.publishdate || today).toString().split('T')[0];
     xml += '  <url>\n';
-    xml += `    <loc>${url}</loc>\n`;
+    xml += `    <loc>${escapeXml(url)}</loc>\n`;
     xml += `    <lastmod>${lastmod}</lastmod>\n`;
     xml += '    <changefreq>monthly</changefreq>\n';
     xml += '    <priority>0.8</priority>\n';
 
-    if (a.imageurl) {
-      xml += `    <image:image><image:loc>${a.imageurl}</image:loc></image:image>\n`;
+    if (a.imageurl && !a.imageurl.startsWith('data:image')) {
+      xml += `    <image:image><image:loc>${escapeXml(a.imageurl)}</image:loc></image:image>\n`;
     }
 
     const isRecentNews = a.publishdate && (Date.now() - new Date(a.publishdate).getTime() < 48 * 60 * 60 * 1000);
@@ -95,7 +105,6 @@ function buildXml(articles) {
       try {
         const pubIso = new Date(a.publishdate).toISOString();
         const hl = (a.aiheadline || '').replace(/]]>/g, ']]]]><![CDATA[>');
-        const kw = (a.category || 'editorial').replace(/]]>/g, ']]]]><![CDATA[>');
         xml += '    <news:news>\n';
         xml += '      <news:publication>\n';
         xml += '        <news:name>Honestly Biased</news:name>\n';
@@ -103,7 +112,6 @@ function buildXml(articles) {
         xml += '      </news:publication>\n';
         xml += `      <news:publication_date>${pubIso}</news:publication_date>\n`;
         xml += `      <news:title><![CDATA[${hl}]]></news:title>\n`;
-        xml += `      <news:keywords><![CDATA[${kw}]]></news:keywords>\n`;
         xml += '    </news:news>\n';
       } catch (e) { /* skip article on bad date */ }
     }
