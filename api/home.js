@@ -693,8 +693,9 @@ async function handleImgProxy(req, res) {
 const handler = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const reqUrlStr = req.url || '';
   // IndexNow verification key responder
-  if ((req.query && req.query.__indexnow) || (req.url && req.url.includes('c748291b40d347c69a083fbb2241deef'))) {
+  if (reqUrlStr.includes('c748291b40d347c69a083fbb2241deef') || reqUrlStr.includes('__indexnow')) {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     return res.status(200).send('c748291b40d347c69a083fbb2241deef');
