@@ -338,6 +338,7 @@ async function renderHomepageHtml(articles) {
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/logo.png">
 <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+<link rel="alternate" type="application/rss+xml" title="Honestly Biased RSS Feed" href="${SITE}/rss.xml">
 <script type="application/ld+json">${siteJsonLd}</script>
 <script type="application/ld+json">${listJsonLd}</script>
 

@@ -306,6 +306,7 @@ function renderArticleHtml(article) {
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/logo.png">
 <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+<link rel="alternate" type="application/rss+xml" title="Honestly Biased RSS Feed" href="${SITE}/rss.xml">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -360,6 +361,31 @@ function renderArticleHtml(article) {
       </div>
     </header>
 
+    <!-- DISPATCH SOCIAL SHARE BAR -->
+    <div class="article-share-bar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px;">
+      <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; display: inline-flex; align-items: center; gap: 6px;">
+        <i data-lucide="share-2" style="width: 14px; height: 14px;"></i> Share Dispatch
+      </span>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(headline + '\n\n' + canonical)}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 4px; background: rgba(37, 211, 102, 0.12); color: #25d366; border: 1px solid rgba(37, 211, 102, 0.3); font-size: 0.76rem; font-weight: 600; text-decoration: none;" title="Share on WhatsApp">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
+          <span>WhatsApp</span>
+        </a>
+        <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(headline)}&url=${encodeURIComponent(canonical)}&via=honestlybiased" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 0.76rem; font-weight: 600; text-decoration: none;" title="Share on X">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          <span>Post</span>
+        </a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(canonical)}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 4px; background: rgba(10, 102, 194, 0.12); color: #0a66c2; border: 1px solid rgba(10, 102, 194, 0.3); font-size: 0.76rem; font-weight: 600; text-decoration: none;" title="Share on LinkedIn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.45a1.62 1.62 0 1 0 0 3.24 1.62 1.62 0 0 0 0-3.24z"/></svg>
+          <span>LinkedIn</span>
+        </a>
+        <button onclick="if(navigator.share){navigator.share({title:${escapeAttr(JSON.stringify(headline))},url:${escapeAttr(JSON.stringify(canonical))}})}else{navigator.clipboard.writeText(${escapeAttr(JSON.stringify(canonical))});alert('Dispatch link copied!');}" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 4px; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-color); font-size: 0.76rem; font-weight: 600; cursor: pointer;" title="Share or Copy Link">
+          <i data-lucide="link" style="width: 13px; height: 13px;"></i>
+          <span>Copy Link</span>
+        </button>
+      </div>
+    </div>
+
     ${biasAudit ? `<div class="bias-audit-dossier" style="background: rgba(240, 169, 46, 0.05); border: 1px solid rgba(240, 169, 46, 0.25); border-left: 3px solid var(--accent-saffron); border-radius: 4px; padding: 18px 22px; margin-bottom: 36px;">
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
         <span style="font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; color: var(--accent-saffron); text-transform: uppercase;"><i data-lucide="shield-alert" style="width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px;"></i> AI Narrative Bias Audit</span>
@@ -375,8 +401,28 @@ function renderArticleHtml(article) {
       </figcaption>
     </figure>
 
-    <div itemprop="articleBody" class="blog-post-content article-content" style="font-size: 1.16rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 48px; max-width: 68ch;">
+    <div itemprop="articleBody" class="blog-post-content article-content" style="font-size: 1.16rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 36px; max-width: 68ch;">
       ${body}
+    </div>
+
+    <!-- BOTTOM VIRAL FORWARD DISPATCH BLOCK -->
+    <div class="article-end-share glass-element" style="margin: 36px 0; padding: 24px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; background: rgba(240, 169, 46, 0.03);">
+      <h4 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin-bottom: 6px; color: var(--text-primary);">Distribute This Chronicle</h4>
+      <p style="font-size: 0.88rem; color: var(--text-secondary); max-width: 500px; margin: 0 auto 16px; line-height: 1.5;">Independent commentary breaks corporate silence when readers circulate the ledger directly to their peers.</p>
+      <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+        <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(headline + '\n\n' + canonical)}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 4px; background: #25d366; color: #ffffff; font-size: 0.8rem; font-weight: 700; text-decoration: none;" title="Share on WhatsApp">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
+          <span>Share to WhatsApp</span>
+        </a>
+        <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(headline)}&url=${encodeURIComponent(canonical)}&via=honestlybiased" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 0.8rem; font-weight: 600; text-decoration: none;" title="Share on X">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          <span>Post on X</span>
+        </a>
+        <button onclick="if(navigator.share){navigator.share({title:${escapeAttr(JSON.stringify(headline))},url:${escapeAttr(JSON.stringify(canonical))}})}else{navigator.clipboard.writeText(${escapeAttr(JSON.stringify(canonical))});alert('Dispatch link copied!');}" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 4px; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-color); font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+          <i data-lucide="link" style="width: 14px; height: 14px;"></i>
+          <span>Copy Link</span>
+        </button>
+      </div>
     </div>
 
     <div style="padding: 20px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; font-family: var(--font-mono); font-size: 0.78rem;">
