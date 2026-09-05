@@ -2,10 +2,6 @@
     "outputDirectory":  ".",
     "rewrites":  [
                      {
-                         "source":  "/c748291b40d347c69a083fbb2241deef.txt",
-                         "destination":  "/api/home?__indexnow=1"
-                     },
-                     {
                          "source":  "/admin",
                          "destination":  "/admin.html"
                      },
