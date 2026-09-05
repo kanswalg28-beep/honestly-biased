@@ -4,11 +4,51 @@ const { supabase } = require('../../db/client');
 const { requireAuth, setAdminCors } = require('./_auth');
 const TABLE = 'subscribers';
 
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  return emailRegex.test(email.trim()) && email.length <= 254;
+}
+
 module.exports = async (req, res) => {
-  // CORS (same-origin only)
+  // CORS
   setAdminCors(req, res);
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Public Newsletter Subscription (POST)
+  if (req.method === 'POST') {
+    if (!supabase) {
+      return res.status(503).json({ error: 'Database service unavailable' });
+    }
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+      const rawEmail = body.email;
+      if (!rawEmail || !isValidEmail(rawEmail)) {
+        return res.status(400).json({ error: 'Please provide a valid email address.' });
+      }
+      const email = rawEmail.toLowerCase().trim();
+      const source = (body.source && typeof body.source === 'string') ? body.source.slice(0, 100).trim() : 'website';
+
+      const { data: existing } = await supabase.from(TABLE).select('id, email').eq('email', email).maybeSingle();
+      if (existing) {
+        return res.status(200).json({ success: true, message: 'Already subscribed', alreadySubscribed: true });
+      }
+
+      const { error: insertErr } = await supabase.from(TABLE).insert([{ email, source, subscribed_at: new Date().toISOString() }]);
+      if (insertErr) {
+        if (insertErr.code === '23505') {
+          return res.status(200).json({ success: true, message: 'Already subscribed', alreadySubscribed: true });
+        }
+        throw insertErr;
+      }
+      return res.status(200).json({ success: true, message: 'Subscribed successfully' });
+    } catch (err) {
+      console.error('Newsletter subscribe error:', err.message || err);
+      return res.status(500).json({ error: 'Failed to process subscription' });
+    }
+  }
+
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   // Auth check (fail-closed: 503 if ADMIN_* env vars missing)
