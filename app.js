@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     let isHeaderClick = false;
-    let currentRegion = 'indian';
+    let currentRegion = 'all';
     let currentCategory = 'all';
 
     // ==========================================================================
@@ -240,15 +240,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
     const bentoCards = document.querySelectorAll('.bento-card');
     
-    // Initial loading states for smooth fades
-    bentoCards.forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(30px)';
-        card.style.transition = `opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1) ${index * 0.05}s, 
-                                 transform 0.8s cubic-bezier(0.25, 1, 0.5, 1) ${index * 0.05}s,
-                                 background var(--transition-medium),
-                                 border-color var(--transition-medium),
-                                 box-shadow var(--transition-medium)`;
+    // Ensure SSR cards are immediately visible, avoiding any zero-opacity flash
+    bentoCards.forEach((card) => {
+        card.classList.add('reveal-attached');
+        card.dataset.revealAttached = '1';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
     });
 
     const revealCallback = (entries, observer) => {
@@ -264,8 +261,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const bentoObserver = new IntersectionObserver(revealCallback, {
         root: null,
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
+        threshold: 0.05,
+        rootMargin: '50px 0px 50px 0px'
     });
 
     bentoCards.forEach(card => {
@@ -555,26 +552,32 @@ document.addEventListener('DOMContentLoaded', () => {
                         }, 2000);
                     }
                     
-                    // Also fetch FULL article list for pagination (SSR only has 22)
+                    // Immediately fetch FULL article catalog for pagination and latest dispatches
                     setTimeout(async () => {
                         try {
-                            const res = await fetch('/api/honestly-biased-feed?limit=200');
+                            const res = await fetch('/api/honestly-biased-feed?limit=500');
                             const data = await res.json();
                             const apiArticles = data.articles || [];
-                            if (apiArticles.length > allArticles.length) {
-                                // Merge - keep SSR articles (with hydration) but add missing ones
-                                const existingIds = new Set(allArticles.map(a => a.id));
-                                const newArticles = apiArticles.filter(a => !existingIds.has(a.id));
+                            if (apiArticles.length > 0) {
+                                const existingIds = new Set(allArticles.map(a => String(a.id)));
+                                const newArticles = apiArticles.filter(a => !existingIds.has(String(a.id)));
                                 if (newArticles.length > 0) {
                                     allArticles.push(...newArticles);
-                                    console.log(`📄 Pagination: added ${newArticles.length} more articles (total ${allArticles.length})`);
+                                    // Sort newest-first by publishdate
+                                    allArticles.sort((a, b) => {
+                                        const timeA = a.publishdate ? new Date(a.publishdate).getTime() : parseFloat(String(a.id).replace(/\D/g, '')) || 0;
+                                        const timeB = b.publishdate ? new Date(b.publishdate).getTime() : parseFloat(String(b.id).replace(/\D/g, '')) || 0;
+                                        return timeB - timeA;
+                                    });
+                                    console.log(`📄 Catalog: hydrated ${newArticles.length} additional articles (total ${allArticles.length})`);
+                                    // Re-route to update pagination and grid with full catalog
                                     handleRouting(false);
                                 }
                             }
                         } catch (e) {
                             console.warn('Background full article fetch failed:', e);
                         }
-                    }, 3000);
+                    }, 50);
                     
                     return; // ← EXIT EARLY, don't fetch from API
                 }
@@ -855,7 +858,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Filter articles by region and category
             const filteredArticles = sortedArticles.filter(art => {
-                const matchRegion = (art.region || 'indian').toLowerCase().trim() === regionFilter.toLowerCase().trim();
+                const matchRegion = regionFilter === 'all'
+                    ? true
+                    : (art.region || 'indian').toLowerCase().trim() === regionFilter.toLowerCase().trim();
                 const matchCategory = categoryFilter === 'all'
                     ? true
                     : art.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim();
@@ -865,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // 3. Pagination
-            totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
+            totalPages = Math.ceil(filteredArticles.length / itemsPerPage) || 1;
             if (currentPage > totalPages) currentPage = totalPages;
             if (currentPage < 1) currentPage = 1;
         
@@ -903,7 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (index >= 0 && index <= 3) {
                 // FEATURED HORIZONTALS: First 4 articles as 2x1 cards with images
                 gridItems.push(`
-                                <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
+                                <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}">
                                     <div class="card-visual">
                                         <div class="card-image-bg" style="background-image: url('${article.imageurl}');"></div>
                                         <span class="card-tag saffron-bg">${article.category}</span>
@@ -932,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                             // STANDARD CARDS: 1x1 with images
                             gridItems.push(`
-                                <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}" style="opacity:0; transform:translateY(30px);">
+                                <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}">
                                     <div class="card-visual">
                                         <div class="card-image-bg" style="background-image: url('${article.imageurl}');"></div>
                                         <span class="card-tag saffron-bg">${article.category}</span>
@@ -974,24 +979,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hydrate grid container
         gridContainer.innerHTML = gridItems.join('');
 
-        // Apply staggered scroll reveal animations
+        // Apply smooth reveal animations
         const cards = gridContainer.querySelectorAll('.bento-card, blockquote, section, aside');
         cards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(30px)';
-            card.style.transition = `opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1) ${index * 0.04}s, 
-                                     transform 0.8s cubic-bezier(0.25, 1, 0.5, 1) ${index * 0.04}s,
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+            card.style.transition = `opacity 0.35s ease ${Math.min(index * 0.03, 0.3)}s, 
+                                     transform 0.35s ease ${Math.min(index * 0.03, 0.3)}s,
                                      background var(--transition-medium),
                                      border-color var(--transition-medium),
                                      box-shadow var(--transition-medium)`;
-            
-            // RequestAnimationFrame ensures transition triggers cleanly after insertion
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, 50);
-            });
         });
 
         // Refresh icons and play logic binding
@@ -1034,10 +1031,19 @@ document.addEventListener('DOMContentLoaded', () => {
     regionButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const selectedRegion = btn.getAttribute('data-region').toLowerCase().trim();
-            if (currentCategory === 'all') {
-                window.location.hash = `#/${selectedRegion}`;
+            currentPage = 1;
+            if (selectedRegion === 'all') {
+                if (currentCategory === 'all') {
+                    window.location.hash = '#/';
+                } else {
+                    window.location.hash = `#/all/${currentCategory.toLowerCase().replace(/\s+/g, '-')}`;
+                }
             } else {
-                window.location.hash = `#/${selectedRegion}/${currentCategory.toLowerCase().replace(/\s+/g, '-')}`;
+                if (currentCategory === 'all') {
+                    window.location.hash = `#/${selectedRegion}`;
+                } else {
+                    window.location.hash = `#/${selectedRegion}/${currentCategory.toLowerCase().replace(/\s+/g, '-')}`;
+                }
             }
         });
     });
@@ -1047,8 +1053,9 @@ document.addEventListener('DOMContentLoaded', () => {
     tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const selectedCat = btn.getAttribute('data-category').toLowerCase().trim();
+            currentPage = 1;
             if (selectedCat === 'all') {
-                window.location.hash = `#/${currentRegion}`;
+                window.location.hash = currentRegion === 'all' ? '#/' : `#/${currentRegion}`;
             } else {
                 window.location.hash = `#/${currentRegion}/${selectedCat.replace(/\s+/g, '-')}`;
             }
@@ -1190,8 +1197,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // SPA Router Implementation
     function parseHashRoute() {
         const hash = window.location.hash;
-        if (!hash || hash === '#' || hash === '#/') {
-            return { region: 'indian', category: 'all' };
+        if (!hash || hash === '#' || hash === '#/' || hash === '#/all') {
+            return { region: 'all', category: 'all' };
         }
 
         const path = hash.replace(/^#\/?/, '').toLowerCase().trim();
@@ -1202,10 +1209,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const parts = path.split('/').filter(p => p.trim());
-        let region = 'indian';
+        let region = 'all';
         let category = 'all';
 
-        const validRegions = ['indian', 'world', 'uk', 'berkshire'];
+        const validRegions = ['all', 'indian', 'world', 'uk', 'berkshire'];
         const validCategories = ['politics', 'tech', 'finance', 'entertainment', 'health'];
 
         if (parts.length === 1) {
@@ -1283,6 +1290,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (btnCat === currentCategory.toLowerCase()) btn.classList.add('active');
                     else btn.classList.remove('active');
                 });
+                bindDynamicEvents();
+                if (window.lucide) lucide.createIcons();
             } catch (e) { console.warn('Active state update failed:', e); }
             return;
         }
@@ -1351,15 +1360,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const titleEl = sectionHeader.querySelector('.section-title');
             const subtitleEl = sectionHeader.querySelector('.section-subtitle');
             
-            let regionName = 'Indian';
-            if (currentRegion === 'world') regionName = 'World';
+            let regionName = 'All';
+            if (currentRegion === 'all') regionName = 'Global';
+            else if (currentRegion === 'indian') regionName = 'Indian';
+            else if (currentRegion === 'world') regionName = 'World';
             else if (currentRegion === 'uk') regionName = 'UK';
             else if (currentRegion === 'berkshire') regionName = 'Berkshire';
 
             const meta = categoryMetadata[currentCategory] || categoryMetadata['all'];
             
             if (titleEl) {
-                titleEl.textContent = `${regionName} ${meta.title.includes("Chronicles") ? meta.title : "Chronicles"}`;
+                titleEl.textContent = (currentRegion === 'all' && currentCategory === 'all')
+                    ? "The Ledger"
+                    : `${regionName} ${meta.title.includes("Chronicles") ? meta.title : "Chronicles"}`.trim();
             }
             if (subtitleEl) subtitleEl.textContent = meta.subtitle;
         }

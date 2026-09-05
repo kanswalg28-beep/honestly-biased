@@ -20,17 +20,22 @@ const DEFAULT_HIGHLIGHTS = [
 // The permanent fix is running scripts/migrate-base64-images.js (moves the
 // blobs to Storage). Until then we refuse to ship them over the wire.
 // ----------------------------------------------------------------------------
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 let cached = null;
 let cacheTime = 0;
 
-async function getCustomArticles() {
+function bustFeedCache() {
+  cached = null;
+  cacheTime = 0;
+}
+
+async function getCustomArticles(limit = 500) {
   const { data } = await supabase
     .from('articles')
     .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
     .eq('archived', false)
     .order('publishdate', { ascending: false })
-    .limit(100);
+    .limit(limit);
   // Do NOT ship legacy base64 image blobs over the wire — they inflate egress.
   return (data || []).map(a => {
     if (a.imageurl && a.imageurl.startsWith('data:image')) {
@@ -41,18 +46,27 @@ async function getCustomArticles() {
   });
 }
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   try {
     const now = Date.now();
+    const limit = Math.min(1000, Math.max(1, parseInt(req.query?.limit) || 500));
+
+    if (req.query && (req.query.bust === '1' || req.query.__bust)) {
+      bustFeedCache();
+    }
+
     let customArticles;
 
-    if (cached && (now - cacheTime) < CACHE_TTL_MS) {
-      customArticles = cached;
+    // Serve from cache if fresh and cache size satisfies requested limit
+    if (cached && (now - cacheTime) < CACHE_TTL_MS && (limit <= cached.length || limit === 500)) {
+      customArticles = cached.slice(0, limit);
       res.setHeader('X-Cache', 'HIT');
     } else {
-      customArticles = await getCustomArticles();
-      cached = customArticles;
-      cacheTime = now;
+      customArticles = await getCustomArticles(limit);
+      if (limit >= 500) {
+        cached = customArticles;
+        cacheTime = now;
+      }
       res.setHeader('X-Cache', 'MISS');
     }
 
@@ -60,7 +74,7 @@ module.exports = async (req, res) => {
       ? customArticles.slice(0, 10).map(a => a.aiheadline || a.title).filter(Boolean)
       : DEFAULT_HIGHLIGHTS;
 
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=120');
     return res.json({
       rhetoricMeter: {
         hyperbolePercentage: "84.2%",
@@ -75,3 +89,6 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Internal server error assembling content feed' });
   }
 };
+
+handler.bustFeedCache = bustFeedCache;
+module.exports = handler;

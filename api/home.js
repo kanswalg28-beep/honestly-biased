@@ -164,7 +164,7 @@ function buildBentoCard(article, index) {
   if (index === 0) {
     // FIRST POST: 2x1 horizontal card
     return `
-      <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
+      <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}">
         <div class="card-visual">
           <div class="card-image-bg" style="${bgStyle};"></div>
           ${catTag}
@@ -190,7 +190,7 @@ function buildBentoCard(article, index) {
   if (index >= 1 && index <= 3) {
     // FEATURED HORIZONTALS: Next 3 articles as 2x1 cards
     return `
-      <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
+      <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}">
         <div class="card-visual">
           <div class="card-image-bg" style="${bgStyle};"></div>
           ${catTag}
@@ -215,7 +215,7 @@ function buildBentoCard(article, index) {
 
   // STANDARD CARDS: 1x1 with images
   return `
-    <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}" style="opacity:0; transform:translateY(30px);">
+    <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}">
       <div class="card-visual">
         <div class="card-image-bg" style="${bgStyle};"></div>
         ${catTag}
@@ -397,8 +397,9 @@ async function renderHomepageHtml(articles) {
     <div class="top-region-container">
       <div class="region-tabs-container" id="region-tabs-container">
         <div class="active-indicator-pill" id="region-active-pill"></div>
-        <button class="region-tab-btn active" data-region="indian"><i data-lucide="map-pin"></i><span>Indian Edition</span></button>
-        <button class="region-tab-btn" data-region="world"><i data-lucide="globe"></i><span>World Edition</span></button>
+        <button class="region-tab-btn active" data-region="all"><i data-lucide="globe"></i><span>All Editions</span></button>
+        <button class="region-tab-btn" data-region="indian"><i data-lucide="map-pin"></i><span>Indian Edition</span></button>
+        <button class="region-tab-btn" data-region="world"><i data-lucide="compass"></i><span>World Edition</span></button>
         <button class="region-tab-btn" data-region="uk"><i data-lucide="flag"></i><span>UK Edition</span></button>
         <button class="region-tab-btn" data-region="berkshire"><i data-lucide="home"></i><span>Berkshire Local</span></button>
       </div>
@@ -623,7 +624,13 @@ function proxyImageUrls(text) {
 let cachedHtml = null;
 let cachedJson = null;
 let cacheTime = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+function bustHomeCache() {
+  cachedHtml = null;
+  cachedJson = null;
+  cacheTime = 0;
+}
 
 // --------------------------------------------------------------------------
 // Image proxy handler — intercepts /img-proxy/* requests to cache Supabase
@@ -682,8 +689,13 @@ async function handleImgProxy(req, res) {
   }
 }
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Explicit cache-busting query parameter support
+  if (req.query && (req.query.bust === '1' || req.query.__bust)) {
+    bustHomeCache();
+  }
 
   // Image proxy short-circuit (triggered by /img-proxy/* rewrite)
   // Accept GET and HEAD for cache-warmup by crawlers/CDNs
@@ -703,7 +715,7 @@ module.exports = async (req, res) => {
   if (req.url && req.url.includes('/feed.json')) {
     if (cacheValid && cachedJson) {
       res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
+      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=120');
       res.setHeader('X-Cache', 'HIT');
       if (req.method === 'HEAD') return res.status(200).end();
       return res.status(200).json(cachedJson);
@@ -722,7 +734,7 @@ module.exports = async (req, res) => {
     });
     cachedJson = { articles: feed };
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=120');
     res.setHeader('X-Cache', 'MISS');
     if (req.method === 'HEAD') return res.status(200).end();
     return res.status(200).json(cachedJson);
@@ -731,7 +743,7 @@ module.exports = async (req, res) => {
   // HTML homepage — serve from cache if valid
   if (cacheValid) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
     res.setHeader('X-Cache', 'HIT');
     if (req.method === 'HEAD') return res.status(200).end();
     return res.status(200).send(cachedHtml);
@@ -743,11 +755,14 @@ module.exports = async (req, res) => {
   cachedHtml = html;
   cacheTime = now;
 
-  // Cache: 24h fresh (s-maxage=86400), 7d stale-while-revalidate (604800s)
+  // Cache: 60s fresh (s-maxage=60), 5m stale-while-revalidate (300s)
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
   res.setHeader('Vary', 'User-Agent');
   res.setHeader('X-Cache', 'MISS');
   if (req.method === 'HEAD') return res.status(200).end();
   return res.status(200).send(html);
 };
+
+handler.bustHomeCache = bustHomeCache;
+module.exports = handler;

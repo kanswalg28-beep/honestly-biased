@@ -8,6 +8,21 @@
 const { supabase } = require('../../db/client');
 const { requireAuth, checkCsrfToken, setAdminCors } = require('./_auth');
 
+let bustHomeCache, bustFeedCache;
+try {
+  ({ bustHomeCache } = require('../home'));
+  ({ bustFeedCache } = require('../honestly-biased-feed'));
+} catch (e) {}
+
+function invalidateCaches() {
+  try {
+    if (typeof bustHomeCache === 'function') bustHomeCache();
+    if (typeof bustFeedCache === 'function') bustFeedCache();
+  } catch (e) {
+    console.warn('Cache invalidation error:', e.message);
+  }
+}
+
 // Simple Basic Auth helper (optional)
 function basicAuth(req) {
   const authHeader = req.headers['authorization'];
@@ -146,6 +161,7 @@ module.exports = async (req, res) => {
         .select()
         .single();
       if (error) throw error;
+      invalidateCaches();
       return res.status(201).json(data);
     }
 
@@ -185,6 +201,7 @@ module.exports = async (req, res) => {
         .single();
       if (error) throw error;
       if (!data) return res.status(404).json({ error: 'Article not found' });
+      invalidateCaches();
       return res.json(data);
     }
 
@@ -208,6 +225,7 @@ module.exports = async (req, res) => {
       if (!data || !Array.isArray(data) || data.length === 0) {
         return res.status(404).json({ error: 'Article not found' });
       }
+      invalidateCaches();
       return res.json({ success: true, deletedId: id, deleted: data });
     }
 
