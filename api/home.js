@@ -152,7 +152,7 @@ function buildVerdictChipHtml(biasaudit) {
   return `
     <div class="card-verdict-chip" title="${escapeAttr(clean)}">
       <span class="verdict-label"><i data-lucide="shield-alert"></i> VERDICT</span>
-      <span class="verdict-text">${escapeHtml(truncate(clean, 85))}</span>
+      <span class="verdict-text">${escapeHtml(clean)}</span>
     </div>
   `;
 }
@@ -190,12 +190,22 @@ function buildBentoCard(article, index) {
 
   const cardActions = `
     <div class="card-action-bar">
-      <a href="${escapeAttr(articleUrl)}" class="inspect-audit-btn audit-trigger" data-id="${escapeAttr(article.id)}" data-slug="${escapeAttr(slug)}">
+      <span class="inspect-audit-btn" aria-hidden="true">
         <i data-lucide="scan-eye"></i> <span>Inspect Audit</span>
-      </a>
+      </span>
       <button type="button" class="share-receipt-btn" data-headline="${escapeAttr(headline)}" data-verdict="${escapeAttr(biasAudit)}" data-url="${escapeAttr(fullArticleUrl)}" aria-label="Share Bias Receipt">
         <i data-lucide="share-2"></i> <span>Share</span>
       </button>
+    </div>
+  `;
+
+  const metaRowHtml = `
+    <div class="card-meta-row" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-family:var(--font-mono, monospace); font-size:0.72rem; color:var(--text-muted); font-weight:600; letter-spacing:0.04em;">
+      <span style="color:var(--accent-saffron); font-weight:700; text-transform:uppercase;">${escapeHtml(category)}</span>
+      <span class="meta-dot">·</span>
+      <span>${escapeHtml(readTime)}</span>
+      <span class="meta-dot">·</span>
+      <span title="${escapeAttr(fullTimestamp)}">${escapeHtml(relTime)}</span>
     </div>
   `;
 
@@ -205,17 +215,10 @@ function buildBentoCard(article, index) {
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}">
         <div class="card-visual">
           <div class="card-image-bg" style="${bgStyle};"></div>
-          ${catTag}
-          <span class="read-time-chip"><i data-lucide="clock"></i> ${readTime}</span>
           ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
         <div class="card-body">
-          <div class="card-meta-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <span class="compact-meta" style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
-              <strong style="color:var(--accent-saffron);">${escapeHtml(category.toUpperCase())}</strong> · <span title="${escapeAttr(fullTimestamp)}">${relTime}</span>
-            </span>
-            ${badgeHtml}
-          </div>
+          ${metaRowHtml}
           <h3 class="card-title" style="margin-top:4px;">
             ${cardLink}
           </h3>
@@ -234,16 +237,9 @@ function buildBentoCard(article, index) {
     <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}">
       <div class="card-visual">
         <div class="card-image-bg" style="${bgStyle};"></div>
-        ${catTag}
-        <span class="read-time-chip"><i data-lucide="clock"></i> ${readTime}</span>
       </div>
       <div class="card-body">
-        <div class="card-meta-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span class="compact-meta" style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">
-            <strong style="color:var(--accent-saffron);">${escapeHtml(category.toUpperCase())}</strong> · <span title="${escapeAttr(fullTimestamp)}">${relTime}</span>
-          </span>
-          ${badgeHtml}
-        </div>
+        ${metaRowHtml}
         <h3 class="card-title" style="margin-bottom:8px;">
           ${cardLink}
         </h3>
@@ -307,11 +303,14 @@ async function renderHomepageHtml(articles) {
   const heroPublishDate = heroArticle ? heroArticle.publishdate : new Date().toISOString();
   const heroTimeAgo = heroArticle ? (heroArticle.timeago || formatTimeAgo(heroPublishDate)) : formatTimeAgo(new Date().toISOString());
 
-  // Ticker highlights derived from top 10 articles
-  const tickerItemsHtml = articles.slice(0, 10).map(a => `<span>${escapeHtml(cleanEditorialText(a.aiheadline || a.aiHeadline || a.title))}</span>`).join('');
+  // Ticker highlights derived from deduplicated articles, repeated once for seamless 50% translation loop
+  const uniqueHeadlines = Array.from(new Set(articles.map(a => cleanEditorialText(a.aiheadline || a.aiHeadline || a.title)).filter(Boolean))).slice(0, 6);
+  const loopHeadlines = uniqueHeadlines.length > 0 ? [...uniqueHeadlines, ...uniqueHeadlines] : [];
+  const tickerItemsHtml = loopHeadlines.map(h => `<span>• ${escapeHtml(h)}</span>`).join('');
 
-  // Bento grid cards (first 24 articles from Supabase)
-  const bentoCards = articles.map((a, i) => buildBentoCard(a, i)).join('\n');
+  // Bento grid cards: on Page 1 (All Chronicles + All Editions), exclude the active Hero story so it is not stacked back-to-back
+  const gridArticles = heroArticle ? articles.filter(a => a.id !== heroArticle.id) : articles;
+  const bentoCards = gridArticles.map((a, i) => buildBentoCard(a, i)).join('\n');
 
   // JSON-LD for homepage (WebSite + ItemList)
   const siteJsonLd = JSON.stringify({
@@ -398,7 +397,7 @@ async function renderHomepageHtml(articles) {
   <div class="header-container">
     <div class="header-left">
       <a href="/" class="brand-logo" aria-label="Honestly Biased Home">
-        <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
+        <img src="/assets/logo.svg" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
       </a>
     </div>
     <div class="header-center">
@@ -412,10 +411,6 @@ async function renderHomepageHtml(articles) {
       </div>
     </div>
     <div class="header-right">
-      <a href="/taxmetrics" class="taxmetrics-nav-btn" title="TaxMetrics: 2026 US Income Tax &amp; Paycheck Calculator" aria-label="TaxMetrics US Income Tax &amp; Paycheck Calculator">
-        <i data-lucide="calculator"></i>
-        <span>TaxMetrics</span>
-      </a>
       <button class="icon-btn search-trigger" aria-label="Search website"><i data-lucide="search"></i></button>
       <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle color theme" title="Toggle between Dark and Light mode">
         <span class="theme-toggle-track">
@@ -571,8 +566,8 @@ async function renderHomepageHtml(articles) {
 <footer class="editorial-footer">
   <div class="footer-grid">
     <div class="footer-brand-column">
-      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png-footer"></a>
-      <p class="mission-statement" data-site-content-block="footer"><span data-bind="mission">Honestly Biased is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We believe in providing transparent, analytical, and uncompromisingly honest perspectives on politics, satire, and media power structures in India.</span></p>
+      <a href="/" class="footer-logo"><img src="/assets/logo.svg" alt="Honestly Biased Logo" class="logo-png-footer"></a>
+      <p class="mission-statement" data-site-content-block="footer"><span data-bind="mission">Honestly Biased is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We deliver forensic, analytical, and uncompromisingly honest media critiques across multi-edition global politics, policy, and institutional power structures.</span></p>
     </div>
     <div class="footer-links-column">
       <h4 class="footer-heading">Sections</h4>
@@ -589,6 +584,7 @@ async function renderHomepageHtml(articles) {
     <div class="footer-links-column" data-site-content-block="standards">
       <h4 class="footer-heading">Standards</h4>
       <ul class="footer-links-list" id="standards-list">
+        <li><a href="/manifesto">Our Manifesto</a></li>
         <li><a href="/standards">Editorial Standards</a></li>
         <li><a href="/funding">Independent Funding Audit</a></li>
         <li><a href="/finances">Financial Integrity Reports</a></li>

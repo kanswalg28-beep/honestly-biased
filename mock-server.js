@@ -130,6 +130,21 @@ app.get('/article/:slug', (req, res) => {
 });
 app.get('/api/article', articleApi);
 
+// Clean crawlable edition & category path routes
+app.get('/editions/:edition/:category', (req, res) => {
+    req.query.region = req.params.edition;
+    req.query.category = req.params.category;
+    return homeApi(req, res);
+});
+app.get('/editions/:edition', (req, res) => {
+    req.query.region = req.params.edition;
+    return homeApi(req, res);
+});
+app.get('/category/:category', (req, res) => {
+    req.query.category = req.params.category;
+    return homeApi(req, res);
+});
+
 app.get('/rss.xml', rssApi);
 app.get('/feed.xml', rssApi);
 app.get('/api/rss', rssApi);

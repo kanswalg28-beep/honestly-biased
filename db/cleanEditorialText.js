@@ -8,11 +8,22 @@ function cleanEditorialText(text) {
   if (!text || typeof text !== 'string') return '';
   let cleaned = text;
 
-  // 1. Insert space after any comma not followed by space or digit
-  // Matches "word,word" -> "word, word", while preserving "22,006" or "4,000"
+  // 1. Remove space before exclamation marks and question marks in titles/text (" !" -> "!", " ?" -> "?")
+  cleaned = cleaned.replace(/\s+([!?])/g, '$1');
+
+  // 2. Remove any accidental leading verdict label prefix using regex rather than index slicing
+  cleaned = cleaned.replace(/^(?:Verdict|AI Narrative Bias Audit|Bias Audit):\s*/i, '');
+
+  // 3. Fix legacy index-slicing clipping where "The story..." was sliced to "he story..."
+  if (/^he\s+(?:story|narrative|framing|headline|piece|report|claim|audit|article)\b/i.test(cleaned)) {
+    cleaned = 'T' + cleaned;
+  }
+
+  // 4. Insert space after any comma not followed by space or digit
+  // Matches "word,word" -> "word, word", while strictly preserving numbers "22,006" or "4,000"
   cleaned = cleaned.replace(/,([^\s\d])/g, ', $1');
 
-  // 2. Fix recurring LLM spelling and grammar glitches
+  // 5. Fix recurring LLM spelling and grammar glitches (non-destructive)
   cleaned = cleaned
     .replace(/\bunder\s+lying\b/gi, 'underlying')
     .replace(/\bfor\s+grounding\b/gi, 'foregrounding')
@@ -22,8 +33,8 @@ function cleanEditorialText(text) {
     .replace(/\bThe headline frame\s+/g, 'The headline frames ')
     .replace(/\bthe headline frame\s+/g, 'the headline frames ');
 
-  // 3. Collapse multiple whitespace characters into a single space
-  cleaned = cleaned.replace(/\s{2,}/g, ' ').trim();
+  // 6. Collapse multiple whitespace characters into a single space
+  cleaned = cleaned.replace(/[ \t]{2,}/g, ' ').trim();
 
   // 4. Balance unpaired quotes at the end of headlines/sentences
   // Balance straight double quotes

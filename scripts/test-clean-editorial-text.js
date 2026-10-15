@@ -56,5 +56,40 @@ assert.strictEqual(
   "The headline emphasizes the underlying trade-off and foregrounding corporate spin",
   "LLM glitches must be corrected"
 );
+// 7. Space before exclamation and question marks
+const test7 = cleanEditorialText("Massive Disclosure On National Security ! Is it real ?");
+console.log('Test 7 output:', test7);
+assert.strictEqual(
+  test7,
+  "Massive Disclosure On National Security! Is it real?",
+  "Space before ! and ? must be removed"
+);
+
+// 8. Verdict prefix removal without destructive index slicing
+const test8 = cleanEditorialText("Verdict: Institutional spin masks underlying liability");
+console.log('Test 8 output:', test8);
+assert.strictEqual(
+  test8,
+  "Institutional spin masks underlying liability",
+  "Leading Verdict prefix must be stripped via regex"
+);
+
+// 9. Fix legacy clipped leading 'T' ("he story..." -> "The story...")
+const test9 = cleanEditorialText("he story frames procedural delays as routine oversight");
+console.log('Test 9 output:', test9);
+assert.strictEqual(
+  test9,
+  "The story frames procedural delays as routine oversight",
+  "Accidentally clipped leading character must be repaired"
+);
+
+// 10. Hyphens, apostrophes, and trailing s characters must NEVER be stripped
+const test10 = cleanEditorialText("high-stakes assessment of workers' rights and companies' filings");
+console.log('Test 10 output:', test10);
+assert.strictEqual(
+  test10,
+  "high-stakes assessment of workers' rights and companies' filings",
+  "Hyphens, apostrophes and trailing s must remain completely intact"
+);
 
 console.log('✅ ALL cleanEditorialText() UNIT CHECKS PASSED PERFECTLY!\n');

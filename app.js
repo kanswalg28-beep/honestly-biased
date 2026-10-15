@@ -182,7 +182,22 @@ function shortIdFromUuid(uuid) {
 function cleanEditorialText(text) {
     if (!text || typeof text !== 'string') return '';
     let cleaned = text;
+
+    // 1. Remove space before exclamation marks and question marks in titles/text (" !" -> "!", " ?" -> "?")
+    cleaned = cleaned.replace(/\s+([!?])/g, '$1');
+
+    // 2. Remove any accidental leading verdict label prefix using regex rather than index slicing
+    cleaned = cleaned.replace(/^(?:Verdict|AI Narrative Bias Audit|Bias Audit):\s*/i, '');
+
+    // 3. Fix legacy index-slicing clipping where "The story..." was sliced to "he story..."
+    if (/^he\s+(?:story|narrative|framing|headline|piece|report|claim|audit|article)\b/i.test(cleaned)) {
+        cleaned = 'T' + cleaned;
+    }
+
+    // 4. Insert space after any comma not followed by space or digit
     cleaned = cleaned.replace(/,([^\s\d])/g, ', $1');
+
+    // 5. Fix recurring LLM spelling and grammar glitches (non-destructive)
     cleaned = cleaned
         .replace(/\bunder\s+lying\b/gi, 'underlying')
         .replace(/\bfor\s+grounding\b/gi, 'foregrounding')
@@ -191,7 +206,11 @@ function cleanEditorialText(text) {
         .replace(/\bthe headline emphasize\s+/g, 'the headline emphasizes ')
         .replace(/\bThe headline frame\s+/g, 'The headline frames ')
         .replace(/\bthe headline frame\s+/g, 'the headline frames ');
-    cleaned = cleaned.replace(/\s{2,}/g, ' ').trim();
+
+    // 6. Collapse multiple whitespace characters into a single space
+    cleaned = cleaned.replace(/[ \t]{2,}/g, ' ').trim();
+
+    // 7. Balance unpaired quotes at the end of headlines/sentences
     const doubleQuoteCount = (cleaned.match(/"/g) || []).length;
     if (doubleQuoteCount % 2 === 1) cleaned += '"';
     const openCurlyDouble = (cleaned.match(/“/g) || []).length;
@@ -596,10 +615,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (allArticles.length > 0) {
                         const tickerTrack = document.querySelector('.ticker-track');
                         if (tickerTrack) {
-                            let highlights = allArticles.slice(0, 4).map(a => a.aiheadline);
-                            let html = highlights.map(text => `<span>• ${text}</span>`).join('');
-                            html += `<span>• ${highlights[0]}</span>`;
-                            tickerTrack.innerHTML = html;
+                            let rawHighlights = allArticles.slice(0, 6).map(a => cleanEditorialText(a.aiheadline || a.title)).filter(Boolean);
+                            let unique = Array.from(new Set(rawHighlights));
+                            let loop = unique.length > 0 ? [...unique, ...unique] : [];
+                            tickerTrack.innerHTML = loop.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
                         }
                     }
 
@@ -762,16 +781,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // Dynamically update the ticker highlights banner
             let highlightsToRender = data.highlights || [];
             if (highlightsToRender.length === 0 && allArticles.length > 0) {
-                // Automatically fall back to top 4 article headlines if highlights list is empty
-                highlightsToRender = allArticles.slice(0, 4).map(a => a.aiheadline || a.title);
+                highlightsToRender = allArticles.slice(0, 6).map(a => a.aiheadline || a.title);
             }
             if (highlightsToRender.length > 0) {
                 const tickerTrack = document.querySelector('.ticker-track');
                 if (tickerTrack) {
-                    let html = highlightsToRender.map(text => `<span>• ${text}</span>`).join('');
-                    // Repeat the first item to ensure a seamless infinite CSS scrolling loop
-                    html += `<span>• ${highlightsToRender[0]}</span>`;
-                    tickerTrack.innerHTML = html;
+                    let rawHighlights = highlightsToRender.map(cleanEditorialText).filter(Boolean);
+                    let unique = Array.from(new Set(rawHighlights));
+                    let loop = unique.length > 0 ? [...unique, ...unique] : [];
+                    tickerTrack.innerHTML = loop.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
                 }
             }
 
@@ -794,9 +812,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     "[TECH MONOPOLY]: Algorithmic platform surveillance frameworks under active critique.",
                     "[HEALTH AUDIT]: Pharmaceutical lobbying budgets monitored in recent healthcare bills."
                 ];
-                let html = fallbackAlerts.map(text => `<span>• ${text}</span>`).join('');
-                html += `<span>• ${fallbackAlerts[0]}</span>`;
-                tickerTrack.innerHTML = html;
+                let loop = [...fallbackAlerts, ...fallbackAlerts];
+                tickerTrack.innerHTML = loop.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
             }
 
             allArticles = [];
@@ -986,11 +1003,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 function buildClientVerdictChipHtml(biasaudit) {
                     if (!biasaudit) return '';
                     const clean = cleanEditorialText(biasaudit);
-                    const truncated = clean.length > 85 ? clean.slice(0, 84).replace(/\s+\S*$/, '') + '…' : clean;
                     return `
                         <div class="card-verdict-chip" title="${escapeHtml(clean)}">
                             <span class="verdict-label"><i data-lucide="shield-alert"></i> VERDICT</span>
-                            <span class="verdict-text">${escapeHtml(truncated)}</span>
+                            <span class="verdict-text">${escapeHtml(clean)}</span>
                         </div>
                     `;
                 }
@@ -1036,16 +1052,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         return true;
                     });
 
+                    // Exclude active Hero story from slot 1 of The Ledger grid on Page 1 when viewing all
+                    let displayArticles = filteredArticles;
+                    if (regionFilter === 'all' && categoryFilter === 'all' && currentPage === 1 && !currentSearchQuery) {
+                        const heroId = document.querySelector('.hero-section')?.getAttribute('data-id') || sortedArticles[0]?.id;
+                        if (heroId) {
+                            displayArticles = filteredArticles.filter(art => String(art.id) !== String(heroId));
+                        }
+                    }
+
                     // 3. Pagination math (12 / 24 / 48)
-                    totalPages = Math.ceil(filteredArticles.length / itemsPerPage) || 1;
+                    totalPages = Math.ceil(displayArticles.length / itemsPerPage) || 1;
                     if (currentPage > totalPages) currentPage = totalPages;
                     if (currentPage < 1) currentPage = 1;
                 
                     const startIdx = (currentPage - 1) * itemsPerPage;
                     const endIdx = startIdx + itemsPerPage;
-                    const paginatedArticles = filteredArticles.slice(startIdx, endIdx);
+                    const paginatedArticles = displayArticles.slice(startIdx, endIdx);
 
-                    console.log(`🎯 Filtering: Region "${regionFilter}", Category "${categoryFilter}", Search "${currentSearchQuery}", Page ${currentPage}/${totalPages} (${itemsPerPage} per page) matched ${filteredArticles.length} articles, showing ${paginatedArticles.length}.`);
+                    console.log(`🎯 Filtering: Region "${regionFilter}", Category "${categoryFilter}", Search "${currentSearchQuery}", Page ${currentPage}/${totalPages} (${itemsPerPage} per page) matched ${displayArticles.length} articles, showing ${paginatedArticles.length}.`);
 
                     // Update pagination UI
                     updatePaginationUI();
@@ -1082,12 +1107,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         const cardLink = `<a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${escapeHtml(article.id)}" data-slug="${escapeHtml(slug)}">${escapeHtml(headline)}</a>`;
 
                         const isInstagram = article.authortype === 'instagram';
-                        let badgeHtml = '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>';
-                        if (article.authortype === 'admin') {
-                            badgeHtml = '<span class="author-type-badge badge-admin"><i data-lucide="pen-tool" style="width:10px;height:10px;"></i> The Ledger Desk</span>';
-                        } else if (isInstagram) {
-                            badgeHtml = '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>';
-                        }
 
                         const relTime = formatRelativeTime(article.publishdate);
                         const fullTimestamp = (article.publishdate ? formatDate(article.publishdate) + ' ' : '') + (article.timeago || '');
@@ -1103,12 +1122,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         const cardActions = `
                             <div class="card-action-bar">
-                                <a href="${articleUrl}" class="inspect-audit-btn audit-trigger" data-id="${escapeHtml(article.id)}" data-slug="${escapeHtml(slug)}">
+                                <span class="inspect-audit-btn" aria-hidden="true">
                                     <i data-lucide="scan-eye"></i> <span>Inspect Audit</span>
-                                </a>
+                                </span>
                                 <button type="button" class="share-receipt-btn" data-headline="${escapeHtml(headline)}" data-verdict="${escapeHtml(biasAudit)}" data-url="${escapeHtml(fullArticleUrl)}" aria-label="Share Bias Receipt">
                                     <i data-lucide="share-2"></i> <span>Share</span>
                                 </button>
+                            </div>
+                        `;
+
+                        const metaRowHtml = `
+                            <div class="card-meta-row" style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-family:var(--font-mono, monospace); font-size:0.72rem; color:var(--text-muted); font-weight:600; letter-spacing:0.04em;">
+                                <span style="color:var(--accent-saffron); font-weight:700; text-transform:uppercase;">${escapeHtml(category)}</span>
+                                <span class="meta-dot">·</span>
+                                <span>${escapeHtml(readTime)}</span>
+                                <span class="meta-dot">·</span>
+                                <span title="${escapeHtml(fullTimestamp)}">${escapeHtml(relTime)}</span>
                             </div>
                         `;
 
@@ -1118,17 +1147,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeHtml(article.id)}">
                                     <div class="card-visual">
                                         <div class="card-image-bg" style="${bgStyle};"></div>
-                                        <span class="card-tag saffron-bg">${escapeHtml(category)}</span>
-                                        <span class="read-time-chip"><i data-lucide="clock"></i> ${readTime}</span>
                                         ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
                                     </div>
                                     <div class="card-body">
-                                        <div class="card-meta-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                            <span class="compact-meta" style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
-                                                <strong style="color:var(--accent-saffron);">${escapeHtml(category.toUpperCase())}</strong> · <span title="${escapeHtml(fullTimestamp)}">${relTime}</span>
-                                            </span>
-                                            ${badgeHtml}
-                                        </div>
+                                        ${metaRowHtml}
                                         <h3 class="card-title" style="margin-top:4px;">
                                             ${cardLink}
                                         </h3>
@@ -1145,16 +1167,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeHtml(article.id)}">
                                     <div class="card-visual">
                                         <div class="card-image-bg" style="${bgStyle};"></div>
-                                        <span class="card-tag saffron-bg">${escapeHtml(category)}</span>
-                                        <span class="read-time-chip"><i data-lucide="clock"></i> ${readTime}</span>
                                     </div>
                                     <div class="card-body">
-                                        <div class="card-meta-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                            <span class="compact-meta" style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">
-                                                <strong style="color:var(--accent-saffron);">${escapeHtml(category.toUpperCase())}</strong> · <span title="${escapeHtml(fullTimestamp)}">${relTime}</span>
-                                            </span>
-                                            ${badgeHtml}
-                                        </div>
+                                        ${metaRowHtml}
                                         <h3 class="card-title" style="margin-bottom:8px;">
                                             ${cardLink}
                                         </h3>
@@ -1227,39 +1242,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
     }
 
-    // Region Tabs Event Listeners (Triggers Hash Change to route through SPA)
+    function updateUrlState(region, category, page) {
+        let path = '/';
+        const normRegion = region === 'indian' ? 'india' : (region || 'all');
+        const normCat = category && category !== 'all' ? category.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-').replace(/-+/g, '-') : 'all';
+
+        if (normRegion !== 'all' && normCat !== 'all') {
+            path = `/editions/${normRegion}/${normCat}`;
+        } else if (normRegion !== 'all') {
+            path = `/editions/${normRegion}`;
+        } else if (normCat !== 'all') {
+            path = `/category/${normCat}`;
+        }
+
+        const query = page && page > 1 ? `?page=${page}` : '';
+        const targetUrl = `${path}${query}`;
+        if ((window.location.pathname + window.location.search) !== targetUrl) {
+            window.history.pushState({ region, category, page }, '', targetUrl);
+        }
+    }
+
+    // Region Tabs Event Listeners (Triggers clean crawlable URL pushState)
     const regionButtons = document.querySelectorAll('.region-tab-btn');
     regionButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const selectedRegion = btn.getAttribute('data-region').toLowerCase().trim();
             currentPage = 1;
-            if (selectedRegion === 'all') {
-                if (currentCategory === 'all') {
-                    window.location.hash = '#/';
-                } else {
-                    window.location.hash = `#/all/${currentCategory.toLowerCase().replace(/\s+/g, '-')}`;
-                }
-            } else {
-                if (currentCategory === 'all') {
-                    window.location.hash = `#/${selectedRegion}`;
-                } else {
-                    window.location.hash = `#/${selectedRegion}/${currentCategory.toLowerCase().replace(/\s+/g, '-')}`;
-                }
-            }
+            currentRegion = selectedRegion;
+            updateUrlState(currentRegion, currentCategory, 1);
+            handleRouting(false);
         });
     });
 
-    // Category Tabs Event Listeners (Triggers Hash Change to route through SPA)
+    // Category Tabs Event Listeners (Triggers clean crawlable URL pushState)
     const tabButtons = document.querySelectorAll('.category-tab-btn');
     tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            const selectedCat = btn.getAttribute('data-category').toLowerCase().trim();
+            const selectedCat = btn.getAttribute('data-category').trim();
             currentPage = 1;
-            if (selectedCat === 'all') {
-                window.location.hash = currentRegion === 'all' ? '#/' : `#/${currentRegion}`;
-            } else {
-                window.location.hash = `#/${currentRegion}/${selectedCat.replace(/\s+/g, '-')}`;
-            }
+            currentCategory = selectedCat;
+            updateUrlState(currentRegion, currentCategory, 1);
+            handleRouting(false);
         });
     });
 
@@ -1426,62 +1449,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // SPA Router Implementation
-    function parseHashRoute() {
-        const hash = window.location.hash;
-        if (!hash || hash === '#' || hash === '#/' || hash === '#/all') {
-            return { region: 'all', category: 'all' };
-        }
-
-        const path = hash.replace(/^#\/?/, '').toLowerCase().trim();
-        
-        // Handle article details and special pages separately
-        if (path.startsWith('chronicles/') || path.startsWith('article/') || path === 'our-bias' || path === 'manifesto') {
-            return null;
-        }
-
-        const parts = path.split('/').filter(p => p.trim());
+    // SPA Router Implementation - Supports clean crawlable paths (/editions/india, /category/politics, ?page=2)
+    function parseCurrentRoute() {
+        const pathname = window.location.pathname.toLowerCase();
         let region = 'all';
         let category = 'all';
 
-        const validRegions = ['all', 'indian', 'world', 'uk', 'berkshire'];
+        const validRegions = ['all', 'indian', 'india', 'world', 'uk', 'berkshire'];
         const validCategories = ['politics', 'tech', 'finance', 'crime-and-law', 'crime & law', 'world-and-civic', 'world & civic', 'entertainment', 'health'];
 
-        if (parts.length === 1) {
-            const part = parts[0];
-            if (validRegions.includes(part)) {
-                region = part;
-                category = 'all';
-            } else if (validCategories.includes(part)) {
-                region = currentRegion;
-                category = part;
+        // 1. Check clean pathname
+        if (pathname.startsWith('/editions/')) {
+            const parts = pathname.replace(/^\/editions\//, '').split('/').filter(Boolean);
+            if (parts[0]) {
+                region = parts[0] === 'india' ? 'indian' : parts[0];
             }
-        } else if (parts.length >= 2) {
-            const r = parts[0];
-            const c = parts[1];
-            if (validRegions.includes(r)) {
-                region = r;
+            if (parts[1]) {
+                category = parts[1];
             }
-            if (validCategories.includes(c)) {
-                category = c;
+        } else if (pathname.startsWith('/category/')) {
+            const cat = pathname.replace(/^\/category\//, '').split('/')[0];
+            if (cat) category = cat;
+        } else if (window.location.hash) {
+            // Legacy hash support
+            const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase().trim();
+            if (hash && hash !== 'all') {
+                const parts = hash.split('/').filter(Boolean);
+                if (parts.length === 1) {
+                    if (validRegions.includes(parts[0])) region = parts[0] === 'india' ? 'indian' : parts[0];
+                    else category = parts[0];
+                } else if (parts.length >= 2) {
+                    if (validRegions.includes(parts[0])) region = parts[0] === 'india' ? 'indian' : parts[0];
+                    category = parts[1];
+                }
             }
         }
 
+        // 2. Query param ?page=2
+        const urlParams = new URLSearchParams(window.location.search);
+        const pageParam = parseInt(urlParams.get('page'), 10);
+        if (pageParam && !isNaN(pageParam) && pageParam > 0) {
+            currentPage = pageParam;
+        }
+
         let targetCategory = 'all';
-        if (category === 'politics') targetCategory = 'Politics';
-        else if (category === 'tech') targetCategory = 'Tech';
-        else if (category === 'finance') targetCategory = 'Finance';
-        else if (category === 'crime-and-law' || category === 'crime & law') targetCategory = 'Crime & Law';
-        else if (category === 'world-and-civic' || category === 'world & civic') targetCategory = 'World & Civic';
-        else if (category === 'entertainment') targetCategory = 'Entertainment';
-        else if (category === 'health') targetCategory = 'Health';
+        const cleanCat = category.replace(/&/g, 'and').replace(/\s+/g, '-').toLowerCase();
+        if (cleanCat === 'politics') targetCategory = 'Politics';
+        else if (cleanCat === 'tech') targetCategory = 'Tech';
+        else if (cleanCat === 'finance') targetCategory = 'Finance';
+        else if (cleanCat === 'crime-and-law' || cleanCat === 'crime-law') targetCategory = 'Crime & Law';
+        else if (cleanCat === 'world-and-civic' || cleanCat === 'world-civic') targetCategory = 'World & Civic';
+        else if (cleanCat === 'entertainment') targetCategory = 'Entertainment';
+        else if (cleanCat === 'health') targetCategory = 'Health';
 
         return { region, category: targetCategory };
     }
 
     function handleRouting(isInitialLoad = false) {
         const hash = window.location.hash;
-        console.log(`🌐 SPA Routing event triggered: hash="${hash}", isInitialLoad=${isInitialLoad}`);
+        console.log(`🌐 SPA Routing event triggered: pathname="${window.location.pathname}", search="${window.location.search}", hash="${hash}", isInitialLoad=${isInitialLoad}`);
 
         // Check if SSR content exists and we should preserve it on initial load
         const hasSSRContent = document.getElementById('dynamic-bento-grid')?.querySelector('.bento-card');
@@ -1507,16 +1533,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bentoSection) bentoSection.style.display = 'block';
         if (detailSection) detailSection.style.display = 'none';
 
+        const routeParams = parseCurrentRoute();
+        if (routeParams) {
+            currentRegion = routeParams.region;
+            currentCategory = routeParams.category;
+        }
+
         // If SSR content exists and it's initial load, skip re-render — just update active tab styles
         if (isInitialLoad && hasSSRContent) {
             console.log('📋 SSR content preserved on initial load');
             // Update tab button active states without re-rendering cards
             try {
-                const routeParams = parseHashRoute();
-                if (routeParams) {
-                    currentRegion = routeParams.region;
-                    currentCategory = routeParams.category;
-                }
                 // Highlight region tab
                 document.querySelectorAll('.region-tab-btn').forEach(btn => {
                     const btnReg = btn.getAttribute('data-region')?.toLowerCase().trim();
@@ -1566,24 +1593,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 manifestoCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             return;
-        }
-
-        // Check if legacy single category hash was requested, and redirect to region/category structure
-        if (hash && !hash.startsWith('#/article/') && !hash.startsWith('#/chronicles/')) {
-            const path = hash.replace(/^#\/?/, '').toLowerCase().trim();
-            const parts = path.split('/').filter(p => p.trim());
-            const validCategoriesList = ['politics', 'tech', 'finance', 'crime-and-law', 'world-and-civic', 'entertainment', 'health'];
-            if (parts.length === 1 && validCategoriesList.includes(parts[0])) {
-                const cat = parts[0];
-                window.location.hash = `#/${currentRegion}/${cat}`;
-                return;
-            }
-        }
-
-        const routeParams = parseHashRoute();
-        if (routeParams) {
-            currentRegion = routeParams.region;
-            currentCategory = routeParams.category;
         }
 
         // Highlight correct region tab button
@@ -1911,7 +1920,8 @@ document.addEventListener('DOMContentLoaded', () => {
         perPageSelect.addEventListener('change', () => {
             itemsPerPage = parseInt(perPageSelect.value);
             currentPage = 1; // Reset to first page
-            const route = parseHashRoute() || { region: 'indian', category: 'all' };
+            const route = parseCurrentRoute();
+            updateUrlState(route.region, route.category, 1);
             renderArticles(route.region, route.category);
         });
     }
@@ -1925,7 +1935,7 @@ document.addEventListener('DOMContentLoaded', () => {
             debounceTimer = setTimeout(() => {
                 currentSearchQuery = e.target.value.trim();
                 currentPage = 1;
-                const route = parseHashRoute() || { region: currentRegion || 'indian', category: currentCategory || 'all' };
+                const route = parseCurrentRoute();
                 renderArticles(route.region, route.category);
             }, 200);
         });
@@ -1935,7 +1945,8 @@ document.addEventListener('DOMContentLoaded', () => {
         prevPageBtn.addEventListener('click', () => {
             if (currentPage > 1) {
                 currentPage--;
-                const route = parseHashRoute() || { region: 'indian', category: 'all' };
+                const route = parseCurrentRoute();
+                updateUrlState(route.region, route.category, currentPage);
                 renderArticles(route.region, route.category);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
@@ -1946,37 +1957,20 @@ document.addEventListener('DOMContentLoaded', () => {
         nextPageBtn.addEventListener('click', () => {
             if (currentPage < totalPages) {
                 currentPage++;
-                const route = parseHashRoute() || { region: 'indian', category: 'all' };
+                const route = parseCurrentRoute();
+                updateUrlState(route.region, route.category, currentPage);
                 renderArticles(route.region, route.category);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
     }
 
-    // Set up router event listeners
+    // Set up router event listeners for clean path history and legacy hash navigation
+    window.addEventListener('popstate', () => handleRouting(false));
     window.addEventListener('hashchange', () => handleRouting(false));
 
-    // Path-to-hash redirect: only runs when the SPA shell (index.html) is
-    // served for a path-based URL that doesn't have a static HTML page. We
-    // detect the SPA shell by the presence of #dynamic-bento-grid — if that
-    // element exists, we're on the homepage shell; if not, we're on a static
-    // page that just happens to load app.js, and should NOT redirect.
-    (function() {
-        const isBentoGridPresent = !!document.getElementById('dynamic-bento-grid');
-        if (isBentoGridPresent) {
-            const path = window.location.pathname;
-            if (path && path !== '/' && !path.startsWith('/api/') && !path.startsWith('/admin')) {
-                const pathParts = path.split('/').filter(p => p.trim());
-                if (pathParts.length > 0) {
-                    console.log(`🔄 Path-to-hash redirect: converting pathname "${path}" to hash route`);
-                    window.location.replace('/#' + path);
-                    return;
-                }
-            }
-        }
-        // Already on homepage — run initial routing
-        handleRouting(true);
-    })();
+    // Run initial routing on page load (clean crawlable routes preserved)
+    handleRouting(true);
 
     // Initialize reading progress bar scroll listener
     window.addEventListener('scroll', function() {

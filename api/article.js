@@ -210,6 +210,16 @@ function renderArticleHtml(article) {
   const rawSummary   = stripTags(article.aisummary) || stripTags(article.summary) || truncate(stripTags(article.fullblog), 220);
   const summary      = cleanEditorialText(rawSummary);
   const body         = cleanEditorialText(article.fullblog || article.content || '');
+
+  // Separate image attribution label into figcaption and prevent inline bleed into body
+  let cleanBody = body;
+  let visualSource = source;
+  const visualMatch = cleanBody.match(/^(?:<p>\s*)?(?:Visual Reference Source|Visual Reference|Image Source):\s*([^<\n]+?)(?:<\/p>|\n|<br\s*\/?>|$)/i);
+  if (visualMatch) {
+    visualSource = visualMatch[1].trim();
+    cleanBody = cleanBody.replace(/^(?:<p>\s*)?(?:Visual Reference Source|Visual Reference|Image Source):\s*[^<\n]+?(?:<\/p>|\n|<br\s*\/?>|$)/i, '').trim();
+  }
+
   const image        = article.imageurl || '/assets/hero-bg.png';
   const absImage     = image.startsWith('http') ? image : (SITE + image);
   const rawAuthor    = article.author || 'The Ledger Desk';
@@ -221,7 +231,6 @@ function renderArticleHtml(article) {
   const datePublished = isoDate(article.publishdate || article.createdat);
   const dateModified  = isoDate(article.updatedat || article.publishdate || article.createdat);
   const biasAudit    = cleanEditorialText(article.biasaudit || '');
-  const source       = article.originalsource || SITE_NAME + ' Editorial';
   const origUrl      = article.originalurl || '#';
 
   // Pretty printable timeago (e.g. "July 1, 2026")
@@ -248,11 +257,47 @@ function renderArticleHtml(article) {
     'publisher': {
       '@type': 'Organization',
       'name': SITE_NAME,
-      'logo': { '@type': 'ImageObject', 'url': SITE + '/assets/logo.png' }
+      'logo': { '@type': 'ImageObject', 'url': SITE + '/assets/logo.svg' }
     },
     'articleSection': category,
     'inLanguage': 'en-IN',
     'isAccessibleForFree': true
+  });
+
+  // ClaimReview JSON-LD structured data
+  const claimReviewedText = article.originaltitle || article.title || headline;
+  const reviewRatingAlternateName = biasAudit ? 'Narrative Bias Audited' : 'Contextualized';
+  const claimReviewJsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'ClaimReview',
+    'url': canonical,
+    'claimReviewed': claimReviewedText,
+    'itemReviewed': {
+      '@type': 'CreativeWork',
+      'author': {
+        '@type': 'Organization',
+        'name': visualSource || 'Mainstream Press Wire'
+      },
+      'datePublished': datePublished,
+      'name': claimReviewedText
+    },
+    'author': {
+      '@type': 'Organization',
+      'name': SITE_NAME,
+      'url': SITE,
+      'logo': {
+        '@type': 'ImageObject',
+        'url': `${SITE}/assets/logo.svg`
+      }
+    },
+    'reviewRating': {
+      '@type': 'Rating',
+      'ratingValue': '3',
+      'bestRating': '5',
+      'worstRating': '1',
+      'alternateName': reviewRatingAlternateName,
+      'ratingExplanation': biasAudit || summary
+    }
   });
 
   // WebSite + BreadcrumbList JSON-LD
@@ -261,7 +306,7 @@ function renderArticleHtml(article) {
     '@type': 'BreadcrumbList',
     'itemListElement': [
       { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': SITE + '/' },
-      { '@type': 'ListItem', 'position': 2, 'name': category, 'item': SITE + '/' + category.toLowerCase() },
+      { '@type': 'ListItem', 'position': 2, 'name': category, 'item': SITE + '/category/' + category.toLowerCase() },
       { '@type': 'ListItem', 'position': 3, 'name': headline, 'item': canonical }
     ]
   });
@@ -305,6 +350,7 @@ function renderArticleHtml(article) {
 <meta name="twitter:creator" content="@honestlybiased">
 
 <script type="application/ld+json">${newsJsonLd}</script>
+<script type="application/ld+json">${claimReviewJsonLd}</script>
 <script type="application/ld+json">${breadcrumbJsonLd}</script>
 
 <meta name="theme-color" content="#0a0e1a">
@@ -323,13 +369,20 @@ function renderArticleHtml(article) {
 <a href="#main-content" class="skip-to-content">Skip to main content</a>
 <header class="main-header glass-element" id="main-header">
   <div class="header-container">
-    <a href="/" class="brand-logo" aria-label="${escapeAttr(SITE_NAME)} Home">
-      <img src="/assets/logo.png" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png" id="logo-img">
-    </a>
+    <div class="header-left" style="display: flex; align-items: center; gap: 16px;">
+      <a href="/" class="brand-logo" aria-label="${escapeAttr(SITE_NAME)} Home">
+        <img src="/assets/logo.svg" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png" id="logo-img">
+      </a>
+      <nav class="article-header-nav" aria-label="Section and Back Navigation">
+        <a href="/" class="header-back-link"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> The Ledger</a>
+        <span style="color:var(--border-color); font-size:0.75rem;">/</span>
+        <a href="/category/${escapeAttr(category.toLowerCase())}" class="header-section-pill">${escapeHtml(category)}</a>
+      </nav>
+    </div>
     <div class="header-actions">
       <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle color theme" title="Toggle between Dark and Light mode">
         <span class="theme-toggle-track">
-          <span class="theme-toggle-thumb"></span>
+          <span class="theme-toggle-thumb"><i data-lucide="moon" class="icon-dark"></i><i data-lucide="sun" class="icon-light"></i></span>
         </span>
       </button>
     </div>
@@ -340,7 +393,7 @@ function renderArticleHtml(article) {
     <nav class="breadcrumbs" aria-label="Breadcrumb" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 24px; font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;">
       <a href="/" style="color: var(--text-muted); text-decoration: none;">The Ledger</a>
       <span class="bc-sep" style="margin: 0 8px; color: var(--border-color);">/</span>
-      <a href="/${escapeAttr(category.toLowerCase())}" style="color: var(--accent-saffron); text-decoration: none;">${escapeAttr(category)}</a>
+      <a href="/category/${escapeAttr(category.toLowerCase())}" style="color: var(--accent-saffron); text-decoration: none;">${escapeAttr(category)}</a>
       <span class="bc-sep" style="margin: 0 8px; color: var(--border-color);">/</span>
       <span aria-current="page" style="color: var(--text-muted);">${escapeAttr(truncate(headline, 40))}</span>
     </nav>
@@ -350,7 +403,7 @@ function renderArticleHtml(article) {
         <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">${escapeAttr(regionLabel)}</span>
       </div>
       <h1 itemprop="headline" style="font-family: var(--font-heading); font-size: clamp(2.1rem, 4.5vw, 3.2rem); font-weight: 800; line-height: 1.15; margin-bottom: 18px; color: var(--text-primary); letter-spacing: -0.03em; text-wrap: balance;">${escapeAttr(headline)}</h1>
-      <p itemprop="description" style="font-size: 1.22rem; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.55; font-style: italic; border-left: 2px solid var(--accent-saffron); padding-left: 16px;">${escapeAttr(seoDesc)}</p>
+      <p itemprop="description" style="font-size: 1.22rem; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.55; font-style: italic; border-left: 2px solid var(--accent-saffron); padding-left: 16px;">${escapeHtml(summary)}</p>
       <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 14px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); font-size: 0.8rem;">
         <div style="display: flex; align-items: center; gap: 12px;">
           <div class="author-avatar" style="width: 34px; height: 34px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-muted);"><i data-lucide="user" style="width:16px;height:16px;"></i></div>
@@ -402,12 +455,12 @@ function renderArticleHtml(article) {
       <img src="${escapeAttr(absImage)}" alt="${escapeAttr(headline)}" itemprop="image" style="width: 100%; height: auto; display: block;">
       <figcaption style="padding: 10px 14px; background: var(--bg-card); font-size: 0.76rem; color: var(--text-muted); font-family: var(--font-mono); border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
         <span>Visual Reference</span>
-        <span>Source: ${escapeAttr(source)}</span>
+        <span>Source: ${escapeAttr(visualSource)}</span>
       </figcaption>
     </figure>
 
     <div itemprop="articleBody" class="blog-post-content article-content" style="font-size: 1.16rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 36px; max-width: 68ch;">
-      ${body}
+      ${cleanBody}
     </div>
 
     <!-- BOTTOM VIRAL FORWARD DISPATCH BLOCK -->
@@ -431,12 +484,12 @@ function renderArticleHtml(article) {
     </div>
 
     <div style="padding: 20px 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; font-family: var(--font-mono); font-size: 0.78rem;">
-      <span style="color: var(--text-muted);">Attribution: ${escapeAttr(source)}</span>
+      <span style="color: var(--text-muted);">Attribution: ${escapeAttr(visualSource)}</span>
       <a href="${escapeAttr(origUrl)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-saffron); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">Examine Raw Source <i data-lucide="arrow-up-right" style="width: 13px; height: 13px;"></i></a>
     </div>
 
     <nav style="margin-top: 40px; display: flex; justify-content: space-between; gap: 16px; padding-bottom: 40px;">
-      <a href="/${escapeAttr(category.toLowerCase())}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 10px 18px; border-radius: 4px;">← ${escapeAttr(category)} Chronicles</a>
+      <a href="/category/${escapeAttr(category.toLowerCase())}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 10px 18px; border-radius: 4px;">← ${escapeAttr(category)} Chronicles</a>
       <a href="/" class="btn btn-primary" style="font-size: 0.8rem; padding: 10px 22px; border-radius: 4px;">Front Page Ledger →</a>
     </nav>
   </div>
@@ -444,8 +497,8 @@ function renderArticleHtml(article) {
 <footer class="editorial-footer">
   <div class="footer-grid">
     <div class="footer-brand-column">
-      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="Logo" class="logo-png-footer"></a>
-      <p class="mission-statement">${SITE_NAME} is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We believe in providing transparent, analytical, and uncompromisingly honest perspectives on politics, satire, and media power structures in India.</p>
+      <a href="/" class="footer-logo"><img src="/assets/logo.svg" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png-footer"></a>
+      <p class="mission-statement">${SITE_NAME} is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We deliver forensic, analytical, and uncompromisingly honest media critiques across multi-edition global politics, policy, and institutional power structures.</p>
     </div>
     <div class="footer-links-column">
       <h4 class="footer-heading">Sections</h4>
@@ -469,9 +522,40 @@ function renderArticleHtml(article) {
         <li><a href="/collective">Join the Collective</a></li>
       </ul>
     </div>
+    <div class="footer-links-column">
+      <h4 class="footer-heading">Tools &amp; Forensics</h4>
+      <ul class="footer-links-list">
+        <li><a href="/taxmetrics">TaxMetrics (US Paycheck Calculator)</a></li>
+        <li><a href="/taxmetrics/california">California Tax Calculator</a></li>
+        <li><a href="/taxmetrics/texas">Texas Tax Calculator</a></li>
+        <li><a href="/taxmetrics/new-york">New York Tax Calculator</a></li>
+        <li><a href="/whatitakehome">WhatITakeHome Calculator</a></li>
+      </ul>
+    </div>
+    <div class="footer-newsletter-column">
+      <h4 class="footer-heading">Subscribe to the Ledger</h4>
+      <p class="newsletter-subtext">Receive our daily, sharp analytical briefing direct to your inbox. No filters, no corporate jargon.</p>
+      <form class="newsletter-form" id="newsletter-form">
+        <div class="input-group">
+          <input type="email" placeholder="Enter your email address" required aria-label="Email address for newsletter subscription">
+          <button type="submit" class="newsletter-btn" aria-label="Submit email address"><i data-lucide="arrow-right"></i></button>
+        </div>
+        <label class="checkbox-label" for="newsletter-consent" style="min-height: 44px; display: inline-flex; align-items: center; cursor: pointer;">
+          <input type="checkbox" id="newsletter-consent" required>
+          <span class="checkbox-custom"></span>
+          <span class="label-text">I support transparent, reader-funded commentary.</span>
+        </label>
+      </form>
+    </div>
   </div>
   <div class="footer-bottom">
     <p class="copyright">&copy; 2026 Honestly Biased Digital Media Trust. Reader supported, fiercely independent.</p>
+    <div class="social-links" aria-label="Social Media Connections">
+      <a href="https://www.facebook.com/honestlybiasedOfficial" target="_blank" rel="noopener noreferrer" aria-label="Facebook connection"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg></a>
+      <a href="https://twitter.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Twitter connection"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+      <a href="https://www.youtube.com/@honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="YouTube channel"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+      <a href="https://www.instagram.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2c-3.31 0-6 2.69-6 6v5c0 3.31 2.69 6 6 6s6-2.69 6-6V8c0-3.31-2.69-6-6-6zm4 11c0 2.21-1.79 4-4 4s-4-1.79-4-4V8c0-2.21 1.79-4 4-4s4 1.79 4 4v5zm-4 7c-4.42 0-8-3.58-8-8H2c0 5.14 3.82 9.4 8.88 9.94v2.06h2.24v-2.06c5.06-.54 8.88-4.8 8.88-9.94h-2c0 4.42-3.58 8-8 8z"/></svg></a>
+    </div>
   </div>
 </footer>
 

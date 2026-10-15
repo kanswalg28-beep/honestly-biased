@@ -82,6 +82,18 @@
       "destination": "/api/article?category=health&slug=:slug"
     },
     {
+      "source": "/editions/:edition/:category",
+      "destination": "/api/home"
+    },
+    {
+      "source": "/editions/:edition",
+      "destination": "/api/home"
+    },
+    {
+      "source": "/category/:category",
+      "destination": "/api/home"
+    },
+    {
       "source": "/politics",
       "destination": "/politics.html"
     },
