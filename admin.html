@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Honestly Biased Editorial Control Center — Publish editorials, manage hero content, edit ticker highlights, and oversee newsletter subscribers.">
     <title>Honestly Biased | Editorial Control Center</title>
+    <meta name="robots" content="noindex, nofollow">
     
     <!-- Google Fonts: Outfit (Body/UI) & Space Grotesk (Titles) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -463,18 +464,22 @@
         /* Filter Search Channel */
         .search-channel {
             position: relative;
+            display: flex;
+            align-items: center;
             width: 100%;
             margin-bottom: 24px;
         }
 
         .search-channel input {
+            width: 100%;
             padding-left: 44px;
             font-weight: 600;
         }
 
-        .search-channel i {
+        .search-channel i,
+        .search-channel svg {
             position: absolute;
-            left: 16px;
+            left: 14px;
             top: 50%;
             transform: translateY(-50%);
             width: 16px;
@@ -484,6 +489,8 @@
             transition: color var(--transition-fast);
         }
 
+        .search-channel input:focus ~ i,
+        .search-channel input:focus ~ svg,
         .search-channel input:focus + i {
             color: var(--accent-cyan);
         }
@@ -912,6 +919,7 @@
                                 <option value="Crime & Law">Crime & Law</option>
                                 <option value="World & Civic">World & Civic</option>
                                 <option value="Health">Health</option>
+                                <option value="Sports">Sports</option>
                                 <option value="Entertainment">Entertainment</option>
                             </select>
                         </div>
@@ -935,20 +943,38 @@
                             <label for="cms-source" class="cms-label">Source / Attribution</label>
                             <input type="text" id="cms-source" class="cms-input glass-element" placeholder="Honestly Biased Editorial Board" required>
                         </div>
+
+                        <div class="form-group">
+                            <label for="cms-outlet-name" class="cms-label">Audited News Outlet Name</label>
+                            <input type="text" id="cms-outlet-name" class="cms-input glass-element" placeholder="e.g. BBC News, Reuters, Times of India">
+                            <span style="font-size:0.68rem; color:var(--text-muted); display:block; margin-top:4px;">Entity credit for the outlet being audited (links to /sources/&lt;outlet&gt;)</span>
+                        </div>
                         
                         <div class="form-group">
                             <label for="cms-headline" class="cms-label">Satirical Headline</label>
                             <input type="text" id="cms-headline" class="cms-input glass-element" placeholder="Enter bold, opinionated headline..." required>
                         </div>
-                        
+
                         <div class="form-group">
-                            <label for="cms-bias-audit" class="cms-label">Narrative Bias Audit (Exactly 1 Sentence)</label>
-                            <textarea id="cms-bias-audit" class="cms-textarea glass-element" placeholder="Critique the corporate incentives or structural spins..." rows="2" required></textarea>
+                            <label for="cms-slug" class="cms-label">URL Slug (Auto-generated from headline, up to 65 chars)</label>
+                            <input type="text" id="cms-slug" class="cms-input glass-element" placeholder="e.g. poll-predictions-take-a-hit-in-berkshire" maxlength="65">
+                            <span style="font-size:0.68rem; color:var(--text-muted); display:block; margin-top:4px;">Canonical indexable URL: /chronicles/&lt;slug&gt;</span>
                         </div>
                         
                         <div class="form-group">
-                            <label for="cms-summary" class="cms-label">Audited Critical Summary (Exactly 2 Sentences)</label>
-                            <textarea id="cms-summary" class="cms-textarea glass-element" placeholder="Summarize clear factual details with dry satirical bias..." rows="3" required></textarea>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <label for="cms-bias-audit" class="cms-label" style="margin-bottom:0;">Narrative Bias Audit (Exactly 1 Sentence)</label>
+                                <span id="cms-bias-audit-count" style="font-size:0.7rem; color:var(--text-muted); font-weight:700; font-family:var(--font-mono, monospace);">0 / 120 chars</span>
+                            </div>
+                            <textarea id="cms-bias-audit" class="cms-textarea glass-element" placeholder="Critique the corporate incentives or structural spins..." rows="2" maxlength="120" required></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <label for="cms-summary" class="cms-label" style="margin-bottom:0;">Audited Critical Summary (Exactly 2 Sentences)</label>
+                                <span id="cms-summary-count" style="font-size:0.7rem; color:var(--text-muted); font-weight:700; font-family:var(--font-mono, monospace);">0 / 280 chars</span>
+                            </div>
+                            <textarea id="cms-summary" class="cms-textarea glass-element" placeholder="Summarize clear factual details with dry satirical bias..." rows="3" maxlength="280" required></textarea>
                         </div>
 
                         <div class="form-group">
@@ -984,6 +1010,11 @@
                                 <span style="font-size:0.68rem; color:var(--text-muted); display:block; margin-top:4px;">Paste an image URL directly above or click Upload File to pick from your machine.</span>
                                 <div class="file-upload-status" id="cms-image-upload-status"></div>
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cms-image-alt" class="cms-label">Cover Image Alt Text (SEO &amp; Accessibility)</label>
+                            <input type="text" id="cms-image-alt" class="cms-input glass-element" placeholder="Descriptive alt text for Google Images and screen readers...">
                         </div>
                         
                         <div class="form-group">
@@ -1039,10 +1070,14 @@
                         <h2 class="modal-title" style="font-size: 1.35rem; font-weight:800; font-family:var(--font-heading); margin-bottom: 4px;">Ledger Chronicle Inventory</h2>
                         <p style="color:var(--text-muted); font-size:0.78rem; font-weight:600; margin:0;">Monitor and filter active database cached items, refine satire, or erase entries.</p>
                     </div>
-                    <!-- Sort Controls -->
+                    <!-- Repair & Sort Controls -->
                     <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <button type="button" id="btn-repair-legacy" class="btn-live-feed" style="background: rgba(197, 155, 39, 0.12); border-color: var(--accent-gold); color: var(--accent-gold); padding: 8px 16px; font-size: 0.75rem;">
+                            <i data-lucide="zap"></i>
+                            <span>⚡ Repair Legacy Grammar &amp; Slugs</span>
+                        </button>
                         <label for="cms-sort-by" style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Sort by:</label>
-                        <select id="cms-sort-by" class="cms-select glass-element" style="width: auto; min-width: 160px; padding: 8px 12px; font-size: 0.75rem;">
+                        <select id="cms-sort-by" class="cms-select glass-element" style="width: auto; min-width: 150px; padding: 8px 12px; font-size: 0.75rem;">
                             <option value="publishdate">Publish Date</option>
                             <option value="aiheadline">Headline</option>
                             <option value="category">Category</option>
@@ -1058,9 +1093,9 @@
                 </div>
 
                 <!-- Modern Live Search Filter -->
-                <div class="search-channel">
-                    <input type="text" id="cms-search" class="cms-input glass-element" placeholder="Search headlines, attributions, or bracket categories...">
-                    <i data-lucide="search"></i>
+                <div class="search-channel" style="position: relative; display: flex; align-items: center; width: 100%; margin-bottom: 20px;">
+                    <i data-lucide="search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; width: 16px; height: 16px; color: var(--text-muted);"></i>
+                    <input type="text" id="cms-search" class="cms-input glass-element" placeholder="Search headlines, attributions, or bracket categories..." style="width: 100%; padding-left: 44px;">
                 </div>
                 
                 <!-- Inventory Card Rows Container -->
@@ -1075,9 +1110,9 @@
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Show:</span>
                         <select id="admin-per-page-select" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; font-size: 0.8rem;">
-                            <option value="10">10 per page</option>
-                            <option value="22" selected>22 per page</option>
-                            <option value="46">46 per page</option>
+                            <option value="25" selected>25 per page</option>
+                            <option value="50">50 per page</option>
+                            <option value="100">100 per page</option>
                         </select>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -1108,7 +1143,18 @@
             function build(list) {
                 var items = (list && list.length) ? list : fallback;
                 track.innerHTML = '';
-                var feed = items.concat(items); // duplicate for -50% loop
+                // Deduplicate items by headline before duplicating for loop
+                var seen = new Set();
+                var uniqueItems = [];
+                items.forEach(function (t) {
+                    var text = (t.aiheadline || t.title || t || '').trim();
+                    if (text && !seen.has(text)) {
+                        seen.add(text);
+                        uniqueItems.push(t);
+                    }
+                });
+                if (uniqueItems.length === 0) uniqueItems = fallback;
+                var feed = uniqueItems.concat(uniqueItems); // duplicate for seamless -50% loop
                 feed.forEach(function (t) {
                     var it = document.createElement('span');
                     it.className = 'ticker-item';
@@ -1116,7 +1162,7 @@
                     stamp.className = 'stamp';
                     stamp.textContent = 'AUDIT \u25B8';
                     var txt = document.createElement('span');
-                    txt.textContent = t.aiheadline || t;
+                    txt.textContent = t.aiheadline || t.title || t;
                     it.appendChild(stamp);
                     it.appendChild(txt);
                     track.appendChild(it);

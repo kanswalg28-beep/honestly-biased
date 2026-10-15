@@ -190,9 +190,9 @@ function buildBentoCard(article, index) {
 
   const cardActions = `
     <div class="card-action-bar">
-      <span class="inspect-audit-btn" aria-hidden="true">
+      <a href="${escapeAttr(articleUrl)}" class="inspect-audit-btn audit-trigger" data-id="${escapeAttr(article.id)}" data-slug="${escapeAttr(slug)}">
         <i data-lucide="scan-eye"></i> <span>Inspect Audit</span>
-      </span>
+      </a>
       <button type="button" class="share-receipt-btn" data-headline="${escapeAttr(headline)}" data-verdict="${escapeAttr(biasAudit)}" data-url="${escapeAttr(fullArticleUrl)}" aria-label="Share Bias Receipt">
         <i data-lucide="share-2"></i> <span>Share</span>
       </button>
@@ -243,7 +243,7 @@ function buildBentoCard(article, index) {
         <h3 class="card-title" style="margin-bottom:8px;">
           ${cardLink}
         </h3>
-        <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(summary)}</p>
+        <p class="card-summary small-summary">${escapeHtml(summary)}</p>
         <div class="card-footer-meta" style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
           ${verdictHtml}
           ${cardActions}
@@ -505,9 +505,9 @@ async function renderHomepageHtml(articles) {
         </div>
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Page:</span>
-          <button class="pagination-btn" id="prev-page" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+          <a href="/?page=1" class="pagination-btn" id="prev-page" aria-label="Previous page"><i data-lucide="chevron-left"></i></a>
           <span id="page-indicator" style="min-width: 60px; text-align: center; font-weight: 600;">1 / 1</span>
-          <button class="pagination-btn" id="next-page" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+          <a href="/?page=2" class="pagination-btn" id="next-page" aria-label="Next page"><i data-lucide="chevron-right"></i></a>
         </div>
       </div>
     </div>
@@ -516,14 +516,15 @@ async function renderHomepageHtml(articles) {
       <aside class="bento-sidebar">
         <div class="category-tabs-container" id="category-tabs-container">
           <div class="active-indicator-pill" id="category-active-pill"></div>
-          <button class="category-tab-btn active" data-category="all" aria-pressed="true"><i data-lucide="layout-grid"></i><span>All Chronicles</span></button>
-          <button class="category-tab-btn" data-category="Politics" aria-pressed="false"><i data-lucide="landmark"></i><span>Politics</span></button>
-          <button class="category-tab-btn" data-category="Tech" aria-pressed="false"><i data-lucide="cpu"></i><span>Tech</span></button>
-          <button class="category-tab-btn" data-category="Finance" aria-pressed="false"><i data-lucide="circle-dollar-sign"></i><span>Finance</span></button>
-          <button class="category-tab-btn" data-category="Crime & Law" aria-pressed="false"><i data-lucide="scale"></i><span>Crime & Law</span></button>
-          <button class="category-tab-btn" data-category="World & Civic" aria-pressed="false"><i data-lucide="globe"></i><span>World & Civic</span></button>
-          <button class="category-tab-btn" data-category="Health" aria-pressed="false"><i data-lucide="heart-pulse"></i><span>Health</span></button>
-          <button class="category-tab-btn" data-category="Entertainment" aria-pressed="false"><i data-lucide="clapperboard"></i><span>Entertainment</span></button>
+          <a href="/category/all" class="category-tab-btn active" data-category="all" aria-pressed="true"><i data-lucide="layout-grid"></i><span>All Chronicles</span></a>
+          <a href="/category/politics" class="category-tab-btn" data-category="Politics" aria-pressed="false"><i data-lucide="landmark"></i><span>Politics</span></a>
+          <a href="/category/tech" class="category-tab-btn" data-category="Tech" aria-pressed="false"><i data-lucide="cpu"></i><span>Tech</span></a>
+          <a href="/category/finance" class="category-tab-btn" data-category="Finance" aria-pressed="false"><i data-lucide="circle-dollar-sign"></i><span>Finance</span></a>
+          <a href="/category/crime-and-law" class="category-tab-btn" data-category="Crime & Law" aria-pressed="false"><i data-lucide="scale"></i><span>Crime & Law</span></a>
+          <a href="/category/world-and-civic" class="category-tab-btn" data-category="World & Civic" aria-pressed="false"><i data-lucide="globe"></i><span>World & Civic</span></a>
+          <a href="/category/health" class="category-tab-btn" data-category="Health" aria-pressed="false"><i data-lucide="heart-pulse"></i><span>Health</span></a>
+          <a href="/category/sports" class="category-tab-btn" data-category="Sports" aria-pressed="false"><i data-lucide="trophy"></i><span>Sports</span></a>
+          <a href="/category/entertainment" class="category-tab-btn" data-category="Entertainment" aria-pressed="false"><i data-lucide="clapperboard"></i><span>Entertainment</span></a>
         </div>
       </aside>
 

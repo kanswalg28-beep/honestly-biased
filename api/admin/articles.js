@@ -124,7 +124,7 @@ module.exports = async (req, res) => {
       // Fetch paginated, sorted articles
       const { data, error } = await supabase
         .from('articles')
-        .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit')
+        .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug, originalsource, originalurl, image_alt, audited_outlet, fullblog')
         .eq('archived', false)
         .order(sortBy, sortOrder)
         .range(from, to);
@@ -160,6 +160,9 @@ module.exports = async (req, res) => {
         aisummary: summary,
         biasaudit: biasAudit,
         category: category,
+        slug: body.slug ? body.slug.trim() : headline.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().split(/\s+/).slice(0, 10).join('-'),
+        image_alt: body.image_alt || body.imageAlt || '',
+        audited_outlet: body.audited_outlet || body.auditedOutlet || body.originalsource || '',
         fullblog: sanitizeHtml(body.fullblog || ''),
         authortype: body.authortype || 'admin',
         author: body.author && body.author !== 'CMS Admin' && body.author !== 'CMS Admin · Editorial' ? body.author : 'The Ledger Desk',
@@ -214,6 +217,15 @@ module.exports = async (req, res) => {
           updatePayload.aisummary || '',
           updatePayload.fullblog
         );
+      }
+      if (body.slug) {
+        updatePayload.slug = body.slug.trim();
+      }
+      if (body.image_alt !== undefined || body.imageAlt !== undefined) {
+        updatePayload.image_alt = body.image_alt || body.imageAlt || '';
+      }
+      if (body.audited_outlet !== undefined || body.auditedOutlet !== undefined) {
+        updatePayload.audited_outlet = body.audited_outlet || body.auditedOutlet || '';
       }
       if (updatePayload.author === 'CMS Admin' || updatePayload.author === 'CMS Admin · Editorial') {
         updatePayload.author = 'The Ledger Desk';

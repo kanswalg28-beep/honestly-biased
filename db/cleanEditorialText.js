@@ -19,15 +19,37 @@ function cleanEditorialText(text) {
     cleaned = 'T' + cleaned;
   }
 
+  // 3b. Fix comma-hyphens and bilateral pairings (BEFORE generic comma-space insertion)
+  cleaned = cleaned
+    .replace(/\bUK\s*,\s*Iranian\b/gi, 'UK-Iranian')
+    .replace(/\bIndo\s*,\s*Pacific\b/gi, 'Indo-Pacific')
+    .replace(/\bJaishankar\s*,\s*Paparo\b/gi, 'Jaishankar–Paparo');
+
   // 4. Insert space after any comma not followed by space or digit
   // Matches "word,word" -> "word, word", while strictly preserving numbers "22,006" or "4,000"
   cleaned = cleaned.replace(/,([^\s\d])/g, ', $1');
 
-  // 5. Fix recurring LLM spelling and grammar glitches (non-destructive)
+  // 5. Fix split words and recurring LLM spelling/grammar glitches (non-destructive)
   cleaned = cleaned
+    .replace(/\bRoad\s+block\b/gi, 'Roadblock')
+    .replace(/\bPaper\s+work\b/gi, 'Paperwork')
+    .replace(/\bFlash\s+point\b/gi, 'Flashpoint')
+    .replace(/\bHalf\s+Term\b/gi, 'Half-Term')
+    .replace(/\bMid\s+Air\b/gi, 'Mid-Air')
+    .replace(/\bwith\s+in\b/gi, 'within')
+    .replace(/\balong\s+side\b/gi, 'alongside')
+    .replace(/\bunder\s+scores\b/gi, 'underscores')
     .replace(/\bunder\s+lying\b/gi, 'underlying')
     .replace(/\bfor\s+grounding\b/gi, 'foregrounding')
     .replace(/\btrademoff\b/gi, 'trade-off')
+    .replace(/\bGermany\s+Secret\s+Keeper\b/gi, "Germany's Secret Keeper")
+    .replace(/\bJeffrey\s+Archer\s+death\b/gi, "Jeffrey Archer's death")
+    .replace(/\bBrazil\s+presidential\b/gi, "Brazil's presidential")
+    .replace(/\bFrancis\s+Halzen\s+Nobel\b/gi, "Francis Halzen's Nobel")
+    .replace(/\bcountry\s+security\s+establishment\b/gi, "country's security establishment")
+    .replace(/\bCandidate\s+raise\s+questions\b/gi, "Candidate raises questions")
+    .replace(/\bHis\s+legacy\s+include\b/gi, "His legacy includes")
+    .replace(/\bPoll\s+prediction\s+take\s+a\s+hit\b/gi, "Poll predictions take a hit")
     .replace(/\bThe headline emphasize\s+/g, 'The headline emphasizes ')
     .replace(/\bthe headline emphasize\s+/g, 'the headline emphasizes ')
     .replace(/\bThe headline frame\s+/g, 'The headline frames ')

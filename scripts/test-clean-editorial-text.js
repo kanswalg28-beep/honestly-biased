@@ -92,4 +92,31 @@ assert.strictEqual(
   "Hyphens, apostrophes and trailing s must remain completely intact"
 );
 
+// 11. Split words: "Road block" -> "Roadblock", "along side" -> "alongside", etc.
+const test11 = cleanEditorialText("The Road block and Paper work caused a Flash point during Half Term with in the along side under scores");
+console.log('Test 11 output:', test11);
+assert.strictEqual(
+  test11,
+  "The Roadblock and Paperwork caused a Flashpoint during Half-Term within the alongside underscores",
+  "Split words must be properly merged or hyphenated"
+);
+
+// 12. Comma-hyphens: "UK,Iranian" -> "UK-Iranian", "Indo, Pacific" -> "Indo-Pacific", "Jaishankar, Paparo" -> "Jaishankar–Paparo"
+const test12 = cleanEditorialText("The UK,Iranian standoff in Indo, Pacific after Jaishankar, Paparo talks !");
+console.log('Test 12 output:', test12);
+assert.strictEqual(
+  test12,
+  "The UK-Iranian standoff in Indo-Pacific after Jaishankar–Paparo talks!",
+  "Comma-hyphens must be converted to proper hyphens/en-dashes"
+);
+
+// 13. Restoring stripped possessives and verb agreement
+const test13 = cleanEditorialText("Germany Secret Keeper and Jeffrey Archer death as Poll prediction take a hit");
+console.log('Test 13 output:', test13);
+assert.strictEqual(
+  test13,
+  "Germany's Secret Keeper and Jeffrey Archer's death as Poll predictions take a hit",
+  "Stripped possessives and verb agreements must be restored"
+);
+
 console.log('✅ ALL cleanEditorialText() UNIT CHECKS PASSED PERFECTLY!\n');

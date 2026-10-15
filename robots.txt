@@ -12,6 +12,9 @@ Allow: /crime-and-law
 Allow: /world-and-civic
 Allow: /entertainment
 Allow: /health
+Allow: /sports
+Allow: /category/*
+Allow: /editions/*
 Allow: /manifesto
 Allow: /standards
 Allow: /funding
@@ -27,7 +30,9 @@ Allow: /feed.xml
 
 # Disallow internal admin CMS and sensitive backend assets
 Disallow: /admin
+Disallow: /admin/
 Disallow: /admin.html
+Disallow: /api/admin/
 Disallow: /db/
 Disallow: /node_modules/
 

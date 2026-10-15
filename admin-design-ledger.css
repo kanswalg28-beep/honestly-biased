@@ -64,11 +64,12 @@
 }
 .inventory-list-header p, .form-header-row p { color: var(--text-muted); font-size: 0.78rem; margin: 0; }
 
-.search-channel { position: relative; margin-bottom: 20px; }
-.search-channel input { padding-left: 42px; }
-.search-channel i {
-  position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
-  width: 15px; height: 15px; color: var(--text-muted); pointer-events: none;
+.search-channel { position: relative; display: flex; align-items: center; margin-bottom: 20px; width: 100%; }
+.search-channel input { width: 100%; padding-left: 44px; }
+.search-channel i,
+.search-channel svg {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--text-muted); pointer-events: none;
 }
 
 .inventory-scroll-container { max-height: calc(100vh - 400px); overflow-y: auto; padding-right: 6px; }

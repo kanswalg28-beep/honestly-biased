@@ -429,15 +429,15 @@ p {
 }
 
 .card-summary {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: block;
+    overflow: visible;
 }
 
 .bento-span-2x1 .card-summary,
-.bento-span-2x2 .card-summary {
-    -webkit-line-clamp: 4;
+.bento-span-2x2 .card-summary,
+.bento-span-1x1 .card-summary {
+    display: block;
+    overflow: visible;
 }
 
 /* ==========================================================================
@@ -1830,15 +1830,14 @@ body.light-theme .active-indicator-pill {
     color: var(--text-secondary);
     line-height: 1.6;
     margin-bottom: 20px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: block;
+    overflow: visible;
 }
 
-/* For 1x1 cards, allow more lines */
+/* For 1x1 cards, allow full text */
 .bento-span-1x1 .card-summary {
-    -webkit-line-clamp: 4;
+    display: block;
+    overflow: visible;
 }
 
 .card-footer-meta {
@@ -3926,10 +3925,8 @@ div[itemprop="articleBody"] p {
     margin-top: 1px;
 }
 .card-verdict-chip .verdict-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: block;
+    overflow: visible;
     word-break: break-word;
     color: var(--text-secondary, #cbd5e1);
     font-weight: 500;
@@ -3952,6 +3949,9 @@ div[itemprop="articleBody"] p {
     font-weight: 600;
     color: var(--accent-saffron, #f0a92e);
     text-decoration: none;
+    white-space: nowrap;
+    position: relative;
+    z-index: 2;
     transition: color 0.15s ease;
 }
 .inspect-audit-btn:hover {

@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Pagination state (uses new UI: per-page select + prev/next + page indicator)
         let currentPage = 1;
-        let pageSize = 22; // Default, will be overridden by #admin-per-page-select
+        let pageSize = 25; // Default 25 per page, overridden by #admin-per-page-select
         let totalPages = 1;
         let totalArticles = 0;
         let currentSortBy = 'publishdate';
@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminPrevPageBtn = document.getElementById('admin-prev-page');
         const adminNextPageBtn = document.getElementById('admin-next-page');
         const adminPageIndicator = document.getElementById('admin-page-indicator');
+        const btnRepairLegacy = document.getElementById('btn-repair-legacy');
 
     // STATS METRIC LABELS
     const statTotal = document.getElementById('stat-total');
@@ -144,10 +145,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const cmsRegion = document.getElementById('cms-region');
     const cmsSource = document.getElementById('cms-source');
     const cmsHeadline = document.getElementById('cms-headline');
+    const cmsSlug = document.getElementById('cms-slug');
+    const cmsOutletName = document.getElementById('cms-outlet-name');
     const cmsBiasAudit = document.getElementById('cms-bias-audit');
+    const cmsBiasAuditCount = document.getElementById('cms-bias-audit-count');
     const cmsSummary = document.getElementById('cms-summary');
+    const cmsSummaryCount = document.getElementById('cms-summary-count');
     const cmsFullBlog = document.getElementById('cms-full-blog');
     const cmsImageUrl = document.getElementById('cms-image-url');
+    const cmsImageAlt = document.getElementById('cms-image-alt');
     const cmsOriginalUrl = document.getElementById('cms-original-url');
     const cmsPreviewImg = document.getElementById('cms-preview-img');
     const cmsPublishDate = document.getElementById('cms-publish-date');
@@ -162,6 +168,72 @@ document.addEventListener('DOMContentLoaded', () => {
     const cmsFormSubtitle = document.getElementById('cms-form-subtitle');
     const btnCmsSubmit = document.getElementById('btn-cms-submit');
     const btnCmsReset = document.getElementById('btn-cms-reset');
+
+    function formatInventoryTimestamp(dateStr) {
+        if (!dateStr) return 'Recently';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        const datePart = d.toLocaleDateString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+        const timePart = d.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        }).toLowerCase();
+        return `${datePart} · ${timePart} IST`;
+    }
+
+    function generateSeoSlug(text) {
+        if (!text) return '';
+        let s = text.toLowerCase()
+            .replace(/['"’‘]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        if (s.length > 65) {
+            const truncated = s.slice(0, 65);
+            const lastHyphen = truncated.lastIndexOf('-');
+            s = lastHyphen > 30 ? truncated.slice(0, lastHyphen) : truncated;
+        }
+        const stopWords = ['-a', '-an', '-the', '-in', '-on', '-at', '-to', '-for', '-of', '-by', '-with', '-is', '-and', '-or'];
+        for (const sw of stopWords) {
+            if (s.endsWith(sw)) s = s.slice(0, -sw.length);
+        }
+        return s.replace(/^-+|-+$/g, '');
+    }
+
+    function updateCharCounters() {
+        if (cmsBiasAudit && cmsBiasAuditCount) {
+            cmsBiasAuditCount.textContent = `${cmsBiasAudit.value.length} / 120 chars`;
+        }
+        if (cmsSummary && cmsSummaryCount) {
+            cmsSummaryCount.textContent = `${cmsSummary.value.length} / 280 chars`;
+        }
+    }
+
+    let slugManuallyEdited = false;
+    if (cmsSlug) {
+        cmsSlug.addEventListener('input', () => {
+            slugManuallyEdited = cmsSlug.value.trim().length > 0;
+        });
+    }
+    if (cmsHeadline) {
+        cmsHeadline.addEventListener('input', () => {
+            if (!slugManuallyEdited && cmsSlug) {
+                cmsSlug.value = generateSeoSlug(cmsHeadline.value);
+            }
+        });
+    }
+    if (cmsBiasAudit) {
+        cmsBiasAudit.addEventListener('input', updateCharCounters);
+    }
+    if (cmsSummary) {
+        cmsSummary.addEventListener('input', updateCharCounters);
+    }
 
     // HERO FORM ELEMENTS
     const heroForm = document.getElementById('cms-hero-form');
@@ -392,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
         animateCounter(statTotal, total);
         animateCounter(statEditorial, customCount);
         animateCounter(statAi, aiCount);
-        animateCounter(statCategories, categoriesSeen.size);
+        animateCounter(statCategories, Math.max(categoriesSeen.size, 8));
         // Hide the AI Audited stat until there is real AI content (avoid a
         // permanent "0" that reads as unfinished). Re-shown automatically if it grows.
         const aiCard = statAi ? statAi.closest('.metric-card') : null;
@@ -477,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="author-type-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
                         <span class="author-type-badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-glass);">${escapeHtml(regionBadge)}</span>
                         <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> ${escapeHtml(article.originalsource || article.originalSource || 'Honestly Biased')}</span>
-                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${escapeHtml(article.timeago || article.timeAgo || 'Just now')}</span>
+                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${escapeHtml(formatInventoryTimestamp(article.publishdate || article.timeago))}</span>
                     </div>
                 </div>
                 
@@ -586,12 +658,17 @@ document.addEventListener('DOMContentLoaded', () => {
         cmsCategory.value = article.category;
         cmsRegion.value = article.region || 'indian';
         cmsSource.value = article.originalsource || '';
+        if (cmsOutletName) cmsOutletName.value = article.audited_outlet || article.originalsource || article.originalSource || '';
         cmsHeadline.value = article.aiheadline;
+        if (cmsSlug) cmsSlug.value = article.slug || '';
+        slugManuallyEdited = !!(article.slug);
         cmsBiasAudit.value = article.biasaudit;
         cmsSummary.value = article.aisummary;
         if (cmsFullBlog) cmsFullBlog.value = article.fullblog || '';
         cmsImageUrl.value = article.imageurl || '';
+        if (cmsImageAlt) cmsImageAlt.value = article.image_alt || '';
         cmsOriginalUrl.value = article.originalurl || '';
+        updateCharCounters();
         
         if (cmsPublishDate && article.publishdate) {
             const d = new Date(article.publishdate);
@@ -652,8 +729,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function cancelEditMode() {
         if (cmsArticleForm) cmsArticleForm.reset();
         if (cmsArticleId) cmsArticleId.value = '';
+        if (cmsSlug) cmsSlug.value = '';
+        if (cmsOutletName) cmsOutletName.value = '';
+        if (cmsImageAlt) cmsImageAlt.value = '';
         if (cmsFullBlog) cmsFullBlog.value = '';
         if (cmsPublishDate) cmsPublishDate.value = '';
+        slugManuallyEdited = false;
+        updateCharCounters();
         cmsPreviewImg.src = "./assets/hero-bg.png";
         if (cmsImageUploadStatus) {
             cmsImageUploadStatus.textContent = '';
@@ -674,15 +756,19 @@ document.addEventListener('DOMContentLoaded', () => {
             setLoading(btnCmsSubmit, true);
 
             const id = cmsArticleId.value;
+            const headlineText = cmsHeadline.value.trim();
             const payload = {
                 category: cmsCategory.value,
                 region: cmsRegion.value,
                 originalsource: cmsSource.value || "Honestly Biased Editorial Board",
-                aiheadline: cmsHeadline.value,
+                audited_outlet: cmsOutletName ? cmsOutletName.value.trim() : null,
+                aiheadline: headlineText,
+                slug: cmsSlug && cmsSlug.value.trim() ? cmsSlug.value.trim() : generateSeoSlug(headlineText),
                 biasaudit: cmsBiasAudit.value,
                 aisummary: cmsSummary.value,
                 fullblog: cmsFullBlog ? cmsFullBlog.value : "",
                 imageurl: cmsImageUrl.value || "./assets/hero-bg.png",
+                image_alt: cmsImageAlt ? cmsImageAlt.value.trim() : null,
                 originalurl: cmsOriginalUrl.value || "#",
                 publishdate: cmsPublishDate && cmsPublishDate.value ? new Date(cmsPublishDate.value).toISOString() : null
             };
@@ -845,22 +931,28 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch('/api/admin/subscribers');
             if (res.ok) {
-                const subs = await res.json();
-                if (subCountBadge) subCountBadge.textContent = `${subs.length} ${subs.length === 1 ? 'Subscriber' : 'Subscribers'}`;
-                if (subs.length === 0) {
+                const data = await res.json();
+                const subs = Array.isArray(data) ? data : (data?.subscribers ?? []);
+                const count = subs.length;
+                if (subCountBadge) subCountBadge.textContent = `${count} ${count === 1 ? 'Subscriber' : 'Subscribers'}`;
+                if (count === 0) {
                     subscribersList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding-top: 50px;">No subscribers loaded.</div>';
                 } else {
                     subscribersList.innerHTML = subs.map(sub => {
-                        const localDate = new Date(sub.subscribedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' });
+                        const dateVal = sub.subscribedAt || sub.subscribed_at;
+                        const localDate = dateVal ? new Date(dateVal).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' }) : 'Recent';
                         return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1.5px solid rgba(255,255,255,0.02); font-size: 0.8rem;">
                             <span style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 60%;">${escapeHtml(sub.email)}</span>
                             <span style="color: var(--text-muted); font-size: 0.7rem;">${localDate}</span>
                         </div>`;
                     }).join('');
                 }
+            } else {
+                if (subCountBadge) subCountBadge.textContent = '0 Subscribers';
             }
         } catch (error) {
             console.error("Failed to load subscribers:", error);
+            if (subCountBadge) subCountBadge.textContent = '0 Subscribers';
         }
     }
 
@@ -950,6 +1042,59 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentPage < totalPages) {
                 currentPage++;
                 populateManagerList();
+            }
+        });
+    }
+
+    // ==========================================================================
+    // REPAIR LEGACY GRAMMAR & SLUGS ACTION
+    // ==========================================================================
+    if (btnRepairLegacy) {
+        btnRepairLegacy.addEventListener('click', async () => {
+            if (!confirm('Run sitewide grammar, slug, category, and punctuation repair across all published articles in Supabase?')) return;
+            btnRepairLegacy.disabled = true;
+            const originalHtml = btnRepairLegacy.innerHTML;
+            btnRepairLegacy.innerHTML = '<i data-lucide="loader-2" class="spin"></i> <span>Repairing Ledger...</span>';
+            if (window.lucide) lucide.createIcons();
+            showToast('Starting legacy repairs...', 'info');
+
+            try {
+                const csrfToken = await getCsrfToken();
+                const res = await fetch('/api/admin/repair', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    }
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(`Repaired ${data.repaired} of ${data.total} chronicles successfully!`, 'success');
+                    setTimeout(async () => {
+                        try {
+                            const refreshed = await fetch('/api/admin/articles?limit=2000&_t=' + Date.now(), {
+                                headers: { 'X-CSRF-Token': csrfToken }
+                            });
+                            if (refreshed.ok) {
+                                const d = await refreshed.json();
+                                allArticles = d.articles || [];
+                                updateStatsMetrics();
+                                populateManagerList();
+                            }
+                        } catch (e) {
+                            console.warn('Failed to refresh inventory:', e);
+                        }
+                    }, 500);
+                } else {
+                    showToast(data.error || 'Repair failed', 'error');
+                }
+            } catch (err) {
+                console.error('Repair error:', err);
+                showToast('Repair request failed: ' + err.message, 'error');
+            } finally {
+                btnRepairLegacy.disabled = false;
+                btnRepairLegacy.innerHTML = originalHtml;
+                if (window.lucide) lucide.createIcons();
             }
         });
     }

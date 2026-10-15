@@ -11,6 +11,7 @@ const VALID_CATEGORIES = [
   'Crime & Law',
   'World & Civic',
   'Health',
+  'Sports',
   'Entertainment'
 ];
 
@@ -20,6 +21,15 @@ const CRIME_LAW_KEYWORDS = [
   'high court', 'cbi', 'ed raid', 'chargesheet', 'sentenced', 'extortion', 'kidnapping',
   'robbery', 'bail', 'crime', 'criminal', 'lynching', 'jailed', 'lynched', 'gangster',
   'hit-and-run', 'convicted', 'homicide', 'terrorist', 'detained', 'interrogation'
+];
+
+const SPORTS_KEYWORDS = [
+  'asian games', 'boxing', 'cricket', 'ipl', 'bcci', 'test match', 'odi', 't20',
+  'olympics', 'boxer', 'football', 'fifa', 'premier league', 'badminton', 'tennis',
+  'wimbledon', 'athlete', 'athletics', 'championship', 'world cup', 'wicket',
+  'batsman', 'bowler', 'century', 'medal', 'gold medal', 'silver medal', 'bronze medal',
+  'tournament', 'derby', 'striker', 'goalkeeper', 'formula 1', 'f1', 'grand prix',
+  'kabaddi', 'chess', 'grandmaster'
 ];
 
 const WORLD_CIVIC_KEYWORDS = [
@@ -56,6 +66,12 @@ function classifyCategory(rawCategory, headline = '', summary = '', content = ''
   const hasCrimeLaw = CRIME_LAW_KEYWORDS.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(combined));
   if (hasCrimeLaw && currentCat.toLowerCase() === 'entertainment') {
     return 'Crime & Law';
+  }
+
+  // 2. Strict Negative Constraint: Reclassify Asian Games, boxing, cricket and sports out of Entertainment
+  const hasSports = SPORTS_KEYWORDS.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(combined));
+  if (hasSports && (currentCat.toLowerCase() === 'entertainment' || currentCat.toLowerCase() === 'general' || !currentCat)) {
+    return 'Sports';
   }
 
   // 2. Strict Negative Constraint: NEVER classify traffic, rail delays, civic issues as Entertainment
@@ -97,7 +113,9 @@ function classifyCategory(rawCategory, headline = '', summary = '', content = ''
     'crime': 'Crime & Law',
     'law': 'Crime & Law',
     'civic': 'World & Civic',
-    'world': 'World & Civic'
+    'world': 'World & Civic',
+    'sport': 'Sports',
+    'sports': 'Sports'
   };
 
   if (map[currentCat.toLowerCase()]) {

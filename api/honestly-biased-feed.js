@@ -31,7 +31,7 @@ function bustFeedCache() {
   cacheTime = 0;
 }
 
-async function getCustomArticles(limit = 500) {
+async function getCustomArticles(limit = 1000) {
   const { data } = await supabase
     .from('articles')
     .select('id, aiheadline, aisummary, imageurl, publishdate, category, region, authortype, author, timeago, biasaudit, slug')
@@ -59,7 +59,7 @@ async function getCustomArticles(limit = 500) {
 const handler = async (req, res) => {
   try {
     const now = Date.now();
-    const limit = Math.min(1000, Math.max(1, parseInt(req.query?.limit) || 500));
+    const limit = Math.min(2000, Math.max(1, parseInt(req.query?.limit) || 1000));
 
     if (req.query && (req.query.bust === '1' || req.query.__bust)) {
       bustFeedCache();
@@ -68,12 +68,12 @@ const handler = async (req, res) => {
     let customArticles;
 
     // Serve from cache if fresh and cache size satisfies requested limit
-    if (cached && (now - cacheTime) < CACHE_TTL_MS && (limit <= cached.length || limit === 500)) {
+    if (cached && (now - cacheTime) < CACHE_TTL_MS && (limit <= cached.length || limit === 1000)) {
       customArticles = cached.slice(0, limit);
       res.setHeader('X-Cache', 'HIT');
     } else {
       customArticles = await getCustomArticles(limit);
-      if (limit >= 500) {
+      if (limit >= 1000) {
         cached = customArticles;
         cacheTime = now;
       }

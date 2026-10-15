@@ -266,6 +266,11 @@ function classifyClientCategory(rawCategory, headline = '', summary = '') {
         }
     }
     
+    const sportsWords = ['asian games', 'boxing', 'cricket', 'ipl', 'bcci', 'olympics', 'tennis', 'football', 'fifa', 'world cup', 'wicket', 'medal', 'tournament', 'championship'];
+    if (sportsWords.some(w => combined.includes(w)) && (current === 'entertainment' || current === 'general' || !current)) {
+        return 'Sports';
+    }
+    
     const map = {
         'politics': 'Politics',
         'tech': 'Tech',
@@ -275,6 +280,8 @@ function classifyClientCategory(rawCategory, headline = '', summary = '') {
         'world & civic': 'World & Civic',
         'world-and-civic': 'World & Civic',
         'health': 'Health',
+        'sports': 'Sports',
+        'sport': 'Sports',
         'entertainment': 'Entertainment'
     };
     return map[current] || rawCategory || 'Politics';
@@ -592,6 +599,18 @@ document.addEventListener('DOMContentLoaded', () => {
         'Health': {
             title: "Health Audits",
             subtitle: "Auditing health systems, pharmaceutical lobbying, public welfare, and medical narratives"
+        },
+        'Crime & Law': {
+            title: "Crime & Law Chronicles",
+            subtitle: "Deconstructing judicial proceedings, policing narratives, and statutory power structures"
+        },
+        'World & Civic': {
+            title: "World & Civic Audits",
+            subtitle: "Investigating geopolitical framing, civic movements, and multilateral foreign policy"
+        },
+        'Sports': {
+            title: "Sports Ledger",
+            subtitle: "Interrogating sports-capital conglomerates, athletic governance, and competitive media spin"
         }
     };
 
@@ -656,7 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Immediately fetch FULL article catalog for pagination and latest dispatches
                     setTimeout(async () => {
                         try {
-                            const res = await fetch('/api/honestly-biased-feed?limit=500');
+                            const res = await fetch('/api/honestly-biased-feed?limit=1000');
                             const data = await res.json();
                             const apiArticles = data.articles || [];
                             if (apiArticles.length > 0) {
@@ -754,7 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Call the local backend server (running on port 3000)
-            const response = await fetch('/api/honestly-biased-feed');
+            const response = await fetch('/api/honestly-biased-feed?limit=1000');
             
             if (!response.ok) {
                 throw new Error(`API returned HTTP status ${response.status}`);
@@ -1122,9 +1141,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         const cardActions = `
                             <div class="card-action-bar">
-                                <span class="inspect-audit-btn" aria-hidden="true">
+                                <a href="${articleUrl}" class="inspect-audit-btn audit-trigger" data-id="${escapeHtml(article.id)}" data-slug="${escapeHtml(slug)}" aria-label="Inspect Audit: ${escapeHtml(headline)}">
                                     <i data-lucide="scan-eye"></i> <span>Inspect Audit</span>
-                                </span>
+                                </a>
                                 <button type="button" class="share-receipt-btn" data-headline="${escapeHtml(headline)}" data-verdict="${escapeHtml(biasAudit)}" data-url="${escapeHtml(fullArticleUrl)}" aria-label="Share Bias Receipt">
                                     <i data-lucide="share-2"></i> <span>Share</span>
                                 </button>
@@ -1173,7 +1192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <h3 class="card-title" style="margin-bottom:8px;">
                                             ${cardLink}
                                         </h3>
-                                        <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(summary)}</p>
+                                        <p class="card-summary small-summary">${escapeHtml(summary)}</p>
                                         <div class="card-footer-meta" style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
                                             ${verdictHtml}
                                             ${cardActions}
@@ -1265,7 +1284,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Region Tabs Event Listeners (Triggers clean crawlable URL pushState)
     const regionButtons = document.querySelectorAll('.region-tab-btn');
     regionButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            if (btn.tagName === 'A') e.preventDefault();
             const selectedRegion = btn.getAttribute('data-region').toLowerCase().trim();
             currentPage = 1;
             currentRegion = selectedRegion;
@@ -1277,7 +1297,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Category Tabs Event Listeners (Triggers clean crawlable URL pushState)
     const tabButtons = document.querySelectorAll('.category-tab-btn');
     tabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
             const selectedCat = btn.getAttribute('data-category').trim();
             currentPage = 1;
             currentCategory = selectedCat;
@@ -1456,7 +1477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let category = 'all';
 
         const validRegions = ['all', 'indian', 'india', 'world', 'uk', 'berkshire'];
-        const validCategories = ['politics', 'tech', 'finance', 'crime-and-law', 'crime & law', 'world-and-civic', 'world & civic', 'entertainment', 'health'];
+        const validCategories = ['politics', 'tech', 'finance', 'crime-and-law', 'crime & law', 'world-and-civic', 'world & civic', 'sports', 'entertainment', 'health'];
 
         // 1. Check clean pathname
         if (pathname.startsWith('/editions/')) {
@@ -1501,6 +1522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (cleanCat === 'world-and-civic' || cleanCat === 'world-civic') targetCategory = 'World & Civic';
         else if (cleanCat === 'entertainment') targetCategory = 'Entertainment';
         else if (cleanCat === 'health') targetCategory = 'Health';
+        else if (cleanCat === 'sports' || cleanCat === 'sport') targetCategory = 'Sports';
 
         return { region, category: targetCategory };
     }
@@ -1899,12 +1921,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (prevBtn) {
+            const prevPage = Math.max(1, currentPage - 1);
+            prevBtn.href = `/?page=${prevPage}`;
+            prevBtn.setAttribute('aria-disabled', currentPage <= 1 ? 'true' : 'false');
             prevBtn.disabled = currentPage <= 1;
             prevBtn.style.opacity = currentPage <= 1 ? '0.4' : '1';
             prevBtn.style.cursor = currentPage <= 1 ? 'not-allowed' : 'pointer';
         }
         
         if (nextBtn) {
+            const nextPage = Math.min(totalPages, currentPage + 1);
+            nextBtn.href = `/?page=${nextPage}`;
+            nextBtn.setAttribute('aria-disabled', currentPage >= totalPages ? 'true' : 'false');
             nextBtn.disabled = currentPage >= totalPages;
             nextBtn.style.opacity = currentPage >= totalPages ? '0.4' : '1';
             nextBtn.style.cursor = currentPage >= totalPages ? 'not-allowed' : 'pointer';
@@ -1942,7 +1970,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (prevPageBtn) {
-        prevPageBtn.addEventListener('click', () => {
+        prevPageBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             if (currentPage > 1) {
                 currentPage--;
                 const route = parseCurrentRoute();
@@ -1954,7 +1983,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (nextPageBtn) {
-        nextPageBtn.addEventListener('click', () => {
+        nextPageBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             if (currentPage < totalPages) {
                 currentPage++;
                 const route = parseCurrentRoute();
