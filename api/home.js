@@ -397,7 +397,7 @@ async function renderHomepageHtml(articles) {
   <div class="header-container">
     <div class="header-left">
       <a href="/" class="brand-logo" aria-label="Honestly Biased Home">
-        <img src="/assets/logo.svg" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
+        <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
       </a>
     </div>
     <div class="header-center">
@@ -566,7 +566,7 @@ async function renderHomepageHtml(articles) {
 <footer class="editorial-footer">
   <div class="footer-grid">
     <div class="footer-brand-column">
-      <a href="/" class="footer-logo"><img src="/assets/logo.svg" alt="Honestly Biased Logo" class="logo-png-footer"></a>
+      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png-footer"></a>
       <p class="mission-statement" data-site-content-block="footer"><span data-bind="mission">Honestly Biased is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We deliver forensic, analytical, and uncompromisingly honest media critiques across multi-edition global politics, policy, and institutional power structures.</span></p>
     </div>
     <div class="footer-links-column">

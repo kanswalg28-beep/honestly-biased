@@ -257,7 +257,7 @@ function renderArticleHtml(article) {
     'publisher': {
       '@type': 'Organization',
       'name': SITE_NAME,
-      'logo': { '@type': 'ImageObject', 'url': SITE + '/assets/logo.svg' }
+      'logo': { '@type': 'ImageObject', 'url': SITE + '/assets/logo.png' }
     },
     'articleSection': category,
     'inLanguage': 'en-IN',
@@ -287,7 +287,7 @@ function renderArticleHtml(article) {
       'url': SITE,
       'logo': {
         '@type': 'ImageObject',
-        'url': `${SITE}/assets/logo.svg`
+        'url': `${SITE}/assets/logo.png`
       }
     },
     'reviewRating': {
@@ -371,7 +371,7 @@ function renderArticleHtml(article) {
   <div class="header-container">
     <div class="header-left" style="display: flex; align-items: center; gap: 16px;">
       <a href="/" class="brand-logo" aria-label="${escapeAttr(SITE_NAME)} Home">
-        <img src="/assets/logo.svg" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png" id="logo-img">
+        <img src="/assets/logo.png" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png" id="logo-img">
       </a>
       <nav class="article-header-nav" aria-label="Section and Back Navigation">
         <a href="/" class="header-back-link"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> The Ledger</a>
@@ -497,7 +497,7 @@ function renderArticleHtml(article) {
 <footer class="editorial-footer">
   <div class="footer-grid">
     <div class="footer-brand-column">
-      <a href="/" class="footer-logo"><img src="/assets/logo.svg" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png-footer"></a>
+      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png-footer"></a>
       <p class="mission-statement">${SITE_NAME} is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We deliver forensic, analytical, and uncompromisingly honest media critiques across multi-edition global politics, policy, and institutional power structures.</p>
     </div>
     <div class="footer-links-column">
