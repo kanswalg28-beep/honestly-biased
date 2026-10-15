@@ -93,15 +93,25 @@ const homeApi = require('./api/home');
 const articleApi = require('./api/article');
 const rssApi = require('./api/rss');
 const sitemapApi = require('./api/sitemap');
+const { cleanEditorialText } = require('./db/cleanEditorialText');
+const { classifyCategory, VALID_CATEGORIES } = require('./db/classifyCategory');
 
 // Clean category & static page route rewrites (matching vercel.json)
 const staticPages = [
     '/politics', '/tech', '/finance', '/entertainment', '/health',
+    '/crime-and-law', '/world-and-civic',
     '/manifesto', '/standards', '/funding', '/finances', '/collective'
 ];
 staticPages.forEach(route => {
     app.get(route, (req, res) => {
-        res.sendFile(path.join(__dirname, `${route.slice(1)}.html`));
+        const filePath = path.join(__dirname, `${route.slice(1)}.html`);
+        if (fs.existsSync(filePath)) {
+            res.sendFile(filePath);
+        } else {
+            // Forward category routes to homeApi with query for SSR
+            req.query.category = route.slice(1);
+            return homeApi(req, res);
+        }
     });
 });
 
@@ -110,6 +120,10 @@ app.get('/', homeApi);
 app.get('/index.html', homeApi);
 app.get('/api/home', homeApi);
 
+app.get('/chronicles/:slug', (req, res) => {
+    req.query.slug = req.params.slug;
+    return articleApi(req, res);
+});
 app.get('/article/:slug', (req, res) => {
     req.query.slug = req.params.slug;
     return articleApi(req, res);
@@ -129,11 +143,32 @@ app.use(express.static(__dirname, { extensions: ['html'] }));
 
 // Gracefully redirect any accidental or malformed subdirectory requests for index.html back to the root
 app.use((req, res, next) => {
-    if (req.path.endsWith('/index.html') && req.path !== '/index.html') {
+    if (req.path.endsWith('/index.html') && req.path !== '/index.html' && !req.path.startsWith('/taxmetrics')) {
         console.log(`🔀 Redirecting accidental path request "${req.path}" to root /index.html`);
         return res.redirect('/index.html');
     }
     next();
+});
+
+// ==========================================================================
+// TaxMetrics (WhatITakeHome) US Income Tax & Paycheck Calculator Routes
+// ==========================================================================
+app.use('/taxmetrics', express.static(path.join(__dirname, 'taxmetrics'), { extensions: ['html'] }));
+app.get('/taxmetrics', (req, res) => {
+    res.sendFile(path.join(__dirname, 'taxmetrics', 'index.html'));
+});
+app.get('/whatitakehome', (req, res) => {
+    res.redirect(301, '/taxmetrics');
+});
+app.get('/taxmetrics/:state', (req, res, next) => {
+    const stateFile = path.join(__dirname, 'taxmetrics', `${req.params.state}.html`);
+    if (fs.existsSync(stateFile)) {
+        return res.sendFile(stateFile);
+    }
+    next();
+});
+app.get('/whatitakehome/:state', (req, res) => {
+    res.redirect(301, `/taxmetrics/${req.params.state}`);
 });
 
 
@@ -188,15 +223,31 @@ async function runActualGeminiAPI(rawArticle) {
         Headline: "${rawArticle.title}"
         Details: "${rawArticle.rawContent}"
 
-        Analyze the text and return a JSON object following this strict schema:
+        Analyze the text and return a JSON object following this strict 3-step "Receipt" schema:
         {
-            "category": "Politics" or "Tech" or "Finance" or "Entertainment" or "Health",
-            "region": "indian" or "uk" or "world",
-            "aiHeadline": "A highly sharp, wittily satirical, and self-aware headline rewriting the corporate spin",
+            "category": "Politics" | "Tech" | "Finance" | "Crime & Law" | "World & Civic" | "Health" | "Entertainment",
+            "region": "indian" | "uk" | "world",
+            "originalFraming": "The exact angle or headline used by the mainstream source",
+            "satiricalTranslation": "The sharp, grammatically clean Honestly Biased headline rewriting the corporate spin (preserve apostrophes, avoid jammed commas)",
+            "aiHeadline": "Same as satiricalTranslation",
             "aiSummary": "Facts summarized in exactly 2 sentences, written with transparent critical bias, dry humor, and absolute clarity",
-            "biasAudit": "A 1-sentence analytical audit explaining the specific institutional or corporate bias/incentive in the original piece",
-            "fullBlog": "A detailed, engaging satirical blog post of 3-4 paragraphs (approx 200-350 words) written with dry wit, deep-dive media critique, and transparent bias. Explain the structural incentives of the parties involved."
+            "biasAuditVerdict": "A punchy 1-line tag for the feed card (max 90 chars, e.g., 'Corporate PR framing; omits ₹22,000 Cr creditor haircut')",
+            "biasAudit": "Same as biasAuditVerdict",
+            "biasAuditDeepDive": "A substantive 2-3 paragraph analytical breakdown naming specific missing facts, structural incentives, and who benefits from the spin, avoiding generic boilerplate phrases",
+            "fullBlog": "<p class=\\"blog-lead\\">Engaging lead paragraph...</p><p class=\\"blog-analysis-heading\\"><strong>The Honestly Biased Audit:</strong></p><blockquote>Core verdict quote...</blockquote><p>Deep-dive media critique paragraph...</p>",
+            "languageVariants": {
+                "hi": {
+                    "headline": "Sharp Hinglish/Hindi satirical headline",
+                    "summary": "Hinglish/Hindi 2-sentence summary"
+                }
+            }
         }
+
+        STRICT CATEGORY CLASSIFICATION RULES:
+        - Allowed Categories: ['Politics', 'Tech', 'Finance', 'Crime & Law', 'World & Civic', 'Health', 'Entertainment']
+        - NEVER classify police encounters, murders, shootings, FIRs, or court cases as 'Entertainment'; always assign 'Crime & Law'.
+        - NEVER classify traffic jams, rail delays, or municipal civic issues as 'Entertainment'; assign 'World & Civic'.
+        - NEVER classify fatal accidents, violent stabbings, war casualties, or natural disasters as 'Health' merely because words like 'dies', 'lives', or 'dead' appear; assign 'World & Civic' or 'Crime & Law'. Reserve 'Health' strictly for medicine, public health policy, nutrition, hospitals, and disease outbreaks.
 
         Classification instructions for the "region" property:
         - "indian": Assign ONLY if the news content is directly related to India (e.g. Indian politicians, Indian companies, Indian events, Indian cities, Indian culture, etc.)
@@ -213,7 +264,14 @@ async function runActualGeminiAPI(rawArticle) {
         
         // Parse the strict JSON return
         const aiOutput = JSON.parse(text);
-        console.log(`✨ Gemini processed successfully: "${aiOutput.aiHeadline}"`);
+        const rawHeadline = aiOutput.satiricalTranslation || aiOutput.aiHeadline || rawArticle.title;
+        aiOutput.aiHeadline = cleanEditorialText(rawHeadline);
+        aiOutput.satiricalTranslation = aiOutput.aiHeadline;
+        aiOutput.aiSummary = cleanEditorialText(aiOutput.aiSummary || rawArticle.rawContent);
+        aiOutput.biasAudit = cleanEditorialText(aiOutput.biasAuditVerdict || aiOutput.biasAudit || "Corporate neutrality observed.");
+        aiOutput.biasAuditVerdict = aiOutput.biasAudit;
+        aiOutput.category = classifyCategory(aiOutput.category, aiOutput.aiHeadline, aiOutput.aiSummary, aiOutput.fullBlog);
+        console.log(`✨ Gemini processed successfully: "${aiOutput.aiHeadline}" [${aiOutput.category}]`);
         return aiOutput;
     } catch (err) {
         if (err.status === 429 || (err.message && err.message.includes("429"))) {
@@ -366,20 +424,32 @@ async function fetchAndAuditGNews() {
             if (!cacheData.highlights) {
                 cacheData.highlights = defaultHighlights;
             }
-            // Migrate: re-classify articles dynamically based on our new strict rules
+            // Migrate: re-classify articles dynamically based on our new strict rules and sanitize text
             if (cacheData.articles) {
                 cacheData.articles = cacheData.articles.map(art => {
-                    // Force Geopolitics category to Politics
-                    if (art.category === 'Geopolitics') {
-                        art.category = 'Politics';
+                    const originalSource = art.originalSource || art.originalsource || "";
+                    const url = art.originalUrl || art.originalurl || "";
+                    const description = art.aiSummary || art.aisummary || "";
+                    const rawContent = art.fullBlog || art.fullblog || "";
+                    const headline = art.aiHeadline || art.aiheadline || art.originalTitle || art.title || "";
+
+                    art.category = classifyCategory(art.category, headline, description, rawContent);
+
+                    if (art.aiHeadline) art.aiHeadline = cleanEditorialText(art.aiHeadline);
+                    if (art.aiheadline) art.aiheadline = cleanEditorialText(art.aiheadline);
+                    if (art.originalTitle) art.originalTitle = cleanEditorialText(art.originalTitle);
+                    if (art.title) art.title = cleanEditorialText(art.title);
+                    if (art.aiSummary) art.aiSummary = cleanEditorialText(art.aiSummary);
+                    if (art.aisummary) art.aisummary = cleanEditorialText(art.aisummary);
+                    if (art.biasAudit) art.biasAudit = cleanEditorialText(art.biasAudit);
+                    if (art.biasaudit) art.biasaudit = cleanEditorialText(art.biasaudit);
+
+                    if (art.author === 'CMS Admin' || art.author === 'CMS Admin · Editorial' || art.author === 'Honestly Biased Editorial Board (Admin)') {
+                        art.author = 'The Ledger Desk';
                     }
-                    if (art.authorType === 'ai' || art.authorType === 'instagram') {
-                        const originalSource = art.originalSource || "";
-                        const url = art.originalUrl || "";
-                        const description = art.aiSummary || "";
-                        const rawContent = art.fullBlog || "";
-                        
-                        art.region = classifyRegion(art.originalTitle || art.aiHeadline, description, rawContent, originalSource, url);
+
+                    if (art.authorType === 'ai' || art.authorType === 'instagram' || art.authortype === 'ai' || art.authortype === 'instagram') {
+                        art.region = classifyRegion(headline, description, rawContent, originalSource, url);
                     } else if (!art.region) {
                         art.region = 'indian';
                     }
@@ -628,7 +698,7 @@ app.post('/api/admin/articles', adminAuthLimiter, basicAuth, (req, res) => {
             originalsource: originalSource || "Honestly Biased Editorial Board",
             originaltitle: aiHeadline,
             timeago: new Date(resolvedPublishDate).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) + " IST",
-            author: authorType === "instagram" ? "Honestly Biased AI Engine (Instagram Ingestion)" : "Honestly Biased Editorial Board (Admin)",
+            author: authorType === "instagram" ? "Honestly Biased AI Engine (Instagram Ingestion)" : "The Ledger Desk",
             authortype: authorType || "admin",
             instagramShortcode: instagramShortcode || null,
             imageurl: imageUrl || "./assets/hero-bg.png",

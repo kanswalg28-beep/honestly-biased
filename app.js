@@ -178,13 +178,95 @@ function shortIdFromUuid(uuid) {
     return String(uuid).replace(/-/g, '').slice(-8);
 }
 
-// Derive canonical article URL (/:category/:slug)
+// Centralized text cleaning helper for client hydration
+function cleanEditorialText(text) {
+    if (!text || typeof text !== 'string') return '';
+    let cleaned = text;
+    cleaned = cleaned.replace(/,([^\s\d])/g, ', $1');
+    cleaned = cleaned
+        .replace(/\bunder\s+lying\b/gi, 'underlying')
+        .replace(/\bfor\s+grounding\b/gi, 'foregrounding')
+        .replace(/\btrademoff\b/gi, 'trade-off')
+        .replace(/\bThe headline emphasize\s+/g, 'The headline emphasizes ')
+        .replace(/\bthe headline emphasize\s+/g, 'the headline emphasizes ')
+        .replace(/\bThe headline frame\s+/g, 'The headline frames ')
+        .replace(/\bthe headline frame\s+/g, 'the headline frames ');
+    cleaned = cleaned.replace(/\s{2,}/g, ' ').trim();
+    const doubleQuoteCount = (cleaned.match(/"/g) || []).length;
+    if (doubleQuoteCount % 2 === 1) cleaned += '"';
+    const openCurlyDouble = (cleaned.match(/“/g) || []).length;
+    const closeCurlyDouble = (cleaned.match(/”/g) || []).length;
+    if (openCurlyDouble > closeCurlyDouble) cleaned += '”';
+    const openCurlySingle = (cleaned.match(/‘/g) || []).length;
+    const closeCurlySingle = (cleaned.match(/’/g) || []).length;
+    if (openCurlySingle > closeCurlySingle) cleaned += '’';
+    const nonContractionSingles = (cleaned.replace(/\b['’]\b/g, '').match(/'/g) || []).length;
+    if (nonContractionSingles % 2 === 1) cleaned += "'";
+    return cleaned;
+}
+
+function formatRelativeTime(dateStr) {
+    if (!dateStr) return 'recently';
+    try {
+        const diffMs = Date.now() - new Date(dateStr).getTime();
+        if (diffMs < 0) return 'just now';
+        const mins = Math.floor(diffMs / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 30) return `${days}d ago`;
+        return formatDate(dateStr);
+    } catch (e) {
+        return 'recently';
+    }
+}
+
+function calculateReadTime(text) {
+    const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(1, Math.ceil(words / 200)) + ' Min Audit';
+}
+
+function classifyClientCategory(rawCategory, headline = '', summary = '') {
+    const combined = `${headline} ${summary}`.toLowerCase();
+    const current = (rawCategory || '').trim().toLowerCase();
+    
+    const crimeWords = ['murder', 'probe', 'encounter', 'stabbing', 'stabbed', 'shooting', 'police', 'arrested', 'arrest', 'fir', 'court', 'cbi', 'ed raid'];
+    if (crimeWords.some(w => combined.includes(w)) && current === 'entertainment') {
+        return 'Crime & Law';
+    }
+    const civicWords = ['traffic', 'jam', 'caversham', 'road chaos', 'tunnel', 'rail delay', 'bridge collapse', 'metro'];
+    if (civicWords.some(w => combined.includes(w)) && current === 'entertainment') {
+        return 'World & Civic';
+    }
+    if (current === 'health') {
+        const casualtyWords = ['crash', 'accident', 'collision', 'tunnel', 'stabbing', 'stabbed', 'derail', 'landslide', 'flood', 'disaster'];
+        if (casualtyWords.some(w => combined.includes(w))) {
+            return 'World & Civic';
+        }
+    }
+    
+    const map = {
+        'politics': 'Politics',
+        'tech': 'Tech',
+        'finance': 'Finance',
+        'crime & law': 'Crime & Law',
+        'crime-and-law': 'Crime & Law',
+        'world & civic': 'World & Civic',
+        'world-and-civic': 'World & Civic',
+        'health': 'Health',
+        'entertainment': 'Entertainment'
+    };
+    return map[current] || rawCategory || 'Politics';
+}
+
+// Derive canonical article URL (/chronicles/:slug)
 function getArticleUrl(article) {
     if (!article) return '/';
-    if (article.url) return article.url;
-    const cat = String(article.category || 'politics').toLowerCase().trim();
+    if (article.url && article.url.startsWith('/chronicles/')) return article.url;
     const slug = article.slug || shortIdFromUuid(article.id);
-    return `/${cat}/${slug}`;
+    return `/chronicles/${slug}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -232,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     let isHeaderClick = false;
-    let currentRegion = 'all';
+    let currentRegion = 'indian'; // Enforce Indian Edition as the default
     let currentCategory = 'all';
 
     // ==========================================================================
@@ -750,26 +832,53 @@ document.addEventListener('DOMContentLoaded', () => {
             modalCategory.className = 'modal-tag ' + (article.category.toLowerCase().trim() === 'tech' ? 'green-bg' : 'saffron-bg');
         }
         if (modalTime) modalTime.innerHTML = `<i data-lucide="clock"></i> ${article.timeago || (article.publishdate ? formatDate(article.publishdate) : '')}`;
-        if (modalTitle) modalTitle.textContent = article.aiheadline;
-        if (modalSource) modalSource.textContent = `Source: ${article.originalsource || article.originaltitle || article.author || 'Honestly Biased Editorial Board'}`;
-        if (modalBiasAudit) modalBiasAudit.textContent = article.biasaudit;
-        if (modalSummary) modalSummary.textContent = article.aisummary;
-        if (modalOriginalLink) modalOriginalLink.href = article.originalurl;
+        if (modalTitle) modalTitle.textContent = cleanEditorialText(article.aiheadline || '');
+        if (modalSource) modalSource.textContent = `Source: ${article.originalsource || article.originaltitle || article.author || 'Honestly Biased Editorial Desk'}`;
+        if (modalBiasAudit) modalBiasAudit.textContent = cleanEditorialText(article.biasaudit || '');
+        if (modalSummary) modalSummary.textContent = cleanEditorialText(article.aisummary || '');
+        if (modalOriginalLink) modalOriginalLink.href = article.originalurl || '#';
 
-        // Dynamic Author Badging in Modal Reader
+        // Dynamic Author Badging in Modal Reader (The Ledger Desk)
         const modalAuthor = document.querySelector('.modal-author');
         if (modalAuthor) {
             if (article.authortype === 'admin') {
-                modalAuthor.innerHTML = `<i data-lucide="pen-tool" style="width:14px; height:14px;"></i> Honestly Biased Editorial Board (Admin)`;
-                modalAuthor.style.color = 'var(--accent-green)'; // Gold
+                modalAuthor.innerHTML = `<i data-lucide="pen-tool" style="width:14px; height:14px;"></i> The Ledger Desk`;
+                modalAuthor.style.color = 'var(--accent-saffron)';
             } else if (article.authortype === 'instagram') {
                 modalAuthor.innerHTML = `<i data-lucide="instagram" style="width:14px; height:14px;"></i> Honestly Biased AI Engine (Instagram Ingestion)`;
                 modalAuthor.style.color = '#e1306c'; // Instagram Pink
             } else {
-                modalAuthor.innerHTML = `<i data-lucide="shield-check" style="width:14px; height:14px;"></i> Audited by Honestly Biased AI Engine (Gemini)`;
+                modalAuthor.innerHTML = `<i data-lucide="shield-check" style="width:14px; height:14px;"></i> Audited by Honestly Biased AI Engine`;
                 modalAuthor.style.color = '#00E5FF'; // Neon Blue
             }
         }
+
+        // Side-by-Side Corporate Spin vs. Reality comparison box
+        const rawSource = article.originalsource || 'Mainstream Press Wire';
+        const rawFraming = article.originaltitle || article.title || article.originalsource || 'Standard Institutional Press Wire';
+        const spinHtml = `
+            <div class="spin-comparison-box">
+                <div class="spin-col-raw">
+                    <span class="spin-col-title"><i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> Corporate PR Spin / Wire</span>
+                    <p style="font-size:0.86rem; color:var(--text-secondary); margin:0 0 6px 0;"><strong>${escapeHtml(rawSource)}:</strong> ${escapeHtml(rawFraming)}</p>
+                    ${article.originalurl ? `<a href="${escapeAttr(article.originalurl)}" target="_blank" rel="noopener noreferrer" style="font-size:0.75rem; color:var(--accent-saffron); text-decoration:underline;">Inspect raw source →</a>` : ''}
+                </div>
+                <div class="spin-col-audited">
+                    <span class="spin-col-title"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> Honestly Biased Audit</span>
+                    <p style="font-size:0.86rem; color:var(--text-primary); margin:0;">${escapeHtml(article.biasaudit || 'Forensic analysis reveals institutional omissions and unexamined stakeholder incentives.')}</p>
+                </div>
+            </div>
+        `;
+        let spinEl = document.getElementById('modal-spin-box');
+        if (!spinEl) {
+            spinEl = document.createElement('div');
+            spinEl.id = 'modal-spin-box';
+            const callout = document.querySelector('.bias-audit-callout');
+            if (callout && callout.parentNode) {
+                callout.parentNode.insertBefore(spinEl, callout.nextSibling);
+            }
+        }
+        if (spinEl) spinEl.innerHTML = spinHtml;
 
         // Dynamic Media Container Hydration
         const mediaContainer = document.getElementById('modal-media-container');
@@ -802,9 +911,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Open modal
         if (auditModal) {
+            auditModal.style.display = 'flex';
             auditModal.classList.add('open');
             auditModal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('modal-open');
+        }
+
+        // Push URL to browser history (/chronicles/:slug)
+        const slug = article.slug || shortIdFromUuid(article.id);
+        if (window.history && window.history.pushState) {
+            window.history.pushState({ modalOpen: true, articleId: article.id, slug }, '', `/chronicles/${slug}`);
         }
 
         // Re-compile Lucide icons inside the modal
@@ -815,9 +931,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (auditModal) {
             auditModal.classList.remove('open');
             auditModal.setAttribute('aria-hidden', 'true');
+            auditModal.style.display = 'none';
             document.body.classList.remove('modal-open');
         }
         
+        // Restore browser URL if on /chronicles/
+        if (window.history && window.location.pathname.startsWith('/chronicles/')) {
+            window.history.pushState(null, '', '/');
+        }
+
         // Dispose of media content to stop background iframe audio playback
         const mediaContainer = document.getElementById('modal-media-container');
         if (mediaContainer) {
@@ -837,130 +959,209 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                // Pagination state
+                // Pagination state & search state
                 let currentPage = 1;
-                let itemsPerPage = 22;
+                let itemsPerPage = 12;
                 let totalPages = 1;
+                let currentSearchQuery = '';
+
+                // Toast notification utility
+                function showToast(message) {
+                    let toast = document.getElementById('hb-global-toast');
+                    if (!toast) {
+                        toast = document.createElement('div');
+                        toast.id = 'hb-global-toast';
+                        toast.className = 'hb-toast';
+                        document.body.appendChild(toast);
+                    }
+                    toast.innerHTML = `<i data-lucide="check-circle" style="width:16px;height:16px;color:var(--accent-saffron);"></i> <span>${escapeHtml(message)}</span>`;
+                    if (window.lucide) lucide.createIcons();
+                    toast.classList.add('show');
+                    clearTimeout(toast._timeout);
+                    toast._timeout = setTimeout(() => {
+                        toast.classList.remove('show');
+                    }, 2800);
+                }
+
+                function buildClientVerdictChipHtml(biasaudit) {
+                    if (!biasaudit) return '';
+                    const clean = cleanEditorialText(biasaudit);
+                    const truncated = clean.length > 85 ? clean.slice(0, 84).replace(/\s+\S*$/, '') + '…' : clean;
+                    return `
+                        <div class="card-verdict-chip" title="${escapeHtml(clean)}">
+                            <span class="verdict-label"><i data-lucide="shield-alert"></i> VERDICT</span>
+                            <span class="verdict-text">${escapeHtml(truncated)}</span>
+                        </div>
+                    `;
+                }
 
                 // Dynamic Asymmetrical Bento Grid compiler
                 function renderArticles(regionFilter, categoryFilter) {
-            if (!gridContainer) return;
+                    if (!gridContainer) return;
 
-            // Clear existing grid
-            gridContainer.innerHTML = "";
+                    // Clear existing grid
+                    gridContainer.innerHTML = "";
 
-            // 1. Sort all articles newest-first by publishdate or ID
-            const sortedArticles = [...allArticles].sort((a, b) => {
-                const timeA = a.publishdate ? new Date(a.publishdate).getTime() : parseFloat(String(a.id).replace(/\D/g, '')) || 0;
-                const timeB = b.publishdate ? new Date(b.publishdate).getTime() : parseFloat(String(b.id).replace(/\D/g, '')) || 0;
-                return timeB - timeA;
-            });
+                    // 1. Sort all articles newest-first by publishdate or ID
+                    const sortedArticles = [...allArticles].sort((a, b) => {
+                        const timeA = a.publishdate ? new Date(a.publishdate).getTime() : parseFloat(String(a.id).replace(/\D/g, '')) || 0;
+                        const timeB = b.publishdate ? new Date(b.publishdate).getTime() : parseFloat(String(b.id).replace(/\D/g, '')) || 0;
+                        return timeB - timeA;
+                    });
 
-            // 2. Filter articles by region and category
-            const filteredArticles = sortedArticles.filter(art => {
-                const matchRegion = regionFilter === 'all'
-                    ? true
-                    : (art.region || 'indian').toLowerCase().trim() === regionFilter.toLowerCase().trim();
-                const matchCategory = categoryFilter === 'all'
-                    ? true
-                    : art.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim();
+                    // 2. Filter articles by region, category, and live search query
+                    const filteredArticles = sortedArticles.filter(art => {
+                        const matchRegion = regionFilter === 'all'
+                            ? true
+                            : (art.region || 'indian').toLowerCase().trim() === regionFilter.toLowerCase().trim();
 
-                if (!matchRegion || !matchCategory) return false;
-                return true;
-            });
+                        const headline = cleanEditorialText(art.aiheadline || art.title || '');
+                        const summary = cleanEditorialText(art.aisummary || art.summary || '');
+                        const category = classifyClientCategory(art.category, headline, summary);
 
-            // 3. Pagination
-            totalPages = Math.ceil(filteredArticles.length / itemsPerPage) || 1;
-            if (currentPage > totalPages) currentPage = totalPages;
-            if (currentPage < 1) currentPage = 1;
-        
-            const startIdx = (currentPage - 1) * itemsPerPage;
-            const endIdx = startIdx + itemsPerPage;
-            const paginatedArticles = filteredArticles.slice(startIdx, endIdx);
+                        const matchCategory = categoryFilter === 'all'
+                            ? true
+                            : category.toLowerCase().trim() === categoryFilter.toLowerCase().trim();
 
-            console.log(`🎯 Filtering: Region "${regionFilter}", Category "${categoryFilter}", Page ${currentPage}/${totalPages} (${itemsPerPage} per page) matched ${filteredArticles.length} articles, showing ${paginatedArticles.length}.`);
+                        if (!matchRegion || !matchCategory) return false;
 
-            // Update pagination UI
-            updatePaginationUI();
+                        if (currentSearchQuery) {
+                            const q = currentSearchQuery.toLowerCase();
+                            const bias = (art.biasaudit || '').toLowerCase();
+                            const src = (art.originalsource || '').toLowerCase();
+                            const combined = `${headline.toLowerCase()} ${summary.toLowerCase()} ${category.toLowerCase()} ${bias} ${src}`;
+                            if (!combined.includes(q)) return false;
+                        }
 
-            if (paginatedArticles.length === 0) {
-                // Display empty state
-                gridContainer.innerHTML = `
-                    <div class="bento-card bento-span-4x1 glass-element" style="grid-column: span 4; padding: 48px; text-align: center; justify-content: center; align-items: center; border-style: dashed; grid-row: span 1;">
-                        <i data-lucide="archive-x" style="width: 48px; height: 48px; color: var(--accent-saffron); margin-bottom: 16px;"></i>
-                        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin-bottom: 8px;">No Chronicles Found</h3>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 400px; margin: 0 auto;">Our AI Editorial desk hasn't logged any audited headlines under "${categoryFilter}" in this region. Check back shortly!</p>
-                    </div>
-                `;
-                lucide.createIcons();
-                return;
-            }
+                        return true;
+                    });
 
-            // Build list of final DOM nodes/strings dynamically to interlace widgets
-            const gridItems = [];
+                    // 3. Pagination math (12 / 24 / 48)
+                    totalPages = Math.ceil(filteredArticles.length / itemsPerPage) || 1;
+                    if (currentPage > totalPages) currentPage = totalPages;
+                    if (currentPage < 1) currentPage = 1;
+                
+                    const startIdx = (currentPage - 1) * itemsPerPage;
+                    const endIdx = startIdx + itemsPerPage;
+                    const paginatedArticles = filteredArticles.slice(startIdx, endIdx);
 
-            paginatedArticles.forEach((article, index) => {
-            const biasHtml = article.biasaudit
-                ? `<div class="card-bias-pill"><span class="bias-stamp-label"><i data-lucide="shield-alert" style="width:11px;height:11px;vertical-align:-1px;margin-right:2px;"></i> AUDIT</span><span class="bias-stamp-text">${escapeHtml(article.biasaudit)}</span></div>`
-                : '';
+                    console.log(`🎯 Filtering: Region "${regionFilter}", Category "${categoryFilter}", Search "${currentSearchQuery}", Page ${currentPage}/${totalPages} (${itemsPerPage} per page) matched ${filteredArticles.length} articles, showing ${paginatedArticles.length}.`);
 
-            // Layout pattern: 4 Featured horizontals (2x1) -> Standard cards (1x1) with images
-            if (index >= 0 && index <= 3) {
-                // FEATURED HORIZONTALS: First 4 articles as 2x1 cards with images
-                gridItems.push(`
-                                <article class="bento-card bento-span-2x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}">
+                    // Update pagination UI
+                    updatePaginationUI();
+
+                    if (paginatedArticles.length === 0) {
+                        // Display empty state
+                        gridContainer.innerHTML = `
+                            <div class="bento-card bento-span-4x1 glass-element" style="grid-column: span 4; padding: 48px; text-align: center; justify-content: center; align-items: center; border-style: dashed; grid-row: span 1;">
+                                <i data-lucide="archive-x" style="width: 48px; height: 48px; color: var(--accent-saffron); margin-bottom: 16px;"></i>
+                                <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin-bottom: 8px;">No Chronicles Found</h3>
+                                <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 400px; margin: 0 auto;">Our AI Editorial desk hasn't logged any audited headlines under "${categoryFilter}" in this region. Check back shortly!</p>
+                            </div>
+                        `;
+                        lucide.createIcons();
+                        return;
+                    }
+
+                    // Build list of final DOM nodes/strings dynamically
+                    const gridItems = [];
+
+                    paginatedArticles.forEach((article, index) => {
+                        const rawHeadline = article.aiheadline || article.aiHeadline || article.title || 'Untitled Chronicle';
+                        const rawSummary = article.aisummary || article.aiSummary || article.description || article.summary || '';
+                        const rawBias = article.biasaudit || article.biasAudit || '';
+                        
+                        const headline = cleanEditorialText(rawHeadline);
+                        const summary = cleanEditorialText(rawSummary);
+                        const biasAudit = cleanEditorialText(rawBias);
+                        const category = classifyClientCategory(article.category, headline, summary);
+
+                        const slug = article.slug || shortIdFromUuid(article.id);
+                        const articleUrl = `/chronicles/${slug}`;
+                        const fullArticleUrl = `${window.location.origin}${articleUrl}`;
+                        const cardLink = `<a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${escapeHtml(article.id)}" data-slug="${escapeHtml(slug)}">${escapeHtml(headline)}</a>`;
+
+                        const isInstagram = article.authortype === 'instagram';
+                        let badgeHtml = '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>';
+                        if (article.authortype === 'admin') {
+                            badgeHtml = '<span class="author-type-badge badge-admin"><i data-lucide="pen-tool" style="width:10px;height:10px;"></i> The Ledger Desk</span>';
+                        } else if (isInstagram) {
+                            badgeHtml = '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>';
+                        }
+
+                        const relTime = formatRelativeTime(article.publishdate);
+                        const fullTimestamp = (article.publishdate ? formatDate(article.publishdate) + ' ' : '') + (article.timeago || '');
+                        const readTime = calculateReadTime(summary + ' ' + (article.fullblog || ''));
+                        const verdictHtml = buildClientVerdictChipHtml(biasAudit);
+
+                        const rawImg = article.imageurl || '/assets/hero-bg.png';
+                        const isBase64 = rawImg.startsWith('data:image');
+                        const imgUrl = isBase64 ? '' : rawImg;
+                        const bgStyle = imgUrl
+                            ? `background-image: url('${imgUrl}')`
+                            : 'background: linear-gradient(135deg, #0A0E17 0%, #141B29 100%)';
+
+                        const cardActions = `
+                            <div class="card-action-bar">
+                                <a href="${articleUrl}" class="inspect-audit-btn audit-trigger" data-id="${escapeHtml(article.id)}" data-slug="${escapeHtml(slug)}">
+                                    <i data-lucide="scan-eye"></i> <span>Inspect Audit</span>
+                                </a>
+                                <button type="button" class="share-receipt-btn" data-headline="${escapeHtml(headline)}" data-verdict="${escapeHtml(biasAudit)}" data-url="${escapeHtml(fullArticleUrl)}" aria-label="Share Bias Receipt">
+                                    <i data-lucide="share-2"></i> <span>Share</span>
+                                </button>
+                            </div>
+                        `;
+
+                        // Layout pattern: 4 Featured horizontals (2x1) -> Standard cards (1x1) with images
+                        if (index >= 0 && index <= 3) {
+                            gridItems.push(`
+                                <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeHtml(article.id)}">
                                     <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}');"></div>
-                                        <span class="card-tag saffron-bg">${article.category}</span>
-                                        ${article.authortype === 'instagram' ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
+                                        <div class="card-image-bg" style="${bgStyle};"></div>
+                                        <span class="card-tag saffron-bg">${escapeHtml(category)}</span>
+                                        <span class="read-time-chip"><i data-lucide="clock"></i> ${readTime}</span>
+                                        ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
                                     </div>
                                     <div class="card-body">
-                                        <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
-                                            ${article.authortype === 'admin'
-                                                ? '<span class="author-type-badge badge-admin"><i data-lucide="pen-tool" style="width:10px;height:10px;"></i> Editorial</span>'
-                                                : (article.authortype === 'instagram'
-                                                    ? '<span class="author-type-badge badge-instagram"><i data-lucide="instagram" style="width:10px;height:10px;"></i> 🎥 IG Video</span>'
-                                                    : '<span class="author-type-badge badge-ai"><i data-lucide="cpu" style="width:10px;height:10px;"></i> AI Audited</span>')}
-                                            ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:8px;"></i> ${formatDate(article.publishdate)}` : ''}
-                                            ${article.timeago ? `<i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago}` : ''}
-                                        </span>
-                                        <h3 class="card-title" style="margin-top:10px;">
-                                            <a href="${getArticleUrl(article)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                                        <div class="card-meta-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                            <span class="compact-meta" style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+                                                <strong style="color:var(--accent-saffron);">${escapeHtml(category.toUpperCase())}</strong> · <span title="${escapeHtml(fullTimestamp)}">${relTime}</span>
+                                            </span>
+                                            ${badgeHtml}
+                                        </div>
+                                        <h3 class="card-title" style="margin-top:4px;">
+                                            ${cardLink}
                                         </h3>
-                                        <p class="card-summary">${article.aisummary}</p>
+                                        <p class="card-summary">${escapeHtml(summary)}</p>
                                         <div class="card-footer-meta">
-                                            ${biasHtml}
+                                            ${verdictHtml}
+                                            ${cardActions}
                                         </div>
                                     </div>
                                 </article>
                             `);
-            } else {
-                            // STANDARD CARDS: 1x1 with images
+                        } else {
                             gridItems.push(`
-                                <article class="bento-card bento-span-1x1 glass-element ${article.authortype === 'instagram' ? 'card-instagram' : ''}" id="${article.id}">
+                                <article class="bento-card bento-span-1x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeHtml(article.id)}">
                                     <div class="card-visual">
-                                        <div class="card-image-bg" style="background-image: url('${article.imageurl}');"></div>
-                                        <span class="card-tag saffron-bg">${article.category}</span>
+                                        <div class="card-image-bg" style="${bgStyle};"></div>
+                                        <span class="card-tag saffron-bg">${escapeHtml(category)}</span>
+                                        <span class="read-time-chip"><i data-lucide="clock"></i> ${readTime}</span>
                                     </div>
                                     <div class="card-body">
-                                        <div class="card-tag-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-                                            <span class="card-tag saffron-bg" style="margin-bottom:0;">${article.category}</span>
-                                            <span class="card-time" style="font-size:0.65rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:2px;">
-                                                ${article.authortype === 'admin'
-                                                    ? '<span class="author-type-badge badge-admin" style="margin-right:2px; padding:2px 4px;"><i data-lucide="pen-tool" style="width:8px;height:8px;"></i> Edit</span>'
-                                                    : (article.authortype === 'instagram'
-                                                        ? '<span class="author-type-badge badge-instagram" style="margin-right:2px; padding:2px 4px;"><i data-lucide="instagram" style="width:8px;height:8px;"></i> IG Video</span>'
-                                                        : '<span class="author-type-badge badge-ai" style="margin-right:2px; padding:2px 4px;"><i data-lucide="cpu" style="width:8px;height:8px;"></i> AI</span>')}
-                                                ${article.publishdate ? `<i data-lucide="calendar" style="margin-left:4px;"></i> ${formatDate(article.publishdate)}` : ''}
-                                                ${article.timeago || ''}
+                                        <div class="card-meta-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                            <span class="compact-meta" style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">
+                                                <strong style="color:var(--accent-saffron);">${escapeHtml(category.toUpperCase())}</strong> · <span title="${escapeHtml(fullTimestamp)}">${relTime}</span>
                                             </span>
+                                            ${badgeHtml}
                                         </div>
-                                        <h3 class="card-title" style="margin-bottom:10px;">
-                                            <a href="${getArticleUrl(article)}" class="stretched-link audit-trigger" data-id="${article.id}">${article.aiheadline}</a>
+                                        <h3 class="card-title" style="margin-bottom:8px;">
+                                            ${cardLink}
                                         </h3>
-                                        <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${article.aisummary}</p>
-                                        <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06);">
-                                            ${biasHtml}
+                                        <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(summary)}</p>
+                                        <div class="card-footer-meta" style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+                                            ${verdictHtml}
+                                            ${cardActions}
                                         </div>
                                     </div>
                                 </article>
@@ -1137,8 +1338,6 @@ document.addEventListener('DOMContentLoaded', () => {
         triggers.forEach(t => {
             t.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Use the SEO-friendly /:category/:slug URL so social shares,
-                // search indexers, and link previews all see a real article page.
                 const href = t.getAttribute('href');
                 if (href && href !== '#' && !href.startsWith('#')) {
                     window.location.href = href;
@@ -1146,6 +1345,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     const id = t.getAttribute('data-id');
                     const art = allArticles.find(a => String(a.id) === String(id));
                     window.location.href = getArticleUrl(art || { id });
+                }
+            });
+        });
+
+        // Bind 1-click share receipt buttons
+        const shareBtns = gridContainer.querySelectorAll('.share-receipt-btn');
+        shareBtns.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const headline = btn.getAttribute('data-headline') || '';
+                const verdict = btn.getAttribute('data-verdict') || '';
+                const url = btn.getAttribute('data-url') || window.location.href;
+                const shareText = `📰 ${headline}\n⚡ Bias Audit: ${verdict}\n🔗 Read at ${url}`;
+
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: headline,
+                            text: shareText,
+                            url: url
+                        });
+                        return;
+                    } catch (err) {
+                        // User cancelled or browser rejected — fallback to clipboard
+                    }
+                }
+
+                try {
+                    await navigator.clipboard.writeText(shareText);
+                    showToast('Audit receipt copied to clipboard!');
+                } catch (err) {
+                    window.prompt('Copy shareable audit receipt:', shareText);
                 }
             });
         });
@@ -1204,7 +1436,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const path = hash.replace(/^#\/?/, '').toLowerCase().trim();
         
         // Handle article details and special pages separately
-        if (path.startsWith('article/') || path === 'our-bias' || path === 'manifesto') {
+        if (path.startsWith('chronicles/') || path.startsWith('article/') || path === 'our-bias' || path === 'manifesto') {
             return null;
         }
 
@@ -1213,7 +1445,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let category = 'all';
 
         const validRegions = ['all', 'indian', 'world', 'uk', 'berkshire'];
-        const validCategories = ['politics', 'tech', 'finance', 'entertainment', 'health'];
+        const validCategories = ['politics', 'tech', 'finance', 'crime-and-law', 'crime & law', 'world-and-civic', 'world & civic', 'entertainment', 'health'];
 
         if (parts.length === 1) {
             const part = parts[0];
@@ -1239,6 +1471,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (category === 'politics') targetCategory = 'Politics';
         else if (category === 'tech') targetCategory = 'Tech';
         else if (category === 'finance') targetCategory = 'Finance';
+        else if (category === 'crime-and-law' || category === 'crime & law') targetCategory = 'Crime & Law';
+        else if (category === 'world-and-civic' || category === 'world & civic') targetCategory = 'World & Civic';
         else if (category === 'entertainment') targetCategory = 'Entertainment';
         else if (category === 'health') targetCategory = 'Health';
 
@@ -1252,10 +1486,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check if SSR content exists and we should preserve it on initial load
         const hasSSRContent = document.getElementById('dynamic-bento-grid')?.querySelector('.bento-card');
         
-        // Handle Article Detail Page Routing
-        if (hash.startsWith('#/article/')) {
-            const articleId = hash.replace('#/article/', '').trim();
-            showArticleDetailPage(articleId);
+        // Handle Article Detail Page Routing (supports #/chronicles/ and #/article/)
+        if (hash.startsWith('#/chronicles/') || hash.startsWith('#/article/')) {
+            const slug = hash.replace(/^#\/(chronicles|article)\//, '').trim();
+            const matched = allArticles.find(a => (a.slug && a.slug.toLowerCase() === slug.toLowerCase()) || shortIdFromUuid(a.id) === slug.toLowerCase() || String(a.id) === slug);
+            if (matched) {
+                showArticleDetailPage(matched.id);
+            } else {
+                showArticleDetailPage(slug);
+            }
             return;
         }
 
@@ -1281,14 +1520,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Highlight region tab
                 document.querySelectorAll('.region-tab-btn').forEach(btn => {
                     const btnReg = btn.getAttribute('data-region')?.toLowerCase().trim();
-                    if (btnReg === currentRegion) btn.classList.add('active');
-                    else btn.classList.remove('active');
+                    const existingDot = btn.querySelector('.active-indicator-dot');
+                    if (existingDot) existingDot.remove();
+                    if (btnReg === currentRegion) {
+                        btn.classList.add('active');
+                        btn.setAttribute('aria-pressed', 'true');
+                        const dot = document.createElement('span');
+                        dot.className = 'active-indicator-dot';
+                        btn.appendChild(dot);
+                    } else {
+                        btn.classList.remove('active');
+                        btn.setAttribute('aria-pressed', 'false');
+                    }
                 });
                 // Highlight category tab
                 document.querySelectorAll('.category-tab-btn').forEach(btn => {
                     const btnCat = btn.getAttribute('data-category')?.toLowerCase();
-                    if (btnCat === currentCategory.toLowerCase()) btn.classList.add('active');
-                    else btn.classList.remove('active');
+                    if (btnCat === currentCategory.toLowerCase()) {
+                        btn.classList.add('active');
+                        btn.setAttribute('aria-pressed', 'true');
+                    } else {
+                        btn.classList.remove('active');
+                        btn.setAttribute('aria-pressed', 'false');
+                    }
                 });
                 bindDynamicEvents();
                 if (window.lucide) lucide.createIcons();
@@ -1315,11 +1569,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Check if legacy single category hash was requested, and redirect to region/category structure
-        if (hash && !hash.startsWith('#/article/')) {
+        if (hash && !hash.startsWith('#/article/') && !hash.startsWith('#/chronicles/')) {
             const path = hash.replace(/^#\/?/, '').toLowerCase().trim();
             const parts = path.split('/').filter(p => p.trim());
-            const validCategories = ['politics', 'tech', 'finance', 'entertainment', 'health'];
-            if (parts.length === 1 && validCategories.includes(parts[0])) {
+            const validCategoriesList = ['politics', 'tech', 'finance', 'crime-and-law', 'world-and-civic', 'entertainment', 'health'];
+            if (parts.length === 1 && validCategoriesList.includes(parts[0])) {
                 const cat = parts[0];
                 window.location.hash = `#/${currentRegion}/${cat}`;
                 return;
@@ -1336,10 +1590,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const regionButtons = document.querySelectorAll('.region-tab-btn');
         regionButtons.forEach(btn => {
             const btnReg = btn.getAttribute('data-region').toLowerCase().trim();
+            const existingDot = btn.querySelector('.active-indicator-dot');
+            if (existingDot) existingDot.remove();
             if (btnReg === currentRegion) {
                 btn.classList.add('active');
+                btn.setAttribute('aria-pressed', 'true');
+                const dot = document.createElement('span');
+                dot.className = 'active-indicator-dot';
+                btn.appendChild(dot);
             } else {
                 btn.classList.remove('active');
+                btn.setAttribute('aria-pressed', 'false');
             }
         });
 
@@ -1349,8 +1610,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const btnCat = btn.getAttribute('data-category');
             if (btnCat.toLowerCase() === currentCategory.toLowerCase()) {
                 btn.classList.add('active');
+                btn.setAttribute('aria-pressed', 'true');
             } else {
                 btn.classList.remove('active');
+                btn.setAttribute('aria-pressed', 'false');
             }
         });
 
@@ -1528,8 +1791,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (detailAuthor) {
                 if (article.authortype === 'admin') {
-                    detailAuthor.innerHTML = `<i data-lucide="pen-tool" style="width:16px; height:16px;"></i> Honestly Biased Editorial Board (Admin)`;
-                    detailAuthor.style.color = 'var(--accent-green)'; // Gold
+                    detailAuthor.innerHTML = `<i data-lucide="pen-tool" style="width:16px; height:16px;"></i> The Ledger Desk`;
+                    detailAuthor.style.color = 'var(--accent-saffron)';
                 } else if (article.authortype === 'instagram') {
                     detailAuthor.innerHTML = `<i data-lucide="instagram" style="width:16px; height:16px;"></i> Honestly Biased AI Engine (Instagram Ingestion)`;
                     detailAuthor.style.color = '#e1306c'; // Instagram Pink
@@ -1650,6 +1913,21 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPage = 1; // Reset to first page
             const route = parseHashRoute() || { region: 'indian', category: 'all' };
             renderArticles(route.region, route.category);
+        });
+    }
+
+    // Live search listener on Ledger search input
+    const searchInput = document.getElementById('ledger-search-input');
+    if (searchInput) {
+        let debounceTimer;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                currentSearchQuery = e.target.value.trim();
+                currentPage = 1;
+                const route = parseHashRoute() || { region: currentRegion || 'indian', category: currentCategory || 'all' };
+                renderArticles(route.region, route.category);
+            }, 200);
         });
     }
     

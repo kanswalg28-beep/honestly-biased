@@ -31,9 +31,28 @@ const STATIC_ROUTES = [
   { url: '/politics',  changefreq: 'daily',  priority: 0.7 },
   { url: '/tech',      changefreq: 'daily',  priority: 0.7 },
   { url: '/finance',   changefreq: 'daily',  priority: 0.7 },
+  { url: '/crime-and-law', changefreq: 'daily', priority: 0.7 },
+  { url: '/world-and-civic', changefreq: 'daily', priority: 0.7 },
   { url: '/entertainment', changefreq: 'daily', priority: 0.7 },
-  { url: '/health',    changefreq: 'daily',  priority: 0.7 }
+  { url: '/health',    changefreq: 'daily',  priority: 0.7 },
+  { url: '/taxmetrics', changefreq: 'weekly', priority: 0.9 },
+  { url: '/whatitakehome', changefreq: 'weekly', priority: 0.8 },
+  { url: '/taxmetrics/about', changefreq: 'monthly', priority: 0.5 },
+  { url: '/taxmetrics/privacy', changefreq: 'monthly', priority: 0.5 },
+  { url: '/taxmetrics/disclaimer', changefreq: 'monthly', priority: 0.5 },
+  { url: '/taxmetrics/contact', changefreq: 'monthly', priority: 0.5 }
 ];
+
+try {
+  const statesPath = path.join(__dirname, 'taxmetrics', 'scripts', 'states.json');
+  if (fs.existsSync(statesPath)) {
+    const statesData = JSON.parse(fs.readFileSync(statesPath, 'utf8'));
+    Object.values(statesData).forEach(s => {
+      const slug = s.name.toLowerCase().replace(/\s+/g, '-');
+      STATIC_ROUTES.push({ url: `/taxmetrics/${slug}`, changefreq: 'monthly', priority: 0.7 });
+    });
+  }
+} catch (e) {}
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -118,7 +137,7 @@ function buildSitemap(articles) {
     if (!a.shortId && !a.slug) continue;
     const cat = String(a.category || 'politics').toLowerCase().trim();
     const slug = a.slug || a.shortId;
-    const url = `${BASE_URL}/${cat}/${slug}`;
+    const url = `${BASE_URL}/chronicles/${slug}`;
     const lastmod = (a.lastmod ? new Date(a.lastmod).toISOString().split('T')[0] : today);
     xml += '  <url>\n';
     xml += `    <loc>${url}</loc>\n`;

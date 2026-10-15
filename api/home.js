@@ -12,6 +12,8 @@
 // full redeploy. For faster busting, admin can call /api/cache/bust.
 
 const { supabase } = require('../db/client');
+const { cleanEditorialText } = require('../db/cleanEditorialText');
+const { classifyCategory } = require('../db/classifyCategory');
 
 const SITE = 'https://www.honestlybiased.com';
 const SITE_NAME = 'Honestly Biased';
@@ -27,10 +29,10 @@ async function fetchHeroFromCMS() {
       if (hero && hero.headline) {
         // Map CMS fields to our internal format
         return {
-          headline: hero.headline,
-          summary: hero.body || hero.summary,
+          headline: cleanEditorialText(hero.headline),
+          summary: cleanEditorialText(hero.body || hero.summary),
           imageUrl: hero.image || hero.imageUrl,
-          byline: hero.byline,
+          byline: hero.byline || 'The Ledger Desk',
           eyebrow: hero.eyebrow,
           readTime: hero.readtime || hero.readTime,
           bylineRole: hero.byline_role || hero.bylineRole,
@@ -53,9 +55,8 @@ function shortIdFromUuid(uuid) {
 
 function getArticleUrl(article) {
   if (!article) return '/';
-  const cat = String(article.category || 'politics').toLowerCase().trim();
   const slug = article.slug || shortIdFromUuid(article.id);
-  return `/${cat}/${slug}`;
+  return `/chronicles/${slug}`;
 }
 
 function escapeHtml(s) {
@@ -108,6 +109,29 @@ function formatTimeAgo(dateStr) {
   } catch (e) { return ''; }
 }
 
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return 'recently';
+  try {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    if (diffMs < 0) return 'just now';
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}h ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return formatDate(dateStr);
+  } catch (e) {
+    return 'recently';
+  }
+}
+
+function calculateReadTime(text) {
+  const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 200)) + ' Min Audit';
+}
+
 function authorBadgeHtml(authortype) {
   if (authortype === 'admin') {
     return '<span class="author-type-badge badge-admin"><i data-lucide="pen-tool" style="width:10px;height:10px;"></i> Editorial</span>';
@@ -122,23 +146,15 @@ function categoryTagHtml(category) {
   return `<span class="card-tag saffron-bg">${escapeHtml(category)}</span>`;
 }
 
-function biasAuditHtml(biasaudit) {
+function buildVerdictChipHtml(biasaudit) {
   if (!biasaudit) return '';
-  return `<div class="card-bias-pill"><span class="bias-stamp-label"><i data-lucide="shield-alert" style="width:11px;height:11px;vertical-align:-1px;margin-right:2px;"></i> AUDIT</span><span class="bias-stamp-text">${escapeHtml(biasaudit)}</span></div>`;
-}
-
-function cardTimeHtml(article) {
-  let html = '';
-  if (article.publishdate) {
-    html += `<i data-lucide="calendar" style="margin-left:8px;"></i> ${formatDate(article.publishdate)}`;
-  }
-  html += ` <i data-lucide="clock" style="margin-left:4px;"></i> ${article.timeago || formatTimeAgo(article.publishdate)}`;
-  return html;
-}
-
-function cardLinkHtml(article) {
-  const url = getArticleUrl(article);
-  return `<a href="${escapeAttr(url)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(article.aiheadline)}</a>`;
+  const clean = cleanEditorialText(biasaudit);
+  return `
+    <div class="card-verdict-chip" title="${escapeAttr(clean)}">
+      <span class="verdict-label"><i data-lucide="shield-alert"></i> VERDICT</span>
+      <span class="verdict-text">${escapeHtml(truncate(clean, 85))}</span>
+    </div>
+  `;
 }
 
 // Build a single bento card HTML (mirrors app.js exactly)
@@ -146,14 +162,25 @@ function buildBentoCard(article, index) {
   const isInstagram = article.authortype === 'instagram';
   const rawHeadline = article.aiheadline || article.aiHeadline || article.title || 'Untitled Chronicle';
   const rawSummary = article.aisummary || article.aiSummary || article.description || article.summary || '';
-  const cardLink = `<a href="${escapeAttr(getArticleUrl(article))}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}">${escapeHtml(rawHeadline)}</a>`;
+  const rawBias = article.biasaudit || article.biasAudit || '';
+  
+  const headline = cleanEditorialText(rawHeadline);
+  const summary = cleanEditorialText(rawSummary);
+  const biasAudit = cleanEditorialText(rawBias);
+  const category = classifyCategory(article.category, headline, summary, article.fullblog);
+
+  const slug = article.slug || shortIdFromUuid(article.id);
+  const articleUrl = `/chronicles/${slug}`;
+  const fullArticleUrl = `${SITE}${articleUrl}`;
+  const cardLink = `<a href="${escapeAttr(articleUrl)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}" data-slug="${escapeAttr(slug)}">${escapeHtml(headline)}</a>`;
   const badgeHtml = authorBadgeHtml(article.authortype);
-  const catTag = categoryTagHtml(article.category);
-  const timeHtml = cardTimeHtml(article);
-  const biasHtml = biasAuditHtml(article.biasaudit || article.biasAudit);
-  const summary = escapeHtml(rawSummary);
-  // Strip base64 data URIs from SSR — they bloat HTML by ~1MB
-  // Use gradient placeholder; app.js will restore from real Supabase URL on hydration
+  const catTag = categoryTagHtml(category);
+  const verdictHtml = buildVerdictChipHtml(biasAudit);
+
+  const relTime = formatRelativeTime(article.publishdate);
+  const fullTimestamp = (article.publishdate ? formatDate(article.publishdate) + ' ' : '') + (article.timeago || formatTimeAgo(article.publishdate));
+  const readTime = calculateReadTime(summary + ' ' + (article.fullblog || ''));
+
   const rawImg = article.imageurl || '/assets/hero-bg.png';
   const isBase64 = rawImg.startsWith('data:image');
   const imgUrl = isBase64 ? '' : escapeAttr(rawImg);
@@ -161,52 +188,41 @@ function buildBentoCard(article, index) {
     ? `background-image: url('${imgUrl}')`
     : 'background: linear-gradient(135deg, #0A0E17 0%, #141B29 100%)';
 
-  if (index === 0) {
-    // FIRST POST: 2x1 horizontal card
-    return `
-      <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}">
-        <div class="card-visual">
-          <div class="card-image-bg" style="${bgStyle};"></div>
-          ${catTag}
-          ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
-        </div>
-        <div class="card-body">
-          <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
-            ${badgeHtml}
-            ${timeHtml}
-          </span>
-          <h3 class="card-title" style="margin-top:10px;">
-            ${cardLink}
-          </h3>
-          <p class="card-summary">${summary}</p>
-          <div class="card-footer-meta">
-            ${biasHtml}
-          </div>
-        </div>
-      </article>
-    `;
-  }
+  const cardActions = `
+    <div class="card-action-bar">
+      <a href="${escapeAttr(articleUrl)}" class="inspect-audit-btn audit-trigger" data-id="${escapeAttr(article.id)}" data-slug="${escapeAttr(slug)}">
+        <i data-lucide="scan-eye"></i> <span>Inspect Audit</span>
+      </a>
+      <button type="button" class="share-receipt-btn" data-headline="${escapeAttr(headline)}" data-verdict="${escapeAttr(biasAudit)}" data-url="${escapeAttr(fullArticleUrl)}" aria-label="Share Bias Receipt">
+        <i data-lucide="share-2"></i> <span>Share</span>
+      </button>
+    </div>
+  `;
 
-  if (index >= 1 && index <= 3) {
-    // FEATURED HORIZONTALS: Next 3 articles as 2x1 cards
+  if (index >= 0 && index <= 3) {
+    // FEATURED HORIZONTALS: First 4 cards as 2x1 cards
     return `
       <article class="bento-card bento-span-2x1 glass-element ${isInstagram ? 'card-instagram' : ''}" id="${escapeAttr(article.id)}">
         <div class="card-visual">
           <div class="card-image-bg" style="${bgStyle};"></div>
           ${catTag}
+          <span class="read-time-chip"><i data-lucide="clock"></i> ${readTime}</span>
           ${isInstagram ? '<span class="video-play-overlay"><i data-lucide="arrow-up-right"></i></span>' : ''}
         </div>
         <div class="card-body">
-          <span class="card-time" style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">
+          <div class="card-meta-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span class="compact-meta" style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">
+              <strong style="color:var(--accent-saffron);">${escapeHtml(category.toUpperCase())}</strong> · <span title="${escapeAttr(fullTimestamp)}">${relTime}</span>
+            </span>
             ${badgeHtml}
-            ${timeHtml}
-          </span>
-          <h3 class="card-title" style="margin-top:10px;">
+          </div>
+          <h3 class="card-title" style="margin-top:4px;">
             ${cardLink}
           </h3>
-          <p class="card-summary">${summary}</p>
+          <p class="card-summary">${escapeHtml(summary)}</p>
           <div class="card-footer-meta">
-            ${biasHtml}
+            ${verdictHtml}
+            ${cardActions}
           </div>
         </div>
       </article>
@@ -219,21 +235,22 @@ function buildBentoCard(article, index) {
       <div class="card-visual">
         <div class="card-image-bg" style="${bgStyle};"></div>
         ${catTag}
+        <span class="read-time-chip"><i data-lucide="clock"></i> ${readTime}</span>
       </div>
       <div class="card-body">
-        <div class="card-tag-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-          ${catTag}
-          <span class="card-time" style="font-size:0.65rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:2px;">
-            ${badgeHtml}
-            ${timeHtml}
+        <div class="card-meta-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span class="compact-meta" style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">
+            <strong style="color:var(--accent-saffron);">${escapeHtml(category.toUpperCase())}</strong> · <span title="${escapeAttr(fullTimestamp)}">${relTime}</span>
           </span>
+          ${badgeHtml}
         </div>
-        <h3 class="card-title" style="margin-bottom:10px;">
+        <h3 class="card-title" style="margin-bottom:8px;">
           ${cardLink}
         </h3>
-        <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${summary}</p>
-        <div class="card-footer-meta" style="margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06);">
-          ${biasHtml}
+        <p class="card-summary small-summary" style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(summary)}</p>
+        <div class="card-footer-meta" style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+          ${verdictHtml}
+          ${cardActions}
         </div>
       </div>
     </article>
@@ -243,7 +260,7 @@ function buildBentoCard(article, index) {
 // --------------------------------------------------------------------------
 // Article fetch
 // --------------------------------------------------------------------------
-async function fetchLatestArticles(limit = 22) {
+async function fetchLatestArticles(limit = 24) {
   if (!supabase) return [];
   try {
     const { data, error } = await supabase
@@ -253,7 +270,16 @@ async function fetchLatestArticles(limit = 22) {
       .order('publishdate', { ascending: false })
       .limit(limit);
     if (error) throw error;
-    return data || [];
+    return (data || []).map(a => {
+      if (a.aiheadline) a.aiheadline = cleanEditorialText(a.aiheadline);
+      if (a.aisummary) a.aisummary = cleanEditorialText(a.aisummary);
+      if (a.biasaudit) a.biasaudit = cleanEditorialText(a.biasaudit);
+      a.category = classifyCategory(a.category, a.aiheadline, a.aisummary);
+      if (!a.author || a.author === 'CMS Admin' || a.author === 'CMS Admin · Editorial' || a.author === 'Honestly Biased Team') {
+        a.author = 'The Ledger Desk';
+      }
+      return a;
+    });
   } catch (e) {
     console.error('home fetch error:', e.message);
     return [];
@@ -266,21 +292,25 @@ async function fetchLatestArticles(limit = 22) {
 async function renderHomepageHtml(articles) {
   // Hero section is dynamically driven by the latest published article (articles[0])
   const heroArticle = articles[0] || null;
-  const heroHeadline = heroArticle ? (heroArticle.aiheadline || heroArticle.aiHeadline || heroArticle.title || 'Deep Perspective') : 'Deep Perspective';
-  // Use ONLY the audited critical summary (aisummary) for the Hero Description
-  const heroSummary = heroArticle ? stripTags(heroArticle.aisummary || heroArticle.aiSummary || heroArticle.description || heroArticle.summary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
+  const rawHeroHead = heroArticle ? (heroArticle.aiheadline || heroArticle.aiHeadline || heroArticle.title || 'Deep Perspective') : 'Deep Perspective';
+  const rawHeroSum = heroArticle ? (heroArticle.aisummary || heroArticle.aiSummary || heroArticle.description || heroArticle.summary || heroArticle.fullblog) : 'Dismantling corporate bias and manufactured consent, systematically';
+  
+  const heroHeadline = cleanEditorialText(rawHeroHead);
+  const heroSummary = cleanEditorialText(stripTags(rawHeroSum));
   const heroImage = heroArticle ? (heroArticle.imageurl || heroArticle.imageUrl || '/assets/hero-bg.png') : '/assets/hero-bg.png';
-  const heroByline = heroArticle ? (heroArticle.author || 'Honestly Biased Team') : 'Honestly Biased Team';
+  const heroByline = heroArticle && heroArticle.author && heroArticle.author !== 'CMS Admin' && heroArticle.author !== 'Honestly Biased Team'
+    ? heroArticle.author
+    : 'The Ledger Desk';
   const heroRole = heroArticle ? (heroArticle.authortype === 'admin' ? 'Editorial' : 'Senior Bias Analyst') : 'Senior Bias Analyst';
-  const heroReadTime = heroArticle ? (heroArticle.readtime || '5 Min Read') : '5 Min Read';
-  const heroCategory = heroArticle ? (heroArticle.category || 'DEEP PERSPECTIVE') : 'DEEP PERSPECTIVE';
+  const heroReadTime = calculateReadTime(heroSummary);
+  const heroCategory = heroArticle ? classifyCategory(heroArticle.category, heroHeadline, heroSummary) : 'DEEP PERSPECTIVE';
   const heroPublishDate = heroArticle ? heroArticle.publishdate : new Date().toISOString();
   const heroTimeAgo = heroArticle ? (heroArticle.timeago || formatTimeAgo(heroPublishDate)) : formatTimeAgo(new Date().toISOString());
 
   // Ticker highlights derived from top 10 articles
-  const tickerItemsHtml = articles.slice(0, 10).map(a => `<span>${escapeHtml(a.aiheadline || a.aiHeadline || a.title)}</span>`).join('');
+  const tickerItemsHtml = articles.slice(0, 10).map(a => `<span>${escapeHtml(cleanEditorialText(a.aiheadline || a.aiHeadline || a.title))}</span>`).join('');
 
-  // Bento grid cards (first 22 articles from Supabase)
+  // Bento grid cards (first 24 articles from Supabase)
   const bentoCards = articles.map((a, i) => buildBentoCard(a, i)).join('\n');
 
   // JSON-LD for homepage (WebSite + ItemList)
@@ -297,7 +327,7 @@ async function renderHomepageHtml(articles) {
   const listJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    'itemListElement': articles.slice(0, 22).map((a, i) => {
+    'itemListElement': articles.slice(0, 24).map((a, i) => {
       // Strip base64 data URIs from JSON-LD — they bloat HTML by ~1.5MB
       let img = a.imageurl || SITE + '/assets/hero-bg.png';
       if (img.startsWith('data:image')) img = SITE + '/assets/hero-bg.png';
@@ -382,6 +412,10 @@ async function renderHomepageHtml(articles) {
       </div>
     </div>
     <div class="header-right">
+      <a href="/taxmetrics" class="taxmetrics-nav-btn" title="TaxMetrics: 2026 US Income Tax &amp; Paycheck Calculator" aria-label="TaxMetrics US Income Tax &amp; Paycheck Calculator">
+        <i data-lucide="calculator"></i>
+        <span>TaxMetrics</span>
+      </a>
       <button class="icon-btn search-trigger" aria-label="Search website"><i data-lucide="search"></i></button>
       <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle color theme" title="Toggle between Dark and Light mode">
         <span class="theme-toggle-track">
@@ -398,8 +432,8 @@ async function renderHomepageHtml(articles) {
     <div class="top-region-container">
       <div class="region-tabs-container" id="region-tabs-container">
         <div class="active-indicator-pill" id="region-active-pill"></div>
-        <button class="region-tab-btn active" data-region="all"><i data-lucide="globe"></i><span>All Editions</span></button>
-        <button class="region-tab-btn" data-region="indian"><i data-lucide="map-pin"></i><span>Indian Edition</span></button>
+        <button class="region-tab-btn" data-region="all"><i data-lucide="globe"></i><span>All Editions</span></button>
+        <button class="region-tab-btn active" data-region="indian"><i data-lucide="map-pin"></i><span>Indian Edition</span><span class="active-indicator-dot"></span></button>
         <button class="region-tab-btn" data-region="world"><i data-lucide="compass"></i><span>World Edition</span></button>
         <button class="region-tab-btn" data-region="uk"><i data-lucide="flag"></i><span>UK Edition</span></button>
         <button class="region-tab-btn" data-region="berkshire"><i data-lucide="home"></i><span>Berkshire Local</span></button>
@@ -461,19 +495,25 @@ async function renderHomepageHtml(articles) {
     </div>
 
     <div class="date-filters-container glass-element" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; width: 100%; max-width: 1400px; margin-left: auto; margin-right: auto;">
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Show:</span>
-        <select id="per-page-select" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; font-size: 0.8rem;">
-          <option value="10">10 per page</option>
-          <option value="22" selected>22 per page</option>
-          <option value="46">46 per page</option>
-        </select>
+      <div class="ledger-search-box" style="display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 12px; flex: 1; min-width: 260px; max-width: 420px;">
+        <i data-lucide="search" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+        <input type="text" id="ledger-search-input" placeholder="Search headlines, verdicts, sources..." aria-label="Search Chronicles" style="background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 0.85rem; width: 100%;">
       </div>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Page:</span>
-        <button class="pagination-btn" id="prev-page" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
-        <span id="page-indicator" style="min-width: 60px; text-align: center; font-weight: 600;">1 / 1</span>
-        <button class="pagination-btn" id="next-page" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Show:</span>
+          <select id="per-page-select" style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; font-size: 0.8rem;">
+            <option value="12" selected>12 per page</option>
+            <option value="24">24 per page</option>
+            <option value="48">48 per page</option>
+          </select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Page:</span>
+          <button class="pagination-btn" id="prev-page" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+          <span id="page-indicator" style="min-width: 60px; text-align: center; font-weight: 600;">1 / 1</span>
+          <button class="pagination-btn" id="next-page" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+        </div>
       </div>
     </div>
 
@@ -481,12 +521,14 @@ async function renderHomepageHtml(articles) {
       <aside class="bento-sidebar">
         <div class="category-tabs-container" id="category-tabs-container">
           <div class="active-indicator-pill" id="category-active-pill"></div>
-          <button class="category-tab-btn active" data-category="all"><i data-lucide="layout-grid"></i><span>All Chronicles</span></button>
-          <button class="category-tab-btn" data-category="Politics"><i data-lucide="landmark"></i><span>Politics</span></button>
-          <button class="category-tab-btn" data-category="Tech"><i data-lucide="cpu"></i><span>Tech</span></button>
-          <button class="category-tab-btn" data-category="Finance"><i data-lucide="circle-dollar-sign"></i><span>Finance</span></button>
-          <button class="category-tab-btn" data-category="Entertainment"><i data-lucide="clapperboard"></i><span>Entertainment</span></button>
-          <button class="category-tab-btn" data-category="Health"><i data-lucide="heart-pulse"></i><span>Health</span></button>
+          <button class="category-tab-btn active" data-category="all" aria-pressed="true"><i data-lucide="layout-grid"></i><span>All Chronicles</span></button>
+          <button class="category-tab-btn" data-category="Politics" aria-pressed="false"><i data-lucide="landmark"></i><span>Politics</span></button>
+          <button class="category-tab-btn" data-category="Tech" aria-pressed="false"><i data-lucide="cpu"></i><span>Tech</span></button>
+          <button class="category-tab-btn" data-category="Finance" aria-pressed="false"><i data-lucide="circle-dollar-sign"></i><span>Finance</span></button>
+          <button class="category-tab-btn" data-category="Crime & Law" aria-pressed="false"><i data-lucide="scale"></i><span>Crime & Law</span></button>
+          <button class="category-tab-btn" data-category="World & Civic" aria-pressed="false"><i data-lucide="globe"></i><span>World & Civic</span></button>
+          <button class="category-tab-btn" data-category="Health" aria-pressed="false"><i data-lucide="heart-pulse"></i><span>Health</span></button>
+          <button class="category-tab-btn" data-category="Entertainment" aria-pressed="false"><i data-lucide="clapperboard"></i><span>Entertainment</span></button>
         </div>
       </aside>
 
@@ -496,8 +538,8 @@ async function renderHomepageHtml(articles) {
     </div>
   </section>
 
-  <!-- ARTICLE DETAIL SECTION (SPA Page View) -->
-  <section class="article-detail-section" id="article-detail-section" aria-hidden="true" style="display: none; padding: 120px 0 80px 0; min-height: 80vh;">
+  <!-- ARTICLE DETAIL SECTION (SPA Page View Guard - Hidden by default to eliminate DOM leaks) -->
+  <section class="article-detail-section" id="article-detail-section" aria-hidden="true" hidden style="display: none !important; padding: 120px 0 80px 0; min-height: 80vh;">
     <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 24px;">
       <div style="margin-bottom: 32px;">
         <a href="#/" class="btn btn-secondary back-btn" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; text-decoration: none; padding: 10px 20px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border-glass); color: var(--text-primary); transition: background 0.2s;">
@@ -509,14 +551,14 @@ async function renderHomepageHtml(articles) {
         <article class="article-detail-card glass-element" style="padding: 48px; border-radius: 16px; border: 1.5px solid var(--border-glass); box-shadow: var(--glass-shadow); position: relative; background: var(--bg-card); backdrop-filter: blur(20px);">
           <h2 id="detail-title" style="font-family: var(--font-heading); font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: var(--text-primary); text-shadow: 0 2px 10px var(--shadow-color);"></h2>
           <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1.5px solid var(--border-glass); font-size: 0.7rem; color: var(--text-muted);">
-            <span class="modal-tag saffron-bg" id="detail-category" style="font-size: 0.65rem; padding: 4px 10px; border-radius: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; color: var(--text-primary); background-color: var(--accent-saffron);">Politics</span>
-            <span id="detail-time" style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;"><i data-lucide="clock" style="width: 11px; height: 11px;"></i> 12:25 am IST</span>
-            <span class="detail-author" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"><i data-lucide="shield-check" style="width: 11px; height: 11px;"></i> Audited by Honestly Biased AI Engine</span>
+            <span class="modal-tag saffron-bg" id="detail-category" style="font-size: 0.65rem; padding: 4px 10px; border-radius: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; color: var(--text-primary); background-color: var(--accent-saffron);"></span>
+            <span id="detail-time" style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;"></span>
+            <span class="detail-author" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"></span>
           </div>
           <div id="detail-media-container" style="margin-bottom: 36px; width: 100%; border-radius: 8px; overflow: hidden; display: none; border: 1.5px solid var(--border-glass);"></div>
           <div class="blog-post-content" id="detail-content" style="font-size: 1.15rem; line-height: 1.85; color: var(--text-secondary); margin-bottom: 40px; font-weight: 400; letter-spacing: -0.003em;"></div>
           <div style="padding-top: 28px; border-top: 1.5px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-            <span id="detail-source" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">Source: Reuters</span>
+            <span id="detail-source" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;"></span>
             <a id="detail-original-link" href="#" target="_blank" style="font-size: 0.9rem; color: var(--accent-red); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: opacity 0.2s;"><span>Attribution Source</span><i data-lucide="external-link" style="width: 14px; height: 14px;"></i></a>
           </div>
         </article>
@@ -534,11 +576,34 @@ async function renderHomepageHtml(articles) {
     </div>
     <div class="footer-links-column">
       <h4 class="footer-heading">Sections</h4>
-      <ul class="footer-links-list"><li><a href="/politics">Politics</a></li><li><a href="/tech">Tech</a></li><li><a href="/finance">Finance</a></li><li><a href="/entertainment">Entertainment</a></li><li><a href="/health">Health</a></li></ul>
+      <ul class="footer-links-list">
+        <li><a href="/politics">Politics</a></li>
+        <li><a href="/tech">Tech</a></li>
+        <li><a href="/finance">Finance</a></li>
+        <li><a href="/crime-and-law">Crime & Law</a></li>
+        <li><a href="/world-and-civic">World & Civic</a></li>
+        <li><a href="/health">Health</a></li>
+        <li><a href="/entertainment">Entertainment</a></li>
+      </ul>
     </div>
     <div class="footer-links-column" data-site-content-block="standards">
       <h4 class="footer-heading">Standards</h4>
-      <ul class="footer-links-list" id="standards-list"><li><a href="/standards">Editorial Standards</a></li><li><a href="/funding">Independent Funding Audit</a></li><li><a href="/finances">Financial Integrity Reports</a></li><li><a href="/collective">Join the Collective</a></li></ul>
+      <ul class="footer-links-list" id="standards-list">
+        <li><a href="/standards">Editorial Standards</a></li>
+        <li><a href="/funding">Independent Funding Audit</a></li>
+        <li><a href="/finances">Financial Integrity Reports</a></li>
+        <li><a href="/collective">Join the Collective</a></li>
+      </ul>
+    </div>
+    <div class="footer-links-column" data-site-content-block="tools">
+      <h4 class="footer-heading">Tools &amp; Forensics</h4>
+      <ul class="footer-links-list">
+        <li><a href="/taxmetrics">TaxMetrics (US Paycheck Calculator)</a></li>
+        <li><a href="/taxmetrics/california">California Tax Calculator</a></li>
+        <li><a href="/taxmetrics/texas">Texas Tax Calculator</a></li>
+        <li><a href="/taxmetrics/new-york">New York Tax Calculator</a></li>
+        <li><a href="/whatitakehome">WhatITakeHome Calculator</a></li>
+      </ul>
     </div>
     <div class="footer-newsletter-column">
       <h4 class="footer-heading">Subscribe to the Ledger</h4>
@@ -548,7 +613,11 @@ async function renderHomepageHtml(articles) {
           <input type="email" placeholder="Enter your email address" required aria-label="Email address for newsletter subscription">
           <button type="submit" class="newsletter-btn" aria-label="Submit email address"><i data-lucide="arrow-right"></i></button>
         </div>
-        <label class="checkbox-label"><input type="checkbox" required><span class="checkbox-custom"></span><span class="label-text">I support transparent, reader-funded commentary.</span></label>
+        <label class="checkbox-label" for="newsletter-consent" style="min-height: 44px; display: inline-flex; align-items: center; cursor: pointer;">
+          <input type="checkbox" id="newsletter-consent" required>
+          <span class="checkbox-custom"></span>
+          <span class="label-text">I support transparent, reader-funded commentary.</span>
+        </label>
       </form>
     </div>
   </div>
@@ -563,18 +632,29 @@ async function renderHomepageHtml(articles) {
   </div>
 </footer>
 
-<!-- PREMIUM GLASSMORPHIC ARTICLE AUDIT READER MODAL -->
-<div class="audit-modal" id="audit-modal" aria-hidden="true" role="dialog">
+<!-- PREMIUM GLASSMORPHIC ARTICLE AUDIT READER MODAL (Empty template to eliminate DOM leaks) -->
+<div class="audit-modal" id="audit-modal" aria-hidden="true" role="dialog" style="display: none;">
   <div class="modal-backdrop" id="modal-backdrop"></div>
   <div class="modal-content glass-element">
     <button class="modal-close-btn" id="modal-close-btn" aria-label="Close audit reader"><i data-lucide="x"></i></button>
-    <div class="modal-header"><span class="modal-tag saffron-bg" id="modal-category" style="color: var(--text-primary); background-color: var(--accent-saffron);">Politics</span><span class="modal-time" id="modal-time"><i data-lucide="clock"></i> Just Now</span></div>
-    <h2 class="modal-title" id="modal-title">FinMin Confirms New Tax Framework Remains Perfectly Logical to Precisely Three Statisticians</h2>
-    <div class="modal-meta"><span class="modal-author"><i data-lucide="shield-check"></i> Audited by Honestly Biased AI Engine</span><span class="modal-source" id="modal-source">Source: Economic Reporter</span></div>
+    <div class="modal-header">
+      <span class="modal-tag saffron-bg" id="modal-category" style="color: var(--text-primary); background-color: var(--accent-saffron);"></span>
+      <span class="modal-time" id="modal-time"></span>
+    </div>
+    <h2 class="modal-title" id="modal-title"></h2>
+    <div class="modal-meta">
+      <span class="modal-author"><i data-lucide="shield-check"></i> <span id="modal-author-name">The Ledger Desk</span></span>
+      <span class="modal-source" id="modal-source"></span>
+    </div>
     <div id="modal-media-container" style="display: none; width: 100%; border-radius: var(--border-radius-sm); overflow: hidden; margin: 20px 0;"></div>
-    <div class="bias-audit-callout"><h4 class="callout-heading"><i data-lucide="search-code"></i> AI NARRATIVE AUDIT</h4><p class="callout-text" id="modal-bias-audit">Ministers frame procedural hurdles as 'efficiency improvements' to mask standard operational overhead.</p></div>
-    <div class="modal-body-content"><p id="modal-summary">The Ministry of Finance has successfully updated the national tax bureaucracy. The revised forms are designed to optimize reporting speeds, ensuring that only specialized algorithms can successfully file them.</p></div>
-    <div class="modal-footer"><a href="#" target="_blank" class="btn btn-secondary" id="modal-original-link"><span>Inspect Raw Corporate Spin</span><i data-lucide="external-link"></i></a></div>
+    <div class="bias-audit-callout">
+      <h4 class="callout-heading"><i data-lucide="search-code"></i> AI NARRATIVE AUDIT</h4>
+      <p class="callout-text" id="modal-bias-audit"></p>
+    </div>
+    <div class="modal-body-content"><p id="modal-summary"></p></div>
+    <div class="modal-footer">
+      <a href="#" target="_blank" class="btn btn-secondary" id="modal-original-link"><span>Inspect Raw Corporate Spin</span><i data-lucide="external-link"></i></a>
+    </div>
   </div>
 </div>
 

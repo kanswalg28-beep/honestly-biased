@@ -3,10 +3,13 @@
 
 User-agent: *
 Allow: /
+Allow: /chronicles/*
 Allow: /article/*
 Allow: /politics
 Allow: /tech
 Allow: /finance
+Allow: /crime-and-law
+Allow: /world-and-civic
 Allow: /entertainment
 Allow: /health
 Allow: /manifesto
@@ -14,6 +17,10 @@ Allow: /standards
 Allow: /funding
 Allow: /finances
 Allow: /collective
+Allow: /taxmetrics
+Allow: /taxmetrics/*
+Allow: /whatitakehome
+Allow: /whatitakehome/*
 Allow: /sitemap.xml
 Allow: /rss.xml
 Allow: /feed.xml

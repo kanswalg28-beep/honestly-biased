@@ -1,4 +1,6 @@
 const { supabase } = require('../db/client');
+const { cleanEditorialText } = require('../db/cleanEditorialText');
+const { classifyCategory } = require('../db/classifyCategory');
 
 const DEFAULT_HIGHLIGHTS = [
   "Parliament confirms new tax framework remains perfectly logical to precisely three statisticians.",
@@ -41,6 +43,14 @@ async function getCustomArticles(limit = 500) {
     if (a.imageurl && a.imageurl.startsWith('data:image')) {
       a.hasBase64Image = true;
       a.imageurl = '';
+    }
+    // Sanitize text, normalize category taxonomy, and normalize author byline
+    if (a.aiheadline) a.aiheadline = cleanEditorialText(a.aiheadline);
+    if (a.aisummary) a.aisummary = cleanEditorialText(a.aisummary);
+    if (a.biasaudit) a.biasaudit = cleanEditorialText(a.biasaudit);
+    a.category = classifyCategory(a.category, a.aiheadline, a.aisummary);
+    if (!a.author || a.author === 'CMS Admin' || a.author === 'CMS Admin · Editorial' || a.author === 'Honestly Biased Editorial Board (Admin)') {
+      a.author = 'The Ledger Desk';
     }
     return a;
   });

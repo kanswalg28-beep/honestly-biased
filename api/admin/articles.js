@@ -7,6 +7,8 @@
 
 const { supabase } = require('../../db/client');
 const { requireAuth, checkCsrfToken, setAdminCors } = require('./_auth');
+const { cleanEditorialText } = require('../../db/cleanEditorialText');
+const { classifyCategory } = require('../../db/classifyCategory');
 
 let bustHomeCache, bustFeedCache;
 try {
@@ -147,11 +149,20 @@ module.exports = async (req, res) => {
       
       // Create new article
       const resolvedPublishDate = resolvePublishDate(body.publishdate);
+      const headline = cleanEditorialText(body.aiheadline || body.aiHeadline || body.title || '');
+      const summary = cleanEditorialText(body.aisummary || body.aiSummary || body.description || '');
+      const biasAudit = cleanEditorialText(body.biasaudit || body.biasAudit || '');
+      const category = classifyCategory(body.category || 'Politics', headline, summary, body.fullblog);
+
       const payload = {
         ...body,
+        aiheadline: headline,
+        aisummary: summary,
+        biasaudit: biasAudit,
+        category: category,
         fullblog: sanitizeHtml(body.fullblog || ''),
-        authortype: 'admin',
-        author: 'CMS Admin',
+        authortype: body.authortype || 'admin',
+        author: body.author && body.author !== 'CMS Admin' && body.author !== 'CMS Admin · Editorial' ? body.author : 'The Ledger Desk',
         publishdate: resolvedPublishDate,
         timeago: formatTimeAgo(resolvedPublishDate)
       };
@@ -178,16 +189,34 @@ module.exports = async (req, res) => {
       }
       
       const updatePayload = { ...body, fullblog: sanitizeHtml(body.fullblog || '') };
-      const headline = body.aiheadline || body.aiHeadline || body.title;
-      const summary = body.aisummary || body.aiSummary || body.description;
-      if (headline) {
+      const rawHeadline = body.aiheadline || body.aiHeadline || body.title;
+      const rawSummary = body.aisummary || body.aiSummary || body.description;
+      const rawBias = body.biasaudit || body.biasAudit;
+
+      if (rawHeadline) {
+        const headline = cleanEditorialText(rawHeadline);
         updatePayload.aiheadline = headline;
         updatePayload.aiHeadline = headline;
         updatePayload.title = headline;
       }
-      if (summary) {
+      if (rawSummary) {
+        const summary = cleanEditorialText(rawSummary);
         updatePayload.aisummary = summary;
         updatePayload.aiSummary = summary;
+      }
+      if (rawBias) {
+        updatePayload.biasaudit = cleanEditorialText(rawBias);
+      }
+      if (body.category || rawHeadline) {
+        updatePayload.category = classifyCategory(
+          body.category || 'Politics',
+          updatePayload.aiheadline || '',
+          updatePayload.aisummary || '',
+          updatePayload.fullblog
+        );
+      }
+      if (updatePayload.author === 'CMS Admin' || updatePayload.author === 'CMS Admin · Editorial') {
+        updatePayload.author = 'The Ledger Desk';
       }
       if (updatePayload.publishdate) {
         updatePayload.publishdate = resolvePublishDate(updatePayload.publishdate);

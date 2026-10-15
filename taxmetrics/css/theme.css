@@ -1,0 +1,209 @@
+:root {
+  /* 60% Dominant (Muted Linen Ivory Base) */
+  --color-canvas: #F9F6F0;
+  --color-surface: #F2EDE4;
+  --color-surface-hover: #ECE5D9;
+  --color-border: #E2DACD;
+  --color-border-subtle: #EDE7DC;
+
+  /* 30% Secondary (Oxidized Copper / Teal Slate Patina) */
+  --color-text-primary: #1A3438;
+  --color-text-secondary: #2E5A5E;
+  --color-text-muted: #53797D;
+  --color-track-inactive: #3D6E73;
+
+  /* 10% Accent (Burnished Brass Precision) */
+  --color-accent: #D4AF37;
+  --color-accent-hover: #B89327;
+  --color-accent-glow: rgba(212, 175, 55, 0.28);
+  --color-accent-soft: rgba(212, 175, 55, 0.14);
+
+  /* Semantic Archetypes */
+  --color-semantic-deduction: #B44335;       /* Federal tax / drag */
+  --color-semantic-state: #D07B43;           /* State / local surcharge */
+  --color-semantic-fica: #4F7E66;            /* Social security & medicare */
+  --color-semantic-positive: #1C5946;        /* Net take-home margin */
+  --color-semantic-positive-bg: #E9F4EE;
+  --color-semantic-deduction-bg: #FAECE9;
+
+  /* Elevation & Shadows */
+  --shadow-sm: 0 1px 3px rgba(26, 52, 56, 0.05);
+  --shadow-md: 0 4px 14px -2px rgba(26, 52, 56, 0.07);
+  --shadow-lg: 0 10px 28px -4px rgba(26, 52, 56, 0.12);
+  --shadow-inset: inset 1px 1px 3px rgba(26, 52, 56, 0.06);
+
+  /* World-Class Modern Typography (Inter & JetBrains Mono loaded via index.html) */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.55;
+  font-size: 15px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+label {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
+.tabular-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv05" 1;
+  letter-spacing: -0.02em;
+}
+
+/* Global Semantic Text Utilities */
+.positive {
+  color: var(--color-semantic-positive) !important;
+}
+.deduction {
+  color: var(--color-semantic-deduction) !important;
+}
+
+/* ==========================================================================
+   Honestly Biased Header Bridge
+   ========================================================================== */
+.hb-network-bar {
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  width: 100%;
+  position: relative;
+  z-index: 100;
+}
+.hb-network-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.hb-bridge-link {
+  color: #f1f5f9;
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  letter-spacing: -0.01em;
+  transition: color 0.15s ease;
+}
+.hb-bridge-link:hover {
+  color: #ff6b35;
+}
+.hb-bridge-arrow {
+  font-size: 0.95rem;
+  transition: transform 0.15s ease;
+}
+.hb-bridge-link:hover .hb-bridge-arrow {
+  transform: translateX(-3px);
+}
+.hb-network-tagline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+.hb-live-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #ff6b35;
+  box-shadow: 0 0 8px rgba(255, 107, 53, 0.8);
+  display: inline-block;
+  animation: hbPulse 2s infinite;
+}
+@keyframes hbPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+.hb-bridge-badge {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+@media (max-width: 640px) {
+  .hb-network-tagline {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   50-State Directory Grid
+   ========================================================================== */
+.state-directory-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+}
+.state-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.state-dir-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+.state-dir-link:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover);
+  transform: translateY(-1px);
+}
+.state-dir-code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}

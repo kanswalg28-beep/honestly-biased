@@ -17,6 +17,8 @@
 // with the legacy handler that cached short slugs in URLs.
 
 const { supabase } = require('../db/client');
+const { cleanEditorialText } = require('../db/cleanEditorialText');
+const { classifyCategory } = require('../db/classifyCategory');
 
 const SITE = 'https://www.honestlybiased.com';
 const SITE_NAME = 'Honestly Biased';
@@ -43,9 +45,8 @@ const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishda
 
 function getArticleUrl(article) {
   if (!article) return '/';
-  const cat = String(article.category || 'politics').toLowerCase().trim();
   const slug = article.slug || shortIdFromUuid(article.id);
-  return `/${cat}/${slug}`;
+  return `/chronicles/${slug}`;
 }
 
 function escapeHtml(s) {
@@ -204,21 +205,24 @@ async function resolveArticleBySlug(slug) {
 // --------------------------------------------------------------------------
 
 function renderArticleHtml(article) {
-  const headline  = article.aiheadline || article.title || 'Untitled';
-  const summary   = stripTags(article.aisummary) || stripTags(article.summary) || truncate(stripTags(article.fullblog), 220);
-  const body      = article.fullblog || article.content || '';
-  const image     = article.imageurl || '/assets/hero-bg.png';
-  const absImage  = image.startsWith('http') ? image : (SITE + image);
-  const author    = article.author || 'Honestly Biased Team';
-  const byline    = article.authortype === 'admin' ? 'Editorial · ' + SITE_NAME : 'Audited by ' + SITE_NAME + ' AI Engine';
-  const category  = article.category || 'Editorial';
-  const region    = normalizeRegion(article.region);
-  const regionLabel = region === 'Indian' ? 'Indian Edition' : (region + ' Edition');
+  const rawHeadline  = article.aiheadline || article.title || 'Untitled';
+  const headline     = cleanEditorialText(rawHeadline);
+  const rawSummary   = stripTags(article.aisummary) || stripTags(article.summary) || truncate(stripTags(article.fullblog), 220);
+  const summary      = cleanEditorialText(rawSummary);
+  const body         = cleanEditorialText(article.fullblog || article.content || '');
+  const image        = article.imageurl || '/assets/hero-bg.png';
+  const absImage     = image.startsWith('http') ? image : (SITE + image);
+  const rawAuthor    = article.author || 'The Ledger Desk';
+  const author       = (rawAuthor.includes('Admin') || rawAuthor === 'Honestly Biased Team') ? 'The Ledger Desk' : rawAuthor;
+  const byline       = article.authortype === 'admin' ? 'Editorial · ' + SITE_NAME : 'Audited by ' + SITE_NAME + ' AI Engine';
+  const category     = classifyCategory(article.category, headline, summary, body);
+  const region       = normalizeRegion(article.region);
+  const regionLabel  = region === 'Indian' ? 'Indian Edition' : (region + ' Edition');
   const datePublished = isoDate(article.publishdate || article.createdat);
   const dateModified  = isoDate(article.updatedat || article.publishdate || article.createdat);
-  const biasAudit = article.biasaudit || '';
-  const source    = article.originalsource || SITE_NAME + ' Editorial';
-  const origUrl   = article.originalurl || '#';
+  const biasAudit    = cleanEditorialText(article.biasaudit || '');
+  const source       = article.originalsource || SITE_NAME + ' Editorial';
+  const origUrl      = article.originalurl || '#';
 
   // Pretty printable timeago (e.g. "July 1, 2026")
   let prettyDate = '';
@@ -226,7 +230,8 @@ function renderArticleHtml(article) {
     prettyDate = new Date(datePublished).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   } catch (e) { prettyDate = ''; }
 
-  const canonical = `${SITE}${getArticleUrl(article)}`;
+  const slug = article.slug || shortIdFromUuid(article.id);
+  const canonical = `${SITE}/chronicles/${slug}`;
   const seoDesc   = truncate(summary, 200);
 
   // NewsArticle JSON-LD structured data
@@ -448,6 +453,8 @@ function renderArticleHtml(article) {
         <li><a href="/politics">Politics</a></li>
         <li><a href="/tech">Tech</a></li>
         <li><a href="/finance">Finance</a></li>
+        <li><a href="/crime-and-law">Crime & Law</a></li>
+        <li><a href="/world-and-civic">World & Civic</a></li>
         <li><a href="/entertainment">Entertainment</a></li>
         <li><a href="/health">Health</a></li>
       </ul>
