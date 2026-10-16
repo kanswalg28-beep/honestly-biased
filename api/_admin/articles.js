@@ -9,6 +9,7 @@ const { supabase } = require('../../db/client');
 const { requireAuth, checkCsrfToken, setAdminCors } = require('./_auth');
 const { cleanEditorialText } = require('../../db/cleanEditorialText');
 const { classifyCategory } = require('../../db/classifyCategory');
+const { sanitizeEditorialText, generateSlug, normalizeCategory } = require('./sanitize');
 
 let bustHomeCache, bustFeedCache;
 try {
@@ -149,10 +150,10 @@ module.exports = async (req, res) => {
       
       // Create new article
       const resolvedPublishDate = resolvePublishDate(body.publishdate);
-      const headline = cleanEditorialText(body.aiheadline || body.aiHeadline || body.title || '');
-      const summary = cleanEditorialText(body.aisummary || body.aiSummary || body.description || '');
-      const biasAudit = cleanEditorialText(body.biasaudit || body.biasAudit || '');
-      const category = classifyCategory(body.category || 'Politics', headline, summary, body.fullblog);
+      const headline = cleanEditorialText(sanitizeEditorialText(body.aiheadline || body.aiHeadline || body.title || ''));
+      const summary = cleanEditorialText(sanitizeEditorialText(body.aisummary || body.aiSummary || body.description || ''));
+      const biasAudit = cleanEditorialText(sanitizeEditorialText(body.biasaudit || body.biasAudit || ''));
+      const category = normalizeCategory(classifyCategory(body.category || 'Politics', headline, summary, body.fullblog));
 
       const payload = {
         ...body,
@@ -160,7 +161,7 @@ module.exports = async (req, res) => {
         aisummary: summary,
         biasaudit: biasAudit,
         category: category,
-        slug: body.slug ? body.slug.trim() : headline.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().split(/\s+/).slice(0, 10).join('-'),
+        slug: body.slug ? generateSlug(body.slug) : generateSlug(headline),
         image_alt: body.image_alt || body.imageAlt || '',
         audited_outlet: body.audited_outlet || body.auditedOutlet || body.originalsource || '',
         fullblog: sanitizeHtml(body.fullblog || ''),
@@ -197,29 +198,29 @@ module.exports = async (req, res) => {
       const rawBias = body.biasaudit || body.biasAudit;
 
       if (rawHeadline) {
-        const headline = cleanEditorialText(rawHeadline);
+        const headline = cleanEditorialText(sanitizeEditorialText(rawHeadline));
         updatePayload.aiheadline = headline;
         updatePayload.aiHeadline = headline;
         updatePayload.title = headline;
       }
       if (rawSummary) {
-        const summary = cleanEditorialText(rawSummary);
+        const summary = cleanEditorialText(sanitizeEditorialText(rawSummary));
         updatePayload.aisummary = summary;
         updatePayload.aiSummary = summary;
       }
       if (rawBias) {
-        updatePayload.biasaudit = cleanEditorialText(rawBias);
+        updatePayload.biasaudit = cleanEditorialText(sanitizeEditorialText(rawBias));
       }
       if (body.category || rawHeadline) {
-        updatePayload.category = classifyCategory(
+        updatePayload.category = normalizeCategory(classifyCategory(
           body.category || 'Politics',
           updatePayload.aiheadline || '',
           updatePayload.aisummary || '',
           updatePayload.fullblog
-        );
+        ));
       }
       if (body.slug) {
-        updatePayload.slug = body.slug.trim();
+        updatePayload.slug = generateSlug(body.slug);
       }
       if (body.image_alt !== undefined || body.imageAlt !== undefined) {
         updatePayload.image_alt = body.image_alt || body.imageAlt || '';

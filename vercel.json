@@ -94,6 +94,10 @@
       "destination": "/api/article?category=health&slug=:slug"
     },
     {
+      "source": "/sports/:slug",
+      "destination": "/api/article?category=sports&slug=:slug"
+    },
+    {
       "source": "/editions/:edition/:category",
       "destination": "/api/home"
     },
@@ -132,6 +136,10 @@
     {
       "source": "/health",
       "destination": "/health.html"
+    },
+    {
+      "source": "/sports",
+      "destination": "/api/home?category=sports"
     },
     {
       "source": "/manifesto",

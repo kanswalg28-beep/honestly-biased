@@ -243,10 +243,10 @@ function renderArticleHtml(article) {
   const canonical = `${SITE}/chronicles/${slug}`;
   const seoDesc   = truncate(summary, 200);
 
-  // NewsArticle JSON-LD structured data
+  // AnalysisNewsArticle JSON-LD structured data (recommended by Google News for analytical dispatches)
   const newsJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
+    '@type': 'AnalysisNewsArticle',
     'mainEntityOfPage': { '@type': 'WebPage', '@id': canonical },
     'headline': headline,
     'description': seoDesc,
@@ -264,41 +264,71 @@ function renderArticleHtml(article) {
     'isAccessibleForFree': true
   });
 
-  // ClaimReview JSON-LD structured data
-  const claimReviewedText = article.originaltitle || article.title || headline;
-  const reviewRatingAlternateName = biasAudit ? 'Narrative Bias Audited' : 'Contextualized';
-  const claimReviewJsonLd = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'ClaimReview',
-    'url': canonical,
-    'claimReviewed': claimReviewedText,
-    'itemReviewed': {
-      '@type': 'CreativeWork',
+  // Conditionally inject ClaimReview ONLY when an explicit factual claim verification exists.
+  // For narrative framing audits, inject CritiqueReview to avoid Search Console manual actions.
+  const hasFactualClaim = Boolean(article.claim_reviewed || article.claimreviewed);
+  let claimOrCritiqueJsonLd = null;
+
+  if (hasFactualClaim) {
+    const claimReviewedText = article.claim_reviewed || article.claimreviewed || headline;
+    claimOrCritiqueJsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'ClaimReview',
+      'url': canonical,
+      'claimReviewed': claimReviewedText,
+      'itemReviewed': {
+        '@type': 'CreativeWork',
+        'author': {
+          '@type': 'Organization',
+          'name': visualSource || 'Mainstream Press Wire'
+        },
+        'datePublished': datePublished,
+        'name': claimReviewedText
+      },
       'author': {
         '@type': 'Organization',
-        'name': visualSource || 'Mainstream Press Wire'
+        'name': SITE_NAME,
+        'url': SITE,
+        'logo': {
+          '@type': 'ImageObject',
+          'url': `${SITE}/assets/logo.png`
+        }
       },
-      'datePublished': datePublished,
-      'name': claimReviewedText
-    },
-    'author': {
-      '@type': 'Organization',
-      'name': SITE_NAME,
-      'url': SITE,
-      'logo': {
-        '@type': 'ImageObject',
-        'url': `${SITE}/assets/logo.png`
+      'reviewRating': {
+        '@type': 'Rating',
+        'ratingValue': '3',
+        'bestRating': '5',
+        'worstRating': '1',
+        'alternateName': biasAudit ? 'Narrative Bias Audited' : 'Contextualized',
+        'ratingExplanation': biasAudit || summary
       }
-    },
-    'reviewRating': {
-      '@type': 'Rating',
-      'ratingValue': '3',
-      'bestRating': '5',
-      'worstRating': '1',
-      'alternateName': reviewRatingAlternateName,
-      'ratingExplanation': biasAudit || summary
-    }
-  });
+    });
+  } else if (biasAudit) {
+    claimOrCritiqueJsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CritiqueReview',
+      'url': canonical,
+      'itemReviewed': {
+        '@type': 'NewsArticle',
+        'headline': headline,
+        'datePublished': datePublished,
+        'publisher': {
+          '@type': 'Organization',
+          'name': visualSource || 'Mainstream Press Wire'
+        }
+      },
+      'author': {
+        '@type': 'Organization',
+        'name': SITE_NAME,
+        'url': SITE,
+        'logo': {
+          '@type': 'ImageObject',
+          'url': `${SITE}/assets/logo.png`
+        }
+      },
+      'reviewBody': biasAudit
+    });
+  }
 
   // WebSite + BreadcrumbList JSON-LD
   const breadcrumbJsonLd = JSON.stringify({
@@ -350,7 +380,7 @@ function renderArticleHtml(article) {
 <meta name="twitter:creator" content="@honestlybiased">
 
 <script type="application/ld+json">${newsJsonLd}</script>
-<script type="application/ld+json">${claimReviewJsonLd}</script>
+${claimOrCritiqueJsonLd ? `<script type="application/ld+json">${claimOrCritiqueJsonLd}</script>` : ''}
 <script type="application/ld+json">${breadcrumbJsonLd}</script>
 
 <meta name="theme-color" content="#0a0e1a">
@@ -371,7 +401,7 @@ function renderArticleHtml(article) {
   <div class="header-container">
     <div class="header-left" style="display: flex; align-items: center; gap: 16px;">
       <a href="/" class="brand-logo" aria-label="${escapeAttr(SITE_NAME)} Home">
-        <img src="/assets/logo.png" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png" id="logo-img">
+        <img src="/assets/logo.png" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png" id="logo-img" style="border-radius: 6px; overflow: hidden;">
       </a>
       <nav class="article-header-nav" aria-label="Section and Back Navigation">
         <a href="/" class="header-back-link"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> The Ledger</a>
@@ -497,7 +527,7 @@ function renderArticleHtml(article) {
 <footer class="editorial-footer">
   <div class="footer-grid">
     <div class="footer-brand-column">
-      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png-footer"></a>
+      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="${escapeAttr(SITE_NAME)} Logo" class="logo-png-footer" style="border-radius: 6px; overflow: hidden;"></a>
       <p class="mission-statement">${SITE_NAME} is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We deliver forensic, analytical, and uncompromisingly honest media critiques across multi-edition global politics, policy, and institutional power structures.</p>
     </div>
     <div class="footer-links-column">
@@ -508,8 +538,9 @@ function renderArticleHtml(article) {
         <li><a href="/finance">Finance</a></li>
         <li><a href="/crime-and-law">Crime & Law</a></li>
         <li><a href="/world-and-civic">World & Civic</a></li>
-        <li><a href="/entertainment">Entertainment</a></li>
         <li><a href="/health">Health</a></li>
+        <li><a href="/category/sports">Sports</a></li>
+        <li><a href="/entertainment">Entertainment</a></li>
       </ul>
     </div>
     <div class="footer-links-column">
@@ -621,19 +652,28 @@ module.exports = async (req, res) => {
     );
   }
 
-  // Canonical URL structure: /:category/:slug (e.g. /health/china-coastal-areas-get)
+  // Canonical URL structure: /chronicles/:slug
   const targetCat = String(article.category || 'politics').toLowerCase().trim();
   const targetSlug = String(article.slug || shortIdFromUuid(article.id)).toLowerCase().trim();
-  const targetPath = `/${targetCat}/${targetSlug}`;
+  const canonicalPath = `/chronicles/${targetSlug}`;
 
   const reqCat = req.query && req.query.category ? String(req.query.category).toLowerCase().trim() : null;
   const reqSlug = String(slug).toLowerCase().trim();
 
-  // If request arrived via legacy /article/:slug route (no category parameter) or if category/slug
-  // doesn't match canonical (e.g. accessed via shortId), issue a 301 Permanent Redirect.
-  if (!reqCat || reqCat !== targetCat || reqSlug !== targetSlug) {
+  // If request arrived with an outdated category parameter that no longer matches article.category,
+  // 301 redirect to canonical /chronicles/:slug (preventing 404s and split SEO authority when reclassified).
+  if (reqCat && reqCat !== targetCat) {
     res.writeHead(301, {
-      Location: targetPath,
+      Location: canonicalPath,
+      'Cache-Control': 'public, max-age=86400'
+    });
+    return res.end();
+  }
+
+  // If request arrived via legacy /article/:slug or non-canonical shortId, redirect to /chronicles/:targetSlug
+  if (reqSlug !== targetSlug || (req.url && req.url.startsWith('/article/'))) {
+    res.writeHead(301, {
+      Location: canonicalPath,
       'Cache-Control': 'public, max-age=86400'
     });
     return res.end();

@@ -18,7 +18,7 @@ const PerspectiveLens = {
     // Core interaction tracking
     mouse: { x: 0.5, y: 0.5 },
     mouseSmooth: { x: 0.5, y: 0.5 },
-    hoverState: { val: 0.0, target: 0.38 }, // Ambient float baseline (0.38)
+    hoverState: { val: 0.0, target: 0.0 }, // Clean baseline (0.0) — eliminates faint circular ring artifact on hero portrait
     hasInteracted: false,
     
     // Shader custom variables
@@ -126,12 +126,12 @@ const PerspectiveLens = {
                 
                 vec3 finalColor;
 
-                if (d < u_lens_radius) {
+                if (d < u_lens_radius && u_hover > 0.005) {
                     float r = d / u_lens_radius;
                     
                     // 1. Refractive Magnification
                     // High warp factor in center, matching the visual concept of magnifying perspectives
-                    float warp = 0.78 + 0.22 * r; 
+                    float warp = mix(1.0, 0.78 + 0.22 * r, u_hover); 
                     vec2 dir = normalize(pixelPos - mousePos);
                     vec2 refractedUV = u_mouse_smooth + (dir / aspect) * (d * warp);
                     
@@ -146,7 +146,7 @@ const PerspectiveLens = {
                     float gChan = texture2D(u_texture, refractedUV).g;
                     float bChan = texture2D(u_texture, clamp(refractedUV + abOffset, 0.001, 0.999)).b;
                     
-                    finalColor = vec3(rChan, gChan, bChan);
+                    vec3 lensColor = vec3(rChan, gChan, bChan);
                     
                     // 3. Dynamic Bevel Lighting (catch-lights matching neon theme highlights)
                     float edgeWidth = 0.014;
@@ -154,11 +154,14 @@ const PerspectiveLens = {
                                      smoothstep(u_lens_radius + edgeWidth, u_lens_radius, d);
                     
                     // Add catch-light rim
-                    finalColor += vec3(specular * 0.18 * u_hover);
+                    lensColor += vec3(specular * 0.18 * u_hover);
 
                     // Drop inner refract shadow
                     float innerShadow = smoothstep(u_lens_radius - 0.04, u_lens_radius, d);
-                    finalColor -= vec3(innerShadow * 0.08 * u_hover);
+                    lensColor -= vec3(innerShadow * 0.08 * u_hover);
+
+                    vec3 baseColor = texture2D(u_texture, vUv).rgb;
+                    finalColor = mix(baseColor, lensColor, u_hover);
 
                 } else {
                     // Static baseline background outside the Perspective Lens
@@ -210,7 +213,7 @@ const PerspectiveLens = {
         };
 
         const handleMouseLeave = () => {
-            this.hoverState.target = 0.38; // Recede to ambient float baseline
+            this.hoverState.target = 0.0; // Return cleanly to zero when idle — no ring artifact
         };
 
         this.container.addEventListener('mousemove', handleMouseMove);

@@ -305,8 +305,9 @@ async function renderHomepageHtml(articles) {
 
   // Ticker highlights derived from deduplicated articles, repeated once for seamless 50% translation loop
   const uniqueHeadlines = Array.from(new Set(articles.map(a => cleanEditorialText(a.aiheadline || a.aiHeadline || a.title)).filter(Boolean))).slice(0, 6);
-  const loopHeadlines = uniqueHeadlines.length > 0 ? [...uniqueHeadlines, ...uniqueHeadlines] : [];
-  const tickerItemsHtml = loopHeadlines.map(h => `<span>• ${escapeHtml(h)}</span>`).join('');
+  const firstSetHtml = uniqueHeadlines.map(h => `<span>• ${escapeHtml(h)}</span>`).join('');
+  const clonedSetHtml = uniqueHeadlines.map(h => `<span aria-hidden="true">• ${escapeHtml(h)}</span>`).join('');
+  const tickerItemsHtml = firstSetHtml + clonedSetHtml;
 
   // Bento grid cards: on Page 1 (All Chronicles + All Editions), exclude the active Hero story so it is not stacked back-to-back
   const gridArticles = heroArticle ? articles.filter(a => a.id !== heroArticle.id) : articles;
@@ -397,7 +398,7 @@ async function renderHomepageHtml(articles) {
   <div class="header-container">
     <div class="header-left">
       <a href="/" class="brand-logo" aria-label="Honestly Biased Home">
-        <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img">
+        <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" id="logo-img" style="border-radius: 6px; overflow: hidden;">
       </a>
     </div>
     <div class="header-center">
@@ -567,7 +568,7 @@ async function renderHomepageHtml(articles) {
 <footer class="editorial-footer">
   <div class="footer-grid">
     <div class="footer-brand-column">
-      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png-footer"></a>
+      <a href="/" class="footer-logo"><img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png-footer" style="border-radius: 6px; overflow: hidden;"></a>
       <p class="mission-statement" data-site-content-block="footer"><span data-bind="mission">Honestly Biased is a reader-supported, digital-first commentary hub. We reject the corporate performance of neutral objectivity. We deliver forensic, analytical, and uncompromisingly honest media critiques across multi-edition global politics, policy, and institutional power structures.</span></p>
     </div>
     <div class="footer-links-column">
@@ -579,6 +580,7 @@ async function renderHomepageHtml(articles) {
         <li><a href="/crime-and-law">Crime & Law</a></li>
         <li><a href="/world-and-civic">World & Civic</a></li>
         <li><a href="/health">Health</a></li>
+        <li><a href="/category/sports">Sports</a></li>
         <li><a href="/entertainment">Entertainment</a></li>
       </ul>
     </div>
@@ -702,7 +704,7 @@ function proxyImageUrls(text) {
 let cachedHtml = null;
 let cachedJson = null;
 let cacheTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const CACHE_TTL_MS = 15 * 1000; // 15-second cap on in-memory isolate caching to prevent stale SSR vs admin updates
 
 function bustHomeCache() {
   cachedHtml = null;

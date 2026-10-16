@@ -97,7 +97,7 @@ const { classifyCategory, VALID_CATEGORIES } = require('./db/classifyCategory');
 
 // Clean category & static page route rewrites (matching vercel.json)
 const staticPages = [
-    '/politics', '/tech', '/finance', '/entertainment', '/health',
+    '/politics', '/tech', '/finance', '/entertainment', '/health', '/sports',
     '/crime-and-law', '/world-and-civic',
     '/manifesto', '/standards', '/funding', '/finances', '/collective'
 ];

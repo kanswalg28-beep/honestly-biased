@@ -696,6 +696,8 @@ button, input, textarea {
     height: 100%;
     width: auto;
     object-fit: contain;
+    border-radius: 6px;
+    overflow: hidden;
 }
 
 /* Standard Nav Links */
@@ -1169,6 +1171,8 @@ body.light-theme .icon-dark { opacity: 0; transform: rotate(90deg); }
     width: 100% !important;
     height: 100% !important;
     object-fit: cover;
+    z-index: 1;
+    mix-blend-mode: normal;
 }
 
 /* Subtle editorial shading overlay over visual background */
@@ -2501,6 +2505,8 @@ body.light-theme .bias-stamp-text {
     width: auto;
     margin-bottom: 24px;
     object-fit: contain;
+    border-radius: 6px;
+    overflow: hidden;
 }
 
 .mission-statement {
