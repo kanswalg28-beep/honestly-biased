@@ -3,7 +3,35 @@
   "rewrites": [
     {
       "source": "/api/newsletter/subscribe",
-      "destination": "/api/admin/subscribers"
+      "destination": "/api/admin?route=subscribers"
+    },
+    {
+      "source": "/api/admin/:route*",
+      "destination": "/api/admin?route=:route*"
+    },
+    {
+      "source": "/rss.xml",
+      "destination": "/api/sitemap?format=rss"
+    },
+    {
+      "source": "/feed.xml",
+      "destination": "/api/sitemap?format=rss"
+    },
+    {
+      "source": "/api/rss",
+      "destination": "/api/sitemap?format=rss"
+    },
+    {
+      "source": "/api/rss.xml",
+      "destination": "/api/sitemap?format=rss"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap?format=sitemap"
+    },
+    {
+      "source": "/api/sitemap.xml",
+      "destination": "/api/sitemap?format=sitemap"
     },
     {
       "source": "/c748291b40d347c69a083fbb2241deef.txt",
@@ -22,28 +50,12 @@
       "destination": "/api/home?__imgproxy=1&__path=$1"
     },
     {
-      "source": "/api/admin/articles/(.+)",
-      "destination": "/api/admin/articles?id=$1"
-    },
-    {
       "source": "/",
       "destination": "/api/home"
     },
     {
       "source": "/index.html",
       "destination": "/api/home"
-    },
-    {
-      "source": "/rss.xml",
-      "destination": "/api/rss"
-    },
-    {
-      "source": "/feed.xml",
-      "destination": "/api/rss"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
     },
     {
       "source": "/chronicles/:slug",

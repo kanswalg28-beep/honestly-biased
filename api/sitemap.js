@@ -1,20 +1,18 @@
-// api/sitemap.js — Dynamic sitemap.xml
+// api/sitemap.js — Dynamic sitemap.xml and RSS 2.0 Feed Generator
 //
-// GET /api/sitemap.xml
+// GET /sitemap.xml or /api/sitemap -> generates sitemap.xml
+// GET /rss.xml, /feed.xml, or /api/sitemap?format=rss -> generates RSS 2.0 feed
 //
-// Always returns a freshly-generated sitemap with every published article
-// in the database. This is a fallback/complement to the build-time
-// sitemap.xml — letting crawlers always see the latest content even
-// before a redeploy. Vercel routes /sitemap.xml → /api/sitemap.
-//
-// To avoid hammering Supabase on every bot crawl, we apply a small
-// in-process cache (45 seconds) so concurrent crawlers share one fetch.
+// Merged into a single serverless function to stay well within Vercel's function limits.
+// Includes in-process caching for high performance during bot crawls.
 
 const fs = require('fs');
 const path = require('path');
 const { supabase } = require('../db/client');
 
 const BASE_URL = 'https://www.honestlybiased.com';
+const SITE_NAME = 'Honestly Biased';
+const SITE_DESCRIPTION = 'Independent Commentary, Satire & Political Audit';
 
 const STATIC_ROUTES = [
   { url: '/', changefreq: 'daily', priority: 1.0 },
@@ -49,15 +47,47 @@ try {
   }
 } catch (e) {}
 
-let _cache = { at: 0, xml: null };
-const CACHE_MS = 45 * 1000;
+let _sitemapCache = { at: 0, xml: null };
+const SITEMAP_CACHE_MS = 45 * 1000;
+
+let _rssCache = { at: 0, xml: null };
+const RSS_CACHE_MS = 60 * 1000;
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
   return String(uuid).replace(/-/g, '').slice(-8);
 }
 
-async function fetchArticles() {
+function getArticleUrl(article) {
+  if (!article) return '/';
+  const cat = String(article.category || 'politics').toLowerCase().trim();
+  const slug = article.slug || shortIdFromUuid(article.id);
+  return `/${cat}/${slug}`;
+}
+
+function escapeXml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function stripTags(s) {
+  if (!s) return '';
+  return String(s).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function truncate(s, n) {
+  if (!s) return '';
+  s = String(s);
+  if (s.length <= n) return s;
+  return s.slice(0, n - 1).replace(/\s+\S*$/, '') + '...';
+}
+
+async function fetchSitemapArticles() {
   if (!supabase) return [];
   try {
     const { data, error } = await supabase
@@ -77,17 +107,27 @@ async function fetchArticles() {
   }
 }
 
-function escapeXml(s) {
-  if (s === null || s === undefined) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+async function fetchRssArticles() {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id, aiheadline, aisummary, fullblog, category, region, author, originalsource, imageurl, publishdate, biasaudit, slug')
+      .eq('archived', false)
+      .order('publishdate', { ascending: false })
+      .limit(100);
+    if (error) {
+      console.error('rss fetch error:', error.message);
+      return [];
+    }
+    return data || [];
+  } catch (e) {
+    console.error('rss fetch exception:', e.message);
+    return [];
+  }
 }
 
-function buildXml(articles) {
+function buildSitemapXml(articles) {
   const today = new Date().toISOString().split('T')[0];
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
@@ -107,7 +147,6 @@ function buildXml(articles) {
   for (const a of articles) {
     const shortId = shortIdFromUuid(a.id);
     if (!shortId && !a.slug) continue;
-    const cat = String(a.category || 'politics').toLowerCase().trim();
     const slug = a.slug || shortId;
     const url = `${BASE_URL}/chronicles/${slug}`;
     const lastmod = (a.updatedat || a.publishdate || today).toString().split('T')[0];
@@ -152,21 +191,116 @@ function buildXml(articles) {
   return xml;
 }
 
+function buildRssXml(articles) {
+  const now = new Date().toUTCString();
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">\n';
+  xml += '  <channel>\n';
+  xml += `    <title>${escapeXml(SITE_NAME)}</title>\n`;
+  xml += `    <link>${BASE_URL}</link>\n`;
+  xml += `    <atom:link href="${BASE_URL}/rss.xml" rel="self" type="application/rss+xml" />\n`;
+  xml += `    <description>${escapeXml(SITE_DESCRIPTION)}</description>\n`;
+  xml += `    <language>en-IN</language>\n`;
+  xml += `    <lastBuildDate>${now}</lastBuildDate>\n`;
+  xml += `    <generator>Honestly Biased RSS Generator</generator>\n`;
+  xml += `    <image>\n`;
+  xml += `      <url>${BASE_URL}/assets/logo.png</url>\n`;
+  xml += `      <title>${escapeXml(SITE_NAME)}</title>\n`;
+  xml += `      <link>${BASE_URL}</link>\n`;
+  xml += `    </image>\n`;
+
+  for (const a of articles) {
+    const url = `${BASE_URL}${getArticleUrl(a)}`;
+    const title = a.aiheadline || a.title || 'Untitled';
+    const desc = truncate(stripTags(a.aisummary) || stripTags(a.biasaudit) || stripTags(a.fullblog), 500);
+    const content = truncate(
+      (a.biasaudit ? `<p><strong>Bias Audit:</strong> ${stripTags(a.biasaudit)}</p>\n` : '') + (a.fullblog || ''),
+      5000
+    );
+    const author = a.author || SITE_NAME;
+    const category = a.category || 'Editorial';
+    const pubDate = (() => {
+      try { return new Date(a.publishdate).toUTCString(); } catch (e) { return now; }
+    })();
+    let image = (a.imageurl || '').trim();
+    if (image && !image.startsWith('data:image')) {
+      if (image.startsWith('./')) {
+        image = `${BASE_URL}${image.slice(1)}`;
+      } else if (image.startsWith('/')) {
+        image = `${BASE_URL}${image}`;
+      }
+      if (!image.startsWith('http://') && !image.startsWith('https://')) {
+        image = '';
+      }
+    } else {
+      image = '';
+    }
+    const source = a.originalsource || SITE_NAME;
+
+    xml += '    <item>\n';
+    xml += `      <title>${escapeXml(title)}</title>\n`;
+    xml += `      <link>${escapeXml(url)}</link>\n`;
+    xml += `      <guid isPermaLink="true">${escapeXml(url)}</guid>\n`;
+    xml += `      <pubDate>${pubDate}</pubDate>\n`;
+    xml += `      <dc:creator>${escapeXml(author)}</dc:creator>\n`;
+    xml += `      <category>${escapeXml(category)}</category>\n`;
+    xml += `      <description>${escapeXml(desc)}</description>\n`;
+    xml += `      <content:encoded><![CDATA[${content.replace(/]]>/g, ']]]]><![CDATA[>')}]]></content:encoded>\n`;
+    if (image) {
+      xml += `      <media:content url="${escapeXml(image)}" medium="image" />\n`;
+      xml += `      <media:thumbnail url="${escapeXml(image)}" />\n`;
+    }
+    xml += `      <source url="${BASE_URL}/rss.xml">${escapeXml(source)}</source>\n`;
+    xml += '    </item>\n';
+  }
+
+  xml += '  </channel>\n';
+  xml += '</rss>\n';
+  return xml;
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).json({ error: 'Method not allowed' });
 
+  const queryFormat = (req.query?.format || req.query?.type || '').toLowerCase();
+  const urlPath = (req.url || '').toLowerCase();
+  const isRss = queryFormat === 'rss' || queryFormat === 'feed' || urlPath.includes('rss') || urlPath.includes('feed');
+
   const now = Date.now();
-  if (_cache.xml && (now - _cache.at) < CACHE_MS) {
+
+  if (isRss) {
+    if (_rssCache.xml && (now - _rssCache.at) < RSS_CACHE_MS) {
+      res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900');
+      res.setHeader('X-Cache', 'HIT');
+      if (req.method === 'HEAD') return res.status(200).end();
+      return res.status(200).send(_rssCache.xml);
+    }
+
+    const articles = await fetchRssArticles();
+    const xml = buildRssXml(articles);
+    _rssCache = { at: now, xml };
+
+    res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900');
+    res.setHeader('X-Cache', 'MISS');
+    if (req.method === 'HEAD') return res.status(200).end();
+    return res.status(200).send(xml);
+  }
+
+  // Default to sitemap.xml
+  if (_sitemapCache.xml && (now - _sitemapCache.at) < SITEMAP_CACHE_MS) {
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
     res.setHeader('X-Cache', 'HIT');
-    return res.status(200).send(_cache.xml);
+    if (req.method === 'HEAD') return res.status(200).end();
+    return res.status(200).send(_sitemapCache.xml);
   }
 
-  const articles = await fetchArticles();
-  const xml = buildXml(articles);
-  _cache = { at: now, xml };
+  const articles = await fetchSitemapArticles();
+  const xml = buildSitemapXml(articles);
+  _sitemapCache = { at: now, xml };
 
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');

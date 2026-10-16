@@ -91,7 +91,6 @@ app.get('/admin', adminAuthLimiter, basicAuth, (req, res) => {
 // Import serverless page handlers for local parity with Vercel deployment
 const homeApi = require('./api/home');
 const articleApi = require('./api/article');
-const rssApi = require('./api/rss');
 const sitemapApi = require('./api/sitemap');
 const { cleanEditorialText } = require('./db/cleanEditorialText');
 const { classifyCategory, VALID_CATEGORIES } = require('./db/classifyCategory');
@@ -145,9 +144,9 @@ app.get('/category/:category', (req, res) => {
     return homeApi(req, res);
 });
 
-app.get('/rss.xml', rssApi);
-app.get('/feed.xml', rssApi);
-app.get('/api/rss', rssApi);
+app.get('/rss.xml', (req, res) => { req.query = req.query || {}; req.query.format = 'rss'; return sitemapApi(req, res); });
+app.get('/feed.xml', (req, res) => { req.query = req.query || {}; req.query.format = 'rss'; return sitemapApi(req, res); });
+app.get('/api/rss', (req, res) => { req.query = req.query || {}; req.query.format = 'rss'; return sitemapApi(req, res); });
 
 app.get('/sitemap.xml', sitemapApi);
 app.get('/api/sitemap', sitemapApi);
