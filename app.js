@@ -1193,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             ${cardLink}
                                         </h3>
                                         <p class="card-summary small-summary">${escapeHtml(summary)}</p>
-                                        <div class="card-footer-meta" style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+                                        <div class="card-footer-meta">
                                             ${verdictHtml}
                                             ${cardActions}
                                         </div>

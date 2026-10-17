@@ -244,7 +244,7 @@ function buildBentoCard(article, index) {
           ${cardLink}
         </h3>
         <p class="card-summary small-summary">${escapeHtml(summary)}</p>
-        <div class="card-footer-meta" style="margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+        <div class="card-footer-meta">
           ${verdictHtml}
           ${cardActions}
         </div>
@@ -257,7 +257,32 @@ function buildBentoCard(article, index) {
 // Article fetch
 // --------------------------------------------------------------------------
 async function fetchLatestArticles(limit = 24) {
-  if (!supabase) return [];
+  if (!supabase) {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const cacheFile = path.join(__dirname, '..', 'gnews-cache.json');
+      if (fs.existsSync(cacheFile)) {
+        const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+        const arts = cached.articles || [];
+        return arts.slice(0, limit).map(a => ({
+          id: a.id,
+          aiheadline: cleanEditorialText(a.aiheadline || a.aiHeadline || a.title || ''),
+          aisummary: cleanEditorialText(a.aisummary || a.aiSummary || a.summary || ''),
+          biasaudit: cleanEditorialText(a.biasaudit || a.biasAudit || ''),
+          imageurl: a.imageurl || a.imageUrl || '',
+          publishdate: a.publishdate || a.publishDate || new Date().toISOString(),
+          category: classifyCategory(a.category, a.aiheadline || a.aiHeadline, a.aisummary || a.aiSummary),
+          region: a.region || 'indian',
+          authortype: a.authortype || a.authorType || 'editorial',
+          author: a.author || 'The Ledger Desk',
+          timeago: a.timeago || a.timeAgo || '',
+          slug: a.slug || ''
+        }));
+      }
+    } catch (err) {}
+    return [];
+  }
   try {
     const { data, error } = await supabase
       .from('articles')
