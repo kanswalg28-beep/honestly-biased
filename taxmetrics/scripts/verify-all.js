@@ -6,7 +6,7 @@ const TaxEngine = require('../js/tax-engine.js');
 const engine = new TaxEngine(TaxData);
 
 console.log('--------------------------------------------------');
-console.log('WHATITAKEHOME COMPREHENSIVE SUITE AUDIT & VERIFICATION');
+console.log('TAXMETRICS COMPREHENSIVE SUITE AUDIT & VERIFICATION');
 console.log('--------------------------------------------------');
 
 let passed = 0;

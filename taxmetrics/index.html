@@ -15,13 +15,13 @@
   <meta property="og:title" content="US Income Tax &amp; Paycheck Calculator 2026 | TaxMetrics">
   <meta property="og:description" content="Free US income tax and paycheck calculator for 2026. See net take-home pay, federal tax, FICA and state tax. Your numbers are calculated in your browser and never sent to our servers.">
   <meta property="og:url" content="https://www.honestlybiased.com/taxmetrics">
-  <meta property="og:image" content="https://whatitakehome.com/og-preview.png">
+  <meta property="og:image" content="https://www.honestlybiased.com/taxmetrics/og-preview.png">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="US Income Tax &amp; Paycheck Calculator 2026 | TaxMetrics">
   <meta name="twitter:description" content="Free US income tax and paycheck calculator for 2026. See net take-home pay, federal tax, FICA and state tax. Your numbers are calculated in your browser and never sent to our servers.">
-  <meta name="twitter:image" content="https://whatitakehome.com/og-preview.png">
+  <meta name="twitter:image" content="https://www.honestlybiased.com/taxmetrics/og-preview.png">
 
   <!-- Structured Data (WebApplication & FAQPage) -->
   <script type="application/ld+json">
@@ -30,8 +30,8 @@
     "@graph": [
       {
         "@type": "WebApplication",
-        "name": "WhatITakeHome US Income Tax & Paycheck Calculator (2026)",
-        "url": "https://whatitakehome.com/",
+        "name": "TaxMetrics US Income Tax & Paycheck Calculator",
+        "url": "https://www.honestlybiased.com/taxmetrics",
         "applicationCategory": "FinanceApplication",
         "operatingSystem": "All",
         "offers": {
@@ -70,7 +70,7 @@
           },
           {
             "@type": "Question",
-            "name": "Does WhatITakeHome store the numbers I enter?",
+            "name": "Does TaxMetrics store the numbers I enter?",
             "acceptedAnswer": {
               "@type": "Answer",
               "text": "No. All calculations run in your browser and the income and deduction figures you enter are never sent to our servers."
@@ -78,10 +78,10 @@
           },
           {
             "@type": "Question",
-            "name": "How is WhatITakeHome validated against official IRS tax schedules?",
+            "name": "How is TaxMetrics validated against official IRS tax schedules?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "WhatITakeHome uses figures published by the IRS and Social Security Administration, including IRS Revenue Procedure 2025-32 for 2026 ($16,100 single, $32,200 married filing jointly, $24,150 head of household standard deductions), the $184,500 Social Security wage base, and the $24,500 401(k) limit."
+              "text": "TaxMetrics uses figures published by the IRS and Social Security Administration, including IRS Revenue Procedure 2025-32 for 2026 ($16,100 single, $32,200 married filing jointly, $24,150 head of household standard deductions), the $184,500 Social Security wage base, and the $24,500 401(k) limit."
             }
           }
         ]
@@ -226,6 +226,7 @@
         <div>
           <label for="year-select">Tax Year</label>
           <select id="year-select">
+            <option value="2027">2027 (Projected)</option>
             <option value="2026" selected>2026 (Current)</option>
             <option value="2025">2025</option>
             <option value="2024">2024</option>
@@ -236,6 +237,7 @@
           <select id="filing-select">
             <option value="single">Single</option>
             <option value="married">Married Filing Jointly</option>
+            <option value="mfs">Married Filing Separately</option>
             <option value="hoh">Head of Household</option>
           </select>
         </div>
@@ -597,58 +599,73 @@
   </section>
 
   <div class="state-directory-card">
-    <div class="state-directory-grid">
-      <a href="/taxmetrics/alaska" class="state-dir-link"><span>Alaska</span><span class="state-dir-code">AK</span></a>
-      <a href="/taxmetrics/florida" class="state-dir-link"><span>Florida</span><span class="state-dir-code">FL</span></a>
-      <a href="/taxmetrics/nevada" class="state-dir-link"><span>Nevada</span><span class="state-dir-code">NV</span></a>
-      <a href="/taxmetrics/new-hampshire" class="state-dir-link"><span>New Hampshire</span><span class="state-dir-code">NH</span></a>
-      <a href="/taxmetrics/south-dakota" class="state-dir-link"><span>South Dakota</span><span class="state-dir-code">SD</span></a>
-      <a href="/taxmetrics/tennessee" class="state-dir-link"><span>Tennessee</span><span class="state-dir-code">TN</span></a>
-      <a href="/taxmetrics/texas" class="state-dir-link"><span>Texas</span><span class="state-dir-code">TX</span></a>
-      <a href="/taxmetrics/washington" class="state-dir-link"><span>Washington</span><span class="state-dir-code">WA</span></a>
-      <a href="/taxmetrics/wyoming" class="state-dir-link"><span>Wyoming</span><span class="state-dir-code">WY</span></a>
-      <a href="/taxmetrics/california" class="state-dir-link"><span>California</span><span class="state-dir-code">CA</span></a>
-      <a href="/taxmetrics/new-york" class="state-dir-link"><span>New York</span><span class="state-dir-code">NY</span></a>
-      <a href="/taxmetrics/new-jersey" class="state-dir-link"><span>New Jersey</span><span class="state-dir-code">NJ</span></a>
-      <a href="/taxmetrics/colorado" class="state-dir-link"><span>Colorado</span><span class="state-dir-code">CO</span></a>
-      <a href="/taxmetrics/illinois" class="state-dir-link"><span>Illinois</span><span class="state-dir-code">IL</span></a>
-      <a href="/taxmetrics/alabama" class="state-dir-link"><span>Alabama</span><span class="state-dir-code">AL</span></a>
-      <a href="/taxmetrics/arkansas" class="state-dir-link"><span>Arkansas</span><span class="state-dir-code">AR</span></a>
-      <a href="/taxmetrics/arizona" class="state-dir-link"><span>Arizona</span><span class="state-dir-code">AZ</span></a>
-      <a href="/taxmetrics/connecticut" class="state-dir-link"><span>Connecticut</span><span class="state-dir-code">CT</span></a>
-      <a href="/taxmetrics/delaware" class="state-dir-link"><span>Delaware</span><span class="state-dir-code">DE</span></a>
-      <a href="/taxmetrics/georgia" class="state-dir-link"><span>Georgia</span><span class="state-dir-code">GA</span></a>
-      <a href="/taxmetrics/hawaii" class="state-dir-link"><span>Hawaii</span><span class="state-dir-code">HI</span></a>
-      <a href="/taxmetrics/idaho" class="state-dir-link"><span>Idaho</span><span class="state-dir-code">ID</span></a>
-      <a href="/taxmetrics/indiana" class="state-dir-link"><span>Indiana</span><span class="state-dir-code">IN</span></a>
-      <a href="/taxmetrics/iowa" class="state-dir-link"><span>Iowa</span><span class="state-dir-code">IA</span></a>
-      <a href="/taxmetrics/kansas" class="state-dir-link"><span>Kansas</span><span class="state-dir-code">KS</span></a>
-      <a href="/taxmetrics/kentucky" class="state-dir-link"><span>Kentucky</span><span class="state-dir-code">KY</span></a>
-      <a href="/taxmetrics/louisiana" class="state-dir-link"><span>Louisiana</span><span class="state-dir-code">LA</span></a>
-      <a href="/taxmetrics/maine" class="state-dir-link"><span>Maine</span><span class="state-dir-code">ME</span></a>
-      <a href="/taxmetrics/maryland" class="state-dir-link"><span>Maryland</span><span class="state-dir-code">MD</span></a>
-      <a href="/taxmetrics/massachusetts" class="state-dir-link"><span>Massachusetts</span><span class="state-dir-code">MA</span></a>
-      <a href="/taxmetrics/michigan" class="state-dir-link"><span>Michigan</span><span class="state-dir-code">MI</span></a>
-      <a href="/taxmetrics/minnesota" class="state-dir-link"><span>Minnesota</span><span class="state-dir-code">MN</span></a>
-      <a href="/taxmetrics/mississippi" class="state-dir-link"><span>Mississippi</span><span class="state-dir-code">MS</span></a>
-      <a href="/taxmetrics/missouri" class="state-dir-link"><span>Missouri</span><span class="state-dir-code">MO</span></a>
-      <a href="/taxmetrics/montana" class="state-dir-link"><span>Montana</span><span class="state-dir-code">MT</span></a>
-      <a href="/taxmetrics/nebraska" class="state-dir-link"><span>Nebraska</span><span class="state-dir-code">NE</span></a>
-      <a href="/taxmetrics/new-mexico" class="state-dir-link"><span>New Mexico</span><span class="state-dir-code">NM</span></a>
-      <a href="/taxmetrics/north-carolina" class="state-dir-link"><span>North Carolina</span><span class="state-dir-code">NC</span></a>
-      <a href="/taxmetrics/north-dakota" class="state-dir-link"><span>North Dakota</span><span class="state-dir-code">ND</span></a>
-      <a href="/taxmetrics/ohio" class="state-dir-link"><span>Ohio</span><span class="state-dir-code">OH</span></a>
-      <a href="/taxmetrics/oklahoma" class="state-dir-link"><span>Oklahoma</span><span class="state-dir-code">OK</span></a>
-      <a href="/taxmetrics/oregon" class="state-dir-link"><span>Oregon</span><span class="state-dir-code">OR</span></a>
-      <a href="/taxmetrics/pennsylvania" class="state-dir-link"><span>Pennsylvania</span><span class="state-dir-code">PA</span></a>
-      <a href="/taxmetrics/rhode-island" class="state-dir-link"><span>Rhode Island</span><span class="state-dir-code">RI</span></a>
-      <a href="/taxmetrics/south-carolina" class="state-dir-link"><span>South Carolina</span><span class="state-dir-code">SC</span></a>
-      <a href="/taxmetrics/utah" class="state-dir-link"><span>Utah</span><span class="state-dir-code">UT</span></a>
-      <a href="/taxmetrics/vermont" class="state-dir-link"><span>Vermont</span><span class="state-dir-code">VT</span></a>
-      <a href="/taxmetrics/virginia" class="state-dir-link"><span>Virginia</span><span class="state-dir-code">VA</span></a>
-      <a href="/taxmetrics/west-virginia" class="state-dir-link"><span>West Virginia</span><span class="state-dir-code">WV</span></a>
-      <a href="/taxmetrics/wisconsin" class="state-dir-link"><span>Wisconsin</span><span class="state-dir-code">WI</span></a>
-      <a href="/taxmetrics/district-of-columbia" class="state-dir-link"><span>District of Columbia</span><span class="state-dir-code">DC</span></a>
+    <div class="state-directory-group">
+      <h3 class="state-group-title">No Income Tax States (9)</h3>
+      <div class="state-directory-grid">
+        <a href="/taxmetrics/alaska" class="state-dir-link"><span>Alaska</span><span class="state-dir-code">AK</span></a>
+        <a href="/taxmetrics/florida" class="state-dir-link"><span>Florida</span><span class="state-dir-code">FL</span></a>
+        <a href="/taxmetrics/nevada" class="state-dir-link"><span>Nevada</span><span class="state-dir-code">NV</span></a>
+        <a href="/taxmetrics/new-hampshire" class="state-dir-link"><span>New Hampshire</span><span class="state-dir-code">NH</span></a>
+        <a href="/taxmetrics/south-dakota" class="state-dir-link"><span>South Dakota</span><span class="state-dir-code">SD</span></a>
+        <a href="/taxmetrics/tennessee" class="state-dir-link"><span>Tennessee</span><span class="state-dir-code">TN</span></a>
+        <a href="/taxmetrics/texas" class="state-dir-link"><span>Texas</span><span class="state-dir-code">TX</span></a>
+        <a href="/taxmetrics/washington" class="state-dir-link"><span>Washington</span><span class="state-dir-code">WA</span></a>
+        <a href="/taxmetrics/wyoming" class="state-dir-link"><span>Wyoming</span><span class="state-dir-code">WY</span></a>
+      </div>
+    </div>
+
+    <div class="state-directory-group" style="margin-top: 1.5rem;">
+      <h3 class="state-group-title">Flat Income Tax States (12)</h3>
+      <div class="state-directory-grid">
+        <a href="/taxmetrics/arizona" class="state-dir-link"><span>Arizona</span><span class="state-dir-code">AZ</span></a>
+        <a href="/taxmetrics/colorado" class="state-dir-link"><span>Colorado</span><span class="state-dir-code">CO</span></a>
+        <a href="/taxmetrics/georgia" class="state-dir-link"><span>Georgia</span><span class="state-dir-code">GA</span></a>
+        <a href="/taxmetrics/idaho" class="state-dir-link"><span>Idaho</span><span class="state-dir-code">ID</span></a>
+        <a href="/taxmetrics/illinois" class="state-dir-link"><span>Illinois</span><span class="state-dir-code">IL</span></a>
+        <a href="/taxmetrics/indiana" class="state-dir-link"><span>Indiana</span><span class="state-dir-code">IN</span></a>
+        <a href="/taxmetrics/kentucky" class="state-dir-link"><span>Kentucky</span><span class="state-dir-code">KY</span></a>
+        <a href="/taxmetrics/michigan" class="state-dir-link"><span>Michigan</span><span class="state-dir-code">MI</span></a>
+        <a href="/taxmetrics/mississippi" class="state-dir-link"><span>Mississippi</span><span class="state-dir-code">MS</span></a>
+        <a href="/taxmetrics/north-carolina" class="state-dir-link"><span>North Carolina</span><span class="state-dir-code">NC</span></a>
+        <a href="/taxmetrics/pennsylvania" class="state-dir-link"><span>Pennsylvania</span><span class="state-dir-code">PA</span></a>
+        <a href="/taxmetrics/utah" class="state-dir-link"><span>Utah</span><span class="state-dir-code">UT</span></a>
+      </div>
+    </div>
+
+    <div class="state-directory-group" style="margin-top: 1.5rem;">
+      <h3 class="state-group-title">Progressive Tax States &amp; DC (30)</h3>
+      <div class="state-directory-grid">
+        <a href="/taxmetrics/alabama" class="state-dir-link"><span>Alabama</span><span class="state-dir-code">AL</span></a>
+        <a href="/taxmetrics/arkansas" class="state-dir-link"><span>Arkansas</span><span class="state-dir-code">AR</span></a>
+        <a href="/taxmetrics/california" class="state-dir-link"><span>California</span><span class="state-dir-code">CA</span></a>
+        <a href="/taxmetrics/connecticut" class="state-dir-link"><span>Connecticut</span><span class="state-dir-code">CT</span></a>
+        <a href="/taxmetrics/delaware" class="state-dir-link"><span>Delaware</span><span class="state-dir-code">DE</span></a>
+        <a href="/taxmetrics/district-of-columbia" class="state-dir-link"><span>District of Columbia</span><span class="state-dir-code">DC</span></a>
+        <a href="/taxmetrics/hawaii" class="state-dir-link"><span>Hawaii</span><span class="state-dir-code">HI</span></a>
+        <a href="/taxmetrics/iowa" class="state-dir-link"><span>Iowa</span><span class="state-dir-code">IA</span></a>
+        <a href="/taxmetrics/kansas" class="state-dir-link"><span>Kansas</span><span class="state-dir-code">KS</span></a>
+        <a href="/taxmetrics/louisiana" class="state-dir-link"><span>Louisiana</span><span class="state-dir-code">LA</span></a>
+        <a href="/taxmetrics/maine" class="state-dir-link"><span>Maine</span><span class="state-dir-code">ME</span></a>
+        <a href="/taxmetrics/maryland" class="state-dir-link"><span>Maryland</span><span class="state-dir-code">MD</span></a>
+        <a href="/taxmetrics/massachusetts" class="state-dir-link"><span>Massachusetts</span><span class="state-dir-code">MA</span></a>
+        <a href="/taxmetrics/minnesota" class="state-dir-link"><span>Minnesota</span><span class="state-dir-code">MN</span></a>
+        <a href="/taxmetrics/missouri" class="state-dir-link"><span>Missouri</span><span class="state-dir-code">MO</span></a>
+        <a href="/taxmetrics/montana" class="state-dir-link"><span>Montana</span><span class="state-dir-code">MT</span></a>
+        <a href="/taxmetrics/nebraska" class="state-dir-link"><span>Nebraska</span><span class="state-dir-code">NE</span></a>
+        <a href="/taxmetrics/new-jersey" class="state-dir-link"><span>New Jersey</span><span class="state-dir-code">NJ</span></a>
+        <a href="/taxmetrics/new-mexico" class="state-dir-link"><span>New Mexico</span><span class="state-dir-code">NM</span></a>
+        <a href="/taxmetrics/new-york" class="state-dir-link"><span>New York</span><span class="state-dir-code">NY</span></a>
+        <a href="/taxmetrics/north-dakota" class="state-dir-link"><span>North Dakota</span><span class="state-dir-code">ND</span></a>
+        <a href="/taxmetrics/ohio" class="state-dir-link"><span>Ohio</span><span class="state-dir-code">OH</span></a>
+        <a href="/taxmetrics/oklahoma" class="state-dir-link"><span>Oklahoma</span><span class="state-dir-code">OK</span></a>
+        <a href="/taxmetrics/oregon" class="state-dir-link"><span>Oregon</span><span class="state-dir-code">OR</span></a>
+        <a href="/taxmetrics/rhode-island" class="state-dir-link"><span>Rhode Island</span><span class="state-dir-code">RI</span></a>
+        <a href="/taxmetrics/south-carolina" class="state-dir-link"><span>South Carolina</span><span class="state-dir-code">SC</span></a>
+        <a href="/taxmetrics/vermont" class="state-dir-link"><span>Vermont</span><span class="state-dir-code">VT</span></a>
+        <a href="/taxmetrics/virginia" class="state-dir-link"><span>Virginia</span><span class="state-dir-code">VA</span></a>
+        <a href="/taxmetrics/west-virginia" class="state-dir-link"><span>West Virginia</span><span class="state-dir-code">WV</span></a>
+        <a href="/taxmetrics/wisconsin" class="state-dir-link"><span>Wisconsin</span><span class="state-dir-code">WI</span></a>
+      </div>
     </div>
   </div>
 
@@ -695,7 +712,7 @@
 
     <div class="faq-item">
       <div class="faq-question" role="button" tabindex="0" aria-expanded="false">
-        <span>Does WhatITakeHome store the numbers I enter?</span>
+        <span>Does TaxMetrics store the numbers I enter?</span>
         <svg class="faq-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </div>
       <div class="faq-answer">
@@ -705,13 +722,14 @@
 
     <div class="faq-item">
       <div class="faq-question" role="button" tabindex="0" aria-expanded="false">
-        <span>How is WhatITakeHome validated against official IRS tax schedules?</span>
+        <span>How is TaxMetrics validated against official IRS tax schedules?</span>
         <svg class="faq-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </div>
       <div class="faq-answer">
-        WhatITakeHome uses figures published by the IRS and Social Security Administration:
+        TaxMetrics uses figures published by the IRS and Social Security Administration:
         <ul style="margin: 0.5rem 0 0.25rem 1.25rem; line-height: 1.6;">
-          <li><strong>2026:</strong> IRS Revenue Procedure 2025-32 (brackets and standard deductions: $16,100 single, $32,200 married filing jointly, $24,150 head of household), SSA Social Security wage base of $184,500, and a $24,500 401(k) deferral limit.</li>
+          <li><strong>2027:</strong> Projected IRS Rev. Proc. indexing (~2.8% inflation adjustment; standard deductions: $16,600 single/MFS, $33,200 married filing jointly, $24,925 head of household), projected SSA Social Security wage base of $192,300, and a $25,000 401(k) deferral limit.</li>
+          <li><strong>2026:</strong> IRS Revenue Procedure 2025-32 (brackets and standard deductions: $16,100 single/MFS, $32,200 married filing jointly, $24,150 head of household), SSA Social Security wage base of $184,500, and a $24,500 401(k) deferral limit.</li>
           <li><strong>2025:</strong> IRS Revenue Procedure 2024-40, with the standard deduction as amended by the One Big Beautiful Bill Act; Social Security wage base $176,100; 401(k) limit $23,500.</li>
           <li><strong>2024:</strong> IRS Revenue Procedure 2023-34; Social Security wage base $168,600; 401(k) limit $23,000.</li>
         </ul>
@@ -728,10 +746,10 @@
         <strong style="font-size: 1.15rem; color: var(--color-text-primary);">TaxMetrics</strong>
       </div>
       <p class="footer-text">
-        A free US income tax and paycheck calculator. Calculations run in your browser using IRS tax schedules for 2024–2026. Estimates only; not tax advice.
+        A free US income tax and paycheck calculator. Calculations run in your browser using IRS tax schedules for 2024–2027. Estimates only; not tax advice.
       </p>
       <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 1rem; font-family: var(--font-mono);">
-        Based on IRS Rev. Proc. 2025-32 · Estimates only
+        Based on IRS Rev. Proc. 2025-32 &amp; statutory projections · Estimates only
       </div>
     </div>
 
@@ -756,7 +774,7 @@
       </ul>
       <div class="footer-col-title" style="margin-top: 1.25rem;">About</div>
       <ul class="footer-links">
-        <li><a href="/taxmetrics/about">About WhatITakeHome</a></li>
+        <li><a href="/taxmetrics/about">About TaxMetrics</a></li>
         <li><a href="/taxmetrics/privacy">Privacy Policy</a></li>
         <li><a href="/taxmetrics/disclaimer">Disclaimer</a></li>
         <li><a href="/taxmetrics/contact">Contact</a></li>

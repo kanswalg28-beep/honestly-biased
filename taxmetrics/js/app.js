@@ -190,7 +190,8 @@ class Interactive3DPie {
 
       if (hit !== -1 && this.tooltip) {
         const s = this.slices[hit];
-        const pct = s.grossPct.toFixed(1);
+        const digits = (Math.round(s.grossPct * 100) % 10 !== 0) ? 2 : 1;
+        const pct = s.grossPct.toFixed(digits);
         const formattedAmt = new Intl.NumberFormat('en-US', {
           style: 'currency',
           currency: 'USD',
@@ -613,6 +614,17 @@ document.addEventListener("DOMContentLoaded", () => {
     return isNaN(num) ? 0 : num;
   }
 
+  // Canonical URL Sanitation
+  function ensureCleanCanonical() {
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical && canonical.href) {
+      const cleanUrl = canonical.href.split('?')[0].split('#')[0];
+      if (canonical.href !== cleanUrl) {
+        canonical.href = cleanUrl;
+      }
+    }
+  }
+
   // URL Sync
   function updateURL() {
     const url = new URL(window.location);
@@ -633,6 +645,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (dira > 0) url.searchParams.set('dira', dira); else url.searchParams.delete('dira');
     if (dhealth > 0) url.searchParams.set('dhealth', dhealth); else url.searchParams.delete('dhealth');
     window.history.replaceState({}, '', url);
+    ensureCleanCanonical();
   }
 
   // Restore from URL
@@ -790,10 +803,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const statePct = gross > 0 ? ((res.stateTax + res.localTax) / gross) * 100 : 0;
       const ficaPct = gross > 0 ? (res.totalFica / gross) * 100 : 0;
 
-      els.legNet.textContent = `${formatCurrency(res.takeHome / d, isHourly)}${hourlySuffix} (${netPct.toFixed(1)}%)`;
-      els.legFed.textContent = `${formatCurrency(res.federalTax / d, isHourly)}${hourlySuffix} (${fedPct.toFixed(1)}%)`;
-      els.legState.textContent = `${formatCurrency((res.stateTax + res.localTax) / d, isHourly)}${hourlySuffix} (${statePct.toFixed(1)}%)`;
-      els.legFica.textContent = `${formatCurrency(res.totalFica / d, isHourly)}${hourlySuffix} (${ficaPct.toFixed(1)}%)`;
+      const netDigits = (Math.round(netPct * 100) % 10 !== 0) ? 2 : 1;
+      const fedDigits = (Math.round(fedPct * 100) % 10 !== 0) ? 2 : 1;
+      const stateDigits = (Math.round(statePct * 100) % 10 !== 0) ? 2 : 1;
+      const ficaDigits = (Math.round(ficaPct * 100) % 10 !== 0) ? 2 : 1;
+
+      els.legNet.textContent = `${formatCurrency(res.takeHome / d, isHourly)}${hourlySuffix} (${netPct.toFixed(netDigits)}%)`;
+      els.legFed.textContent = `${formatCurrency(res.federalTax / d, isHourly)}${hourlySuffix} (${fedPct.toFixed(fedDigits)}%)`;
+      els.legState.textContent = `${formatCurrency((res.stateTax + res.localTax) / d, isHourly)}${hourlySuffix} (${statePct.toFixed(stateDigits)}%)`;
+      els.legFica.textContent = `${formatCurrency(res.totalFica / d, isHourly)}${hourlySuffix} (${ficaPct.toFixed(ficaDigits)}%)`;
     }
 
     buildLadder(res.federalBrackets, res.bracketBreakdown, res.taxableFederalIncome);
@@ -831,7 +849,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (note) note.textContent = TaxData.stateDataNote;
 
     updateURL();
-    updateMatrixHighlight();
+    renderDynamicStateComparisonTable();
   }
 
   // Dual Slider Synchronization & Comma Formatting
@@ -981,6 +999,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 2. Parse filing status
       if (t.includes('head of household') || /\bhoh\b/.test(t)) els.filing.value = 'hoh';
+      else if (t.includes('separately') || /\bmfs\b/.test(t)) els.filing.value = 'mfs';
       else if (/\bsingle\b/.test(t)) els.filing.value = 'single';
       else if (/\b(married|joint|mfj)\b/.test(t)) els.filing.value = 'married';
 
@@ -1033,7 +1052,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!latestResults) return;
     const stName = TaxData.states[latestResults.stateCode]?.name || latestResults.stateCode;
     const summary =
-`💼 WhatITakeHome Paycheck Summary (${latestResults.taxYear} Tax Year • $${formatRawNumber(latestResults.grossIncome)} • ${({ single: 'SINGLE', married: 'MARRIED FILING JOINTLY', hoh: 'HEAD OF HOUSEHOLD' })[latestResults.filingStatus] || latestResults.filingStatus.toUpperCase()} • ${stName})
+`💼 TaxMetrics Paycheck Summary (${latestResults.taxYear} Tax Year • $${formatRawNumber(latestResults.grossIncome)} • ${({ single: 'SINGLE', married: 'MARRIED FILING JOINTLY', mfs: 'MARRIED FILING SEPARATELY', hoh: 'HEAD OF HOUSEHOLD' })[latestResults.filingStatus] || latestResults.filingStatus.toUpperCase()} • ${stName})
 ────────────────────────────────────────────
 • Net Take-Home:   ${formatCurrency(latestResults.takeHome)} / yr  (${formatCurrency(latestResults.takeHome / 12)} / mo | ${formatCurrency(latestResults.takeHome / 2080, true)} / hr)
 • Federal Tax:     ${formatCurrency(latestResults.federalTax)} (${formatPercent(latestResults.grossIncome > 0 ? latestResults.federalTax / latestResults.grossIncome : 0)})
@@ -1041,7 +1060,7 @@ document.addEventListener("DOMContentLoaded", () => {
 • FICA (SS+Med):   ${formatCurrency(latestResults.totalFica)} (${formatPercent(latestResults.grossIncome > 0 ? latestResults.totalFica / latestResults.grossIncome : 0)})
 • Effective Rate:  ${formatPercent(latestResults.effectiveTaxRate)}  |  Marginal Rate: ${formatPercent(latestResults.marginalTaxRate)}
 • IRS Baseline:    ${latestResults.irsNotice}
-🔗 Calculated with WhatITakeHome: ${window.location.href}`;
+🔗 Calculated with TaxMetrics: ${window.location.href}`;
 
     navigator.clipboard.writeText(summary).then(() => {
       showToast('Markdown summary copied for Reddit / Notion / Slack!');
@@ -1097,18 +1116,79 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Interactive Click on Matrix Rows
-  document.querySelectorAll('.matrix-table tbody tr').forEach(row => {
-    row.addEventListener('click', () => {
-      const rowState = row.getAttribute('data-state');
-      if (rowState && TaxData.states[rowState]) {
-        els.state.value = rowState;
-        updateLocalDropdown();
-        recalculate();
-        showToast(`Benchmarked to ${TaxData.states[rowState].name}`);
-      }
+  // Dynamic State Benchmarking Comparison Table
+  let lastMatrixYear = null;
+  function renderDynamicStateComparisonTable() {
+    const table = document.querySelector('.matrix-table');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    const currentYear = (els.year ? els.year.value : TaxData.activeYear) || '2026';
+    const subtitle = document.querySelector('#matrix .section-subtitle');
+    if (subtitle) {
+      subtitle.textContent = `Estimated ${currentYear} net take-home pay and blended effective tax rates for a single filer with no pre-tax deductions, across high-volume states.`;
+    }
+
+    if (lastMatrixYear === currentYear && tbody.children.length > 0) {
+      updateMatrixHighlight();
+      return;
+    }
+    lastMatrixYear = currentYear;
+
+    const comparisonStates = [
+      { code: 'TX', name: 'Texas (TX)', structure: '0.00% Income Tax', style: 'color: var(--color-semantic-positive); font-weight: 600;' },
+      { code: 'FL', name: 'Florida (FL)', structure: '0.00% Income Tax', style: 'color: var(--color-semantic-positive); font-weight: 600;' },
+      { code: 'WA', name: 'Washington (WA)', structure: '0.00% Income Tax', style: 'color: var(--color-semantic-positive); font-weight: 600;' },
+      { code: 'CO', name: 'Colorado (CO)', structure: 'Flat 4.40%' },
+      { code: 'IL', name: 'Illinois (IL)', structure: 'Flat 4.95%' },
+      { code: 'NY', name: 'New York (NY - State)', structure: 'Progressive (4%–10.9%)' },
+      { code: 'CA', name: 'California (CA)', structure: 'Progressive (1%–13.3%)', takeHomeStyle: 'font-weight: 700; color: var(--color-semantic-deduction);' }
+    ];
+
+    tbody.innerHTML = '';
+    comparisonStates.forEach(item => {
+      const res100k = engine.calculate(100000, 'single', item.code, 'none', { retirement: 0, health: 0 }, currentYear);
+      const res200k = engine.calculate(200000, 'single', item.code, 'none', { retirement: 0, health: 0 }, currentYear);
+      const res150k = engine.calculate(150000, 'single', item.code, 'none', { retirement: 0, health: 0 }, currentYear);
+
+      const eff100k = (res100k.effectiveTaxRate * 100).toFixed(1) + '%';
+      const eff200k = (res200k.effectiveTaxRate * 100).toFixed(1) + '%';
+      const takeHome150k = formatCurrency(res150k.takeHome) + ' / yr';
+
+      const tr = document.createElement('tr');
+      tr.setAttribute('data-state', item.code);
+
+      const structureHtml = item.style 
+        ? `<span style="${item.style}">${item.structure}</span>` 
+        : item.structure;
+
+      const takeHomeStyle = item.takeHomeStyle 
+        ? `style="${item.takeHomeStyle}"` 
+        : (item.code === 'TX' || item.code === 'FL' || item.code === 'WA' ? 'style="font-weight: 700; color: var(--color-semantic-positive);"' : '');
+
+      tr.innerHTML = `
+        <td><strong>${item.name}</strong></td>
+        <td>${structureHtml}</td>
+        <td class="tabular-nums">${eff100k}</td>
+        <td class="tabular-nums">${eff200k}</td>
+        <td class="tabular-nums" ${takeHomeStyle}>${takeHome150k}</td>
+      `;
+
+      tr.addEventListener('click', () => {
+        if (item.code && TaxData.states[item.code]) {
+          els.state.value = item.code;
+          updateLocalDropdown();
+          recalculate();
+          showToast(`Benchmarked to ${TaxData.states[item.code].name}`);
+        }
+      });
+
+      tbody.appendChild(tr);
     });
-  });
+
+    updateMatrixHighlight();
+  }
 
   // Cmd+K Quick Button Trigger in Header
   const cmdKTrigger = document.getElementById('cmd-k-trigger-btn');

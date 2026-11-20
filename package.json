@@ -3,9 +3,10 @@
     "node": "24.x"
   },
   "scripts": {
-    "build:sitemap": "node generate-sitemap.js",
-    "build:images": "node generate-images.js",
-    "build": "npm run build:images"
+    "build:sitemap": "node scripts/generate-sitemap.js",
+    "build:images": "node scripts/generate-images.js",
+    "build": "npm run build:images",
+    "test": "node --test"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

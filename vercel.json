@@ -1,5 +1,27 @@
 {
   "outputDirectory": ".",
+  "redirects": [
+    {
+      "source": "/finances",
+      "destination": "/finance",
+      "permanent": true
+    },
+    {
+      "source": "/finances.html",
+      "destination": "/finance",
+      "permanent": true
+    },
+    {
+      "source": "/whatitakehome",
+      "destination": "/taxmetrics",
+      "permanent": true
+    },
+    {
+      "source": "/whatitakehome/:slug*",
+      "destination": "/taxmetrics/:slug*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/newsletter/subscribe",
@@ -139,7 +161,7 @@
     },
     {
       "source": "/sports",
-      "destination": "/api/home?category=sports"
+      "destination": "/sports.html"
     },
     {
       "source": "/manifesto",
@@ -154,10 +176,6 @@
       "destination": "/funding.html"
     },
     {
-      "source": "/finances",
-      "destination": "/finances.html"
-    },
-    {
       "source": "/collective",
       "destination": "/collective.html"
     },
@@ -166,15 +184,7 @@
       "destination": "/taxmetrics/index.html"
     },
     {
-      "source": "/whatitakehome",
-      "destination": "/taxmetrics/index.html"
-    },
-    {
       "source": "/taxmetrics/:slug",
-      "destination": "/taxmetrics/:slug.html"
-    },
-    {
-      "source": "/whatitakehome/:slug",
       "destination": "/taxmetrics/:slug.html"
     }
   ],

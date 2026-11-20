@@ -1,12 +1,61 @@
 const TaxData = {
   activeYear: "2026",
-  stateDataNote: "Federal income tax, FICA wage caps, and state schedules reflect 2026 statutory rates (including 2026 flat-tax transitions). Local rules and state credits are approximations.",
+  stateDataNote: "Federal income tax, FICA wage caps, and state schedules reflect statutory rates (including 2026 flat-tax transitions and 2027 inflation adjustments). Local rules and state credits are approximations.",
   years: {
+    "2027": {
+      name: "2027 (Projected)",
+      irsNotice: "Projected IRS Rev. Proc. indexing (~2.8% inflation adjustment) · Projected SSA 2027 wage base",
+      retirement401kMax: 25000,
+      standardDeduction: { single: 16600, married: 33200, mfs: 16600, hoh: 24925 },
+      brackets: {
+        single: [
+          { rate: 0.10, upTo: 12750 },
+          { rate: 0.12, upTo: 51800 },
+          { rate: 0.22, upTo: 108650 },
+          { rate: 0.24, upTo: 207425 },
+          { rate: 0.32, upTo: 263400 },
+          { rate: 0.35, upTo: 658550 },
+          { rate: 0.37, upTo: Infinity }
+        ],
+        married: [
+          { rate: 0.10, upTo: 25500 },
+          { rate: 0.12, upTo: 103600 },
+          { rate: 0.22, upTo: 217300 },
+          { rate: 0.24, upTo: 414850 },
+          { rate: 0.32, upTo: 526800 },
+          { rate: 0.35, upTo: 790200 },
+          { rate: 0.37, upTo: Infinity }
+        ],
+        mfs: [
+          { rate: 0.10, upTo: 12750 },
+          { rate: 0.12, upTo: 51800 },
+          { rate: 0.22, upTo: 108650 },
+          { rate: 0.24, upTo: 207425 },
+          { rate: 0.32, upTo: 263400 },
+          { rate: 0.35, upTo: 395100 },
+          { rate: 0.37, upTo: Infinity }
+        ],
+        hoh: [
+          { rate: 0.10, upTo: 18200 },
+          { rate: 0.12, upTo: 69350 },
+          { rate: 0.22, upTo: 108650 },
+          { rate: 0.24, upTo: 207425 },
+          { rate: 0.32, upTo: 263350 },
+          { rate: 0.35, upTo: 658550 },
+          { rate: 0.37, upTo: Infinity }
+        ]
+      },
+      fica: {
+        socialSecurity: { rate: 0.062, limit: 192300 },
+        medicare: { rate: 0.0145, limit: Infinity },
+        additionalMedicare: { rate: 0.009, threshold: { single: 200000, married: 250000, mfs: 125000, hoh: 200000 } }
+      }
+    },
     "2026": {
       name: "2026 (Current Tax Year)",
       irsNotice: "IRS Rev. Proc. 2025-32 · SSA 2026 wage base",
       retirement401kMax: 24500,
-      standardDeduction: { single: 16100, married: 32200, hoh: 24150 },
+      standardDeduction: { single: 16100, married: 32200, mfs: 16100, hoh: 24150 },
       brackets: {
         single: [
           { rate: 0.10, upTo: 12400 },
@@ -26,6 +75,15 @@ const TaxData = {
           { rate: 0.35, upTo: 768700 },
           { rate: 0.37, upTo: Infinity }
         ],
+        mfs: [
+          { rate: 0.10, upTo: 12400 },
+          { rate: 0.12, upTo: 50400 },
+          { rate: 0.22, upTo: 105700 },
+          { rate: 0.24, upTo: 201775 },
+          { rate: 0.32, upTo: 256225 },
+          { rate: 0.35, upTo: 384350 },
+          { rate: 0.37, upTo: Infinity }
+        ],
         hoh: [
           { rate: 0.10, upTo: 17700 },
           { rate: 0.12, upTo: 67450 },
@@ -39,14 +97,14 @@ const TaxData = {
       fica: {
         socialSecurity: { rate: 0.062, limit: 184500 },
         medicare: { rate: 0.0145, limit: Infinity },
-        additionalMedicare: { rate: 0.009, threshold: { single: 200000, married: 250000, hoh: 200000 } }
+        additionalMedicare: { rate: 0.009, threshold: { single: 200000, married: 250000, mfs: 125000, hoh: 200000 } }
       }
     },
     "2025": {
       name: "2025 (Prior Year)",
       irsNotice: "IRS Rev. Proc. 2024-40, as amended by the One Big Beautiful Bill Act (standard deduction)",
       retirement401kMax: 23500,
-      standardDeduction: { single: 15750, married: 31500, hoh: 23625 },
+      standardDeduction: { single: 15750, married: 31500, mfs: 15750, hoh: 23625 },
       brackets: {
         single: [
           { rate: 0.10, upTo: 11925 },
@@ -66,6 +124,15 @@ const TaxData = {
           { rate: 0.35, upTo: 751600 },
           { rate: 0.37, upTo: Infinity }
         ],
+        mfs: [
+          { rate: 0.10, upTo: 11925 },
+          { rate: 0.12, upTo: 48475 },
+          { rate: 0.22, upTo: 103350 },
+          { rate: 0.24, upTo: 197300 },
+          { rate: 0.32, upTo: 250525 },
+          { rate: 0.35, upTo: 375800 },
+          { rate: 0.37, upTo: Infinity }
+        ],
         hoh: [
           { rate: 0.10, upTo: 17000 },
           { rate: 0.12, upTo: 64850 },
@@ -79,14 +146,14 @@ const TaxData = {
       fica: {
         socialSecurity: { rate: 0.062, limit: 176100 },
         medicare: { rate: 0.0145, limit: Infinity },
-        additionalMedicare: { rate: 0.009, threshold: { single: 200000, married: 250000, hoh: 200000 } }
+        additionalMedicare: { rate: 0.009, threshold: { single: 200000, married: 250000, mfs: 125000, hoh: 200000 } }
       }
     },
     "2024": {
       name: "2024 (Two Years Ago)",
       irsNotice: "IRS Rev. Proc. 2023-34 · Form 1040 & Pub 15-T",
       retirement401kMax: 23000,
-      standardDeduction: { single: 14600, married: 29200, hoh: 21900 },
+      standardDeduction: { single: 14600, married: 29200, mfs: 14600, hoh: 21900 },
       brackets: {
         single: [
           { rate: 0.10, upTo: 11600 },
@@ -106,6 +173,15 @@ const TaxData = {
           { rate: 0.35, upTo: 731200 },
           { rate: 0.37, upTo: Infinity }
         ],
+        mfs: [
+          { rate: 0.10, upTo: 11600 },
+          { rate: 0.12, upTo: 47150 },
+          { rate: 0.22, upTo: 100525 },
+          { rate: 0.24, upTo: 191950 },
+          { rate: 0.32, upTo: 243725 },
+          { rate: 0.35, upTo: 365600 },
+          { rate: 0.37, upTo: Infinity }
+        ],
         hoh: [
           { rate: 0.10, upTo: 16550 },
           { rate: 0.12, upTo: 63100 },
@@ -119,7 +195,7 @@ const TaxData = {
       fica: {
         socialSecurity: { rate: 0.062, limit: 168600 },
         medicare: { rate: 0.0145, limit: Infinity },
-        additionalMedicare: { rate: 0.009, threshold: { single: 200000, married: 250000, hoh: 200000 } }
+        additionalMedicare: { rate: 0.009, threshold: { single: 200000, married: 250000, mfs: 125000, hoh: 200000 } }
       }
     }
   },

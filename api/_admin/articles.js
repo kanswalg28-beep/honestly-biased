@@ -39,10 +39,10 @@ function basicAuth(req) {
   );
 }
 
-// Simple CSRF validation
+// CSRF validation via HMAC check
 function validateCsrf(req) {
   const csrf = req.headers['x-csrf-token'];
-  return !!csrf;
+  return checkCsrfToken(csrf);
 }
 
 // HTML sanitization for fullblog field
@@ -93,9 +93,9 @@ function formatTimeAgo(dateStr) {
 }
 
 module.exports = async (req, res) => {
-  // Optional auth – if env vars are set, enforce auth for mutating operations only
+  // Auth enforcement for mutating operations (fail-closed)
   const isMutating = ['POST', 'PUT', 'DELETE'].includes(req.method);
-  if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD && isMutating) {
+  if (isMutating) {
     if (!requireAuth(req, res)) return;
   }
 

@@ -28,6 +28,13 @@ module.exports = async (req, res) => {
       return res.json({ content });
     }
 
+    if (['POST', 'PUT'].includes(req.method)) {
+      const csrf = req.headers['x-csrf-token'];
+      if (!csrf || !checkCsrfToken(csrf)) {
+        return res.status(403).json({ error: 'CSRF token missing or invalid' });
+      }
+    }
+
     const updates = req.body && typeof req.body === 'object' ? req.body : {};
     const keys = Object.keys(updates);
     if (!keys.length) return res.status(400).json({ error: 'No content to update' });

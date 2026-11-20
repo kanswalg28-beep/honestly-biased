@@ -3,10 +3,18 @@
 
 const { supabase } = require('../../db/client');
 const { requireAuth, setAdminCors } = require('./_auth');
-const sharp = require('sharp');
+
+let _sharp = null;
+async function getSharp() {
+  if (!_sharp) {
+    const s = await import('sharp');
+    _sharp = s.default || s;
+  }
+  return _sharp;
+}
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_SIZE = 2 * 1024 * 1024; // 2MB input limit
+const MAX_SIZE = 5 * 1024 * 1024; // 5MB input limit
 const BUCKET = 'article-images'; // Must exist in Supabase Storage
 
 // Optimization settings
@@ -17,8 +25,14 @@ const VARIANTS = [
 ];
 
 async function optimizeImage(inputBuffer) {
+  const sharp = await getSharp();
   const image = sharp(inputBuffer);
   const metadata = await image.metadata();
+
+  const validFormats = ['jpeg', 'png', 'webp', 'gif'];
+  if (!metadata.format || !validFormats.includes(metadata.format)) {
+    throw new Error(`Unsupported image format: ${metadata.format || 'unknown'}`);
+  }
   
   const results = {
     original: { buffer: inputBuffer, type: 'original', width: metadata.width, height: metadata.height },

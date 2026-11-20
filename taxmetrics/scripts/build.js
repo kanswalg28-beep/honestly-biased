@@ -5,7 +5,7 @@ const { execSync } = require('child_process');
 const rootDir = path.join(__dirname, '..');
 const distDir = path.join(rootDir, 'dist');
 
-console.log('Building WhatITakeHome for production...');
+console.log('Building TaxMetrics for production...');
 
 // 1. Rebuild states and sitemap in root first
 require('./build-states.js');

@@ -636,8 +636,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (tickerTrack) {
                             let rawHighlights = allArticles.slice(0, 6).map(a => cleanEditorialText(a.aiheadline || a.title)).filter(Boolean);
                             let unique = Array.from(new Set(rawHighlights));
-                            let loop = unique.length > 0 ? [...unique, ...unique] : [];
-                            tickerTrack.innerHTML = loop.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
+                            const firstSet = unique.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
+                            const clonedSet = unique.map(text => `<span aria-hidden="true">• ${escapeHtml(text)}</span>`).join('');
+                            tickerTrack.innerHTML = firstSet + clonedSet;
                         }
                     }
 
@@ -807,8 +808,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tickerTrack) {
                     let rawHighlights = highlightsToRender.map(cleanEditorialText).filter(Boolean);
                     let unique = Array.from(new Set(rawHighlights));
-                    let loop = unique.length > 0 ? [...unique, ...unique] : [];
-                    tickerTrack.innerHTML = loop.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
+                    const firstSet = unique.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
+                    const clonedSet = unique.map(text => `<span aria-hidden="true">• ${escapeHtml(text)}</span>`).join('');
+                    tickerTrack.innerHTML = firstSet + clonedSet;
                 }
             }
 
@@ -831,8 +833,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     "[TECH MONOPOLY]: Algorithmic platform surveillance frameworks under active critique.",
                     "[HEALTH AUDIT]: Pharmaceutical lobbying budgets monitored in recent healthcare bills."
                 ];
-                let loop = [...fallbackAlerts, ...fallbackAlerts];
-                tickerTrack.innerHTML = loop.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
+                const firstSet = fallbackAlerts.map(text => `<span>• ${escapeHtml(text)}</span>`).join('');
+                const clonedSet = fallbackAlerts.map(text => `<span aria-hidden="true">• ${escapeHtml(text)}</span>`).join('');
+                tickerTrack.innerHTML = firstSet + clonedSet;
             }
 
             allArticles = [];
@@ -1480,6 +1483,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const validCategories = ['politics', 'tech', 'finance', 'crime-and-law', 'crime & law', 'world-and-civic', 'world & civic', 'sports', 'entertainment', 'health'];
 
         // 1. Check clean pathname
+        const directCat = pathname.replace(/^\//, '').split('/')[0];
         if (pathname.startsWith('/editions/')) {
             const parts = pathname.replace(/^\/editions\//, '').split('/').filter(Boolean);
             if (parts[0]) {
@@ -1491,6 +1495,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (pathname.startsWith('/category/')) {
             const cat = pathname.replace(/^\/category\//, '').split('/')[0];
             if (cat) category = cat;
+        } else if (validCategories.includes(directCat)) {
+            category = directCat;
         } else if (window.location.hash) {
             // Legacy hash support
             const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase().trim();
@@ -1923,6 +1929,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (prevBtn) {
             const prevPage = Math.max(1, currentPage - 1);
             prevBtn.href = `/?page=${prevPage}`;
+            prevBtn.setAttribute('aria-label', `Previous page`);
             prevBtn.setAttribute('aria-disabled', currentPage <= 1 ? 'true' : 'false');
             prevBtn.disabled = currentPage <= 1;
             prevBtn.style.opacity = currentPage <= 1 ? '0.4' : '1';
@@ -1932,6 +1939,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (nextBtn) {
             const nextPage = Math.min(totalPages, currentPage + 1);
             nextBtn.href = `/?page=${nextPage}`;
+            nextBtn.setAttribute('aria-label', `Next page`);
             nextBtn.setAttribute('aria-disabled', currentPage >= totalPages ? 'true' : 'false');
             nextBtn.disabled = currentPage >= totalPages;
             nextBtn.style.opacity = currentPage >= totalPages ? '0.4' : '1';

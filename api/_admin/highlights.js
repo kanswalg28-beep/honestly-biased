@@ -1,7 +1,7 @@
 // api/admin/highlights.js - Ticker highlights management
 
 const { supabase } = require('../../db/client');
-const { requireAuth, setAdminCors } = require('./_auth');
+const { requireAuth, setAdminCors, checkCsrfToken } = require('./_auth');
 const TABLE = 'site_content';
 const KEY = 'highlights';
 
@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
     if (req.method === 'POST') {
       // CSRF validation
       const csrf = req.headers['x-csrf-token'];
-      if (!csrf) return res.status(403).json({ error: 'CSRF token missing' });
+      if (!csrf || !checkCsrfToken(csrf)) return res.status(403).json({ error: 'CSRF token missing or invalid' });
 
       const { highlights } = req.body || {};
       if (!Array.isArray(highlights)) {

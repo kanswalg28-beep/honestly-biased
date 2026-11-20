@@ -53,7 +53,8 @@ module.exports = async (req, res) => {
   }
 
   // CSRF validation
-  if (!checkCsrfToken(req)) {
+  const csrf = req.headers['x-csrf-token'];
+  if (!csrf || !checkCsrfToken(csrf)) {
     return res.status(403).json({ error: 'CSRF token missing or invalid' });
   }
 

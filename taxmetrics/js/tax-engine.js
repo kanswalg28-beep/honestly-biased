@@ -20,12 +20,12 @@ class TaxEngine {
     const agi = Math.max(0, grossIncome - totalPreTax);
 
     const federalStandardDeduction = fedData.standardDeduction[filingStatus] ?? fedData.standardDeduction.single;
-    // States in this dataset publish single/married schedules; Head of Household uses the single schedule (approximation).
+    // States in this dataset publish single/married schedules; Head of Household and MFS use the single schedule (approximation).
     const stateFiling = filingStatus === 'married' ? 'married' : 'single';
     const taxableFederalIncome = Math.max(0, agi - federalStandardDeduction);
 
     // 1. Calculate Federal Tax & Bracket-by-Bracket telemetry
-    const federalBrackets = fedData.brackets[filingStatus] || [];
+    const federalBrackets = (fedData.brackets && fedData.brackets[filingStatus]) || (fedData.brackets && fedData.brackets.single) || [];
     let federalTax = 0;
     let previousLimit = 0;
     let marginalFederalRate = 0;
@@ -73,7 +73,7 @@ class TaxEngine {
 
     // Additional Medicare (+0.9% over threshold)
     let additionalMedicareTax = 0;
-    const addMedThreshold = fedData.fica.additionalMedicare.threshold[filingStatus] ?? 200000;
+    const addMedThreshold = (fedData.fica.additionalMedicare.threshold && fedData.fica.additionalMedicare.threshold[filingStatus]) ?? (filingStatus === 'mfs' ? 125000 : 200000);
     if (ficaBase > addMedThreshold) {
       additionalMedicareTax = (ficaBase - addMedThreshold) * fedData.fica.additionalMedicare.rate;
     }

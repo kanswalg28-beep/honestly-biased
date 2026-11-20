@@ -1,0 +1,29 @@
+# Dependency & Framework
+node_modules
+.vercel
+.git
+.github
+
+# Environment variables & local secrets
+.env
+.env.*
+*.local
+
+# Internal tools, agent skills & lockfiles
+/.agents
+skills-lock.json
+
+# Development server & root helper scripts
+/mock-server.js
+/scripts
+/tests
+
+# Runtime & cache JSON data
+/gnews-cache.json
+/poll-data.json
+/subscribers.json
+/site-content.json
+
+# Markdown documentation
+/README.md
+/*.md

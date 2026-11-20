@@ -175,6 +175,20 @@ label {
   margin-top: 1.5rem;
   margin-bottom: 2rem;
 }
+.state-group-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.state-directory-group:first-child .state-group-title {
+  margin-top: 0;
+}
 .state-directory-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

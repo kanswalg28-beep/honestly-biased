@@ -58,5 +58,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`WhatITakeHome local dev server running at: http://localhost:${PORT}/`);
+  console.log(`TaxMetrics local dev server running at: http://localhost:${PORT}/`);
 });

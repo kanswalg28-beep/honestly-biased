@@ -18,12 +18,9 @@ Allow: /editions/*
 Allow: /manifesto
 Allow: /standards
 Allow: /funding
-Allow: /finances
 Allow: /collective
 Allow: /taxmetrics
 Allow: /taxmetrics/*
-Allow: /whatitakehome
-Allow: /whatitakehome/*
 Allow: /sitemap.xml
 Allow: /rss.xml
 Allow: /feed.xml

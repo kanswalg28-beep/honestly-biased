@@ -204,6 +204,11 @@ async function resolveArticleBySlug(slug) {
 // HTML rendering
 // --------------------------------------------------------------------------
 
+function calculateReadTime(text) {
+  const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 200)) + ' Min Audit';
+}
+
 function renderArticleHtml(article) {
   const rawHeadline  = article.aiheadline || article.title || 'Untitled';
   const headline     = cleanEditorialText(rawHeadline);
@@ -242,6 +247,7 @@ function renderArticleHtml(article) {
   const slug = article.slug || shortIdFromUuid(article.id);
   const canonical = `${SITE}/chronicles/${slug}`;
   const seoDesc   = truncate(summary, 200);
+  const readTime  = calculateReadTime(summary + ' ' + cleanBody);
 
   // AnalysisNewsArticle JSON-LD structured data (recommended by Google News for analytical dispatches)
   const newsJsonLd = JSON.stringify({
@@ -431,6 +437,8 @@ ${claimOrCritiqueJsonLd ? `<script type="application/ld+json">${claimOrCritiqueJ
       <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
         <span class="article-category" itemprop="articleSection" style="font-family: var(--font-mono); font-size: 0.65rem; padding: 4px 8px; border-radius: 2px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; background: rgba(240, 169, 46, 0.12); color: var(--accent-saffron); border: 1px solid rgba(240, 169, 46, 0.25);">${escapeAttr(category)}</span>
         <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">${escapeAttr(regionLabel)}</span>
+        <span style="color: var(--border-color);">·</span>
+        <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent-saffron); font-weight: 600;"><i data-lucide="clock" style="width: 11px; height: 11px; vertical-align: middle; margin-right: 3px;"></i>${escapeAttr(readTime)}</span>
       </div>
       <h1 itemprop="headline" style="font-family: var(--font-heading); font-size: clamp(2.1rem, 4.5vw, 3.2rem); font-weight: 800; line-height: 1.15; margin-bottom: 18px; color: var(--text-primary); letter-spacing: -0.03em; text-wrap: balance;">${escapeAttr(headline)}</h1>
       <p itemprop="description" style="font-size: 1.22rem; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.55; font-style: italic; border-left: 2px solid var(--accent-saffron); padding-left: 16px;">${escapeHtml(summary)}</p>
@@ -547,9 +555,9 @@ ${claimOrCritiqueJsonLd ? `<script type="application/ld+json">${claimOrCritiqueJ
       <h4 class="footer-heading">Standards</h4>
       <ul class="footer-links-list">
         <li><a href="/manifesto">Our Manifesto</a></li>
-        <li><a href="/standards">Editorial Standards</a></li>
+        <li><a href="/standards">Editorial Standards &amp; Privacy Policy</a></li>
         <li><a href="/funding">Independent Funding Audit</a></li>
-        <li><a href="/finances">Financial Integrity Reports</a></li>
+        <li><a href="/finance">Financial &amp; Market Reports</a></li>
         <li><a href="/collective">Join the Collective</a></li>
       </ul>
     </div>
@@ -560,31 +568,30 @@ ${claimOrCritiqueJsonLd ? `<script type="application/ld+json">${claimOrCritiqueJ
         <li><a href="/taxmetrics/california">California Tax Calculator</a></li>
         <li><a href="/taxmetrics/texas">Texas Tax Calculator</a></li>
         <li><a href="/taxmetrics/new-york">New York Tax Calculator</a></li>
-        <li><a href="/whatitakehome">WhatITakeHome Calculator</a></li>
       </ul>
     </div>
     <div class="footer-newsletter-column">
       <h4 class="footer-heading">Subscribe to the Ledger</h4>
-      <p class="newsletter-subtext">Receive our daily, sharp analytical briefing direct to your inbox. No filters, no corporate jargon.</p>
+      <p class="newsletter-subtext">Receive our daily, sharp analytical briefing direct to your inbox. No filters, no corporate jargon. Read our <a href="/standards" style="color: var(--accent-saffron); text-decoration: underline;">Privacy Policy</a>.</p>
       <form class="newsletter-form" id="newsletter-form">
         <div class="input-group">
           <input type="email" placeholder="Enter your email address" required aria-label="Email address for newsletter subscription">
           <button type="submit" class="newsletter-btn" aria-label="Submit email address"><i data-lucide="arrow-right"></i></button>
         </div>
         <label class="checkbox-label" for="newsletter-consent" style="min-height: 44px; display: inline-flex; align-items: center; cursor: pointer;">
-          <input type="checkbox" id="newsletter-consent" required>
+          <input type="checkbox" id="newsletter-consent">
           <span class="checkbox-custom"></span>
-          <span class="label-text">I support transparent, reader-funded commentary.</span>
+          <span class="label-text">I support transparent, reader-funded commentary (optional).</span>
         </label>
       </form>
     </div>
   </div>
   <div class="footer-bottom">
-    <p class="copyright">&copy; 2026 Honestly Biased Digital Media Trust. Reader supported, fiercely independent.</p>
+    <p class="copyright">&copy; 2026 Honestly Biased Digital Media Trust. Reader supported, fiercely independent. <a href="/standards" style="color: var(--text-muted); text-decoration: underline; margin-left: 8px;">Privacy Policy</a></p>
     <div class="social-links" aria-label="Social Media Connections">
-      <a href="https://www.facebook.com/honestlybiasedOfficial" target="_blank" rel="noopener noreferrer" aria-label="Facebook connection"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg></a>
-      <a href="https://twitter.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Twitter connection"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-      <a href="https://www.youtube.com/@honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="YouTube channel"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+      <a href="https://www.facebook.com/honestlybiasedOfficial" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg></a>
+      <a href="https://twitter.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Twitter"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+      <a href="https://www.youtube.com/@honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
       <a href="https://www.instagram.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2c-3.31 0-6 2.69-6 6v5c0 3.31 2.69 6 6 6s6-2.69 6-6V8c0-3.31-2.69-6-6-6zm4 11c0 2.21-1.79 4-4 4s-4-1.79-4-4V8c0-2.21 1.79-4 4-4s4 1.79 4 4v5zm-4 7c-4.42 0-8-3.58-8-8H2c0 5.14 3.82 9.4 8.88 9.94v2.06h2.24v-2.06c5.06-.54 8.88-4.8 8.88-9.94h-2c0 4.42-3.58 8-8 8z"/></svg></a>
     </div>
   </div>

@@ -613,9 +613,9 @@ async function renderHomepageHtml(articles) {
       <h4 class="footer-heading">Standards</h4>
       <ul class="footer-links-list" id="standards-list">
         <li><a href="/manifesto">Our Manifesto</a></li>
-        <li><a href="/standards">Editorial Standards</a></li>
+        <li><a href="/standards">Editorial Standards &amp; Privacy Policy</a></li>
         <li><a href="/funding">Independent Funding Audit</a></li>
-        <li><a href="/finances">Financial Integrity Reports</a></li>
+        <li><a href="/finance">Financial &amp; Market Reports</a></li>
         <li><a href="/collective">Join the Collective</a></li>
       </ul>
     </div>
@@ -626,31 +626,30 @@ async function renderHomepageHtml(articles) {
         <li><a href="/taxmetrics/california">California Tax Calculator</a></li>
         <li><a href="/taxmetrics/texas">Texas Tax Calculator</a></li>
         <li><a href="/taxmetrics/new-york">New York Tax Calculator</a></li>
-        <li><a href="/whatitakehome">WhatITakeHome Calculator</a></li>
       </ul>
     </div>
     <div class="footer-newsletter-column">
       <h4 class="footer-heading">Subscribe to the Ledger</h4>
-      <p class="newsletter-subtext">Receive our daily, sharp analytical briefing direct to your inbox. No filters, no corporate jargon.</p>
+      <p class="newsletter-subtext">Receive our daily, sharp analytical briefing direct to your inbox. No filters, no corporate jargon. Read our <a href="/standards" style="color: var(--accent-saffron); text-decoration: underline;">Privacy Policy</a>.</p>
       <form class="newsletter-form" id="newsletter-form">
         <div class="input-group">
           <input type="email" placeholder="Enter your email address" required aria-label="Email address for newsletter subscription">
           <button type="submit" class="newsletter-btn" aria-label="Submit email address"><i data-lucide="arrow-right"></i></button>
         </div>
         <label class="checkbox-label" for="newsletter-consent" style="min-height: 44px; display: inline-flex; align-items: center; cursor: pointer;">
-          <input type="checkbox" id="newsletter-consent" required>
+          <input type="checkbox" id="newsletter-consent">
           <span class="checkbox-custom"></span>
-          <span class="label-text">I support transparent, reader-funded commentary.</span>
+          <span class="label-text">I support transparent, reader-funded commentary (optional).</span>
         </label>
       </form>
     </div>
   </div>
   <div class="footer-bottom">
-    <p class="copyright">&copy; 2026 Honestly Biased Digital Media Trust. Reader supported, fiercely independent.</p>
+    <p class="copyright">&copy; 2026 Honestly Biased Digital Media Trust. Reader supported, fiercely independent. <a href="/standards" style="color: var(--text-muted); text-decoration: underline; margin-left: 8px;">Privacy Policy</a></p>
     <div class="social-links" aria-label="Social Media Connections">
-      <a href="https://www.facebook.com/honestlybiasedOfficial" target="_blank" rel="noopener noreferrer" aria-label="Facebook connection"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg></a>
-      <a href="https://twitter.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Twitter connection"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-      <a href="https://www.youtube.com/@honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="YouTube channel"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+      <a href="https://www.facebook.com/honestlybiasedOfficial" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/></svg></a>
+      <a href="https://twitter.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Twitter"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+      <a href="https://www.youtube.com/@honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
       <a href="https://www.instagram.com/honestlybiased" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2c-3.31 0-6 2.69-6 6v5c0 3.31 2.69 6 6 6s6-2.69 6-6V8c0-3.31-2.69-6-6-6zm4 11c0 2.21-1.79 4-4 4s-4-1.79-4-4V8c0-2.21 1.79-4 4-4s4 1.79 4 4v5zm-4 7c-4.42 0-8-3.58-8-8H2c0 5.14 3.82 9.4 8.88 9.94v2.06h2.24v-2.06c5.06-.54 8.88-4.8 8.88-9.94h-2c0 4.42-3.58 8-8 8z"/></svg></a>
     </div>
   </div>
@@ -853,8 +852,11 @@ const handler = async (req, res) => {
     return res.status(200).json(cachedJson);
   }
 
-  // HTML homepage — serve from cache if valid
-  if (cacheValid) {
+  const queryCat = (req.query?.category || '').toLowerCase().trim();
+  const isDefaultHome = !queryCat || queryCat === 'all';
+
+  // HTML homepage — serve from cache if valid (only for default home view)
+  if (isDefaultHome && cacheValid) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
     res.setHeader('X-Cache', 'HIT');
@@ -862,11 +864,20 @@ const handler = async (req, res) => {
     return res.status(200).send(cachedHtml);
   }
 
-  // Cache miss — fetch fresh data
-  const articles = await fetchLatestArticles(22);
+  // Cache miss or category filtered — fetch fresh data
+  let articles = await fetchLatestArticles(50);
+  if (!isDefaultHome) {
+    const norm = queryCat.replace(/&/g, 'and').replace(/\s+/g, '-');
+    const matched = articles.filter(a => (a.category || '').toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-') === norm);
+    if (matched.length > 0) articles = matched.slice(0, 22);
+  } else {
+    articles = articles.slice(0, 22);
+  }
   const html = proxyImageUrls(await renderHomepageHtml(articles));
-  cachedHtml = html;
-  cacheTime = now;
+  if (isDefaultHome) {
+    cachedHtml = html;
+    cacheTime = now;
+  }
 
   // Cache: 60s fresh (s-maxage=60), 5m stale-while-revalidate (300s)
   res.setHeader('Content-Type', 'text/html; charset=utf-8');

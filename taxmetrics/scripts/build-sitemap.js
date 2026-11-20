@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const baseUrl = 'https://whatitakehome.com';
+const baseUrl = 'https://www.honestlybiased.com/taxmetrics';
 const statesData = JSON.parse(fs.readFileSync(path.join(__dirname, 'states.json'), 'utf8'));
 
 const today = new Date().toISOString().split('T')[0];
@@ -9,7 +9,7 @@ const today = new Date().toISOString().split('T')[0];
 let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${baseUrl}/</loc>
+    <loc>${baseUrl}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -17,7 +17,7 @@ let xml = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 // Legal and informational pages
-const infoPages = ['about.html', 'privacy.html', 'disclaimer.html', 'contact.html'];
+const infoPages = ['about', 'privacy', 'disclaimer', 'contact'];
 infoPages.forEach(page => {
   xml += `  <url>
     <loc>${baseUrl}/${page}</loc>
@@ -32,7 +32,7 @@ infoPages.forEach(page => {
 Object.values(statesData).forEach(s => {
   const slug = s.name.toLowerCase().replace(/\s+/g, '-');
   xml += `  <url>
-    <loc>${baseUrl}/${slug}.html</loc>
+    <loc>${baseUrl}/${slug}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
