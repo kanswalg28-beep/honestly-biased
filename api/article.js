@@ -43,10 +43,21 @@ const ARTICLE_SELECT = 'id, aiheadline, aisummary, fullblog, imageurl, publishda
 // Helpers
 // --------------------------------------------------------------------------
 
+function normalizeCategorySlug(raw) {
+  if (!raw) return 'politics';
+  const s = String(raw).toLowerCase().trim();
+  if (s === 'crime & law' || s === 'crime and law') return 'crime-and-law';
+  if (s === 'world & civic' || s === 'world and civic') return 'world-and-civic';
+  const slug = s.replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || 'politics';
+}
+
 function getArticleUrl(article) {
   if (!article) return '/';
-  const slug = article.slug || shortIdFromUuid(article.id);
-  return `/chronicles/${slug}`;
+  const cat = normalizeCategorySlug(article.category);
+  const rawSlug = article.slug || shortIdFromUuid(article.id);
+  const slug = encodeURIComponent(String(rawSlug).toLowerCase().trim());
+  return `/${cat}/${slug}`;
 }
 
 function escapeHtml(s) {
@@ -218,7 +229,7 @@ function renderArticleHtml(article) {
 
   // Separate image attribution label into figcaption and prevent inline bleed into body
   let cleanBody = body;
-  let visualSource = source;
+  let visualSource = article.originalsource || article.source || 'Editorial Wire';
   const visualMatch = cleanBody.match(/^(?:<p>\s*)?(?:Visual Reference Source|Visual Reference|Image Source):\s*([^<\n]+?)(?:<\/p>|\n|<br\s*\/?>|$)/i);
   if (visualMatch) {
     visualSource = visualMatch[1].trim();
@@ -244,8 +255,10 @@ function renderArticleHtml(article) {
     prettyDate = new Date(datePublished).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   } catch (e) { prettyDate = ''; }
 
-  const slug = article.slug || shortIdFromUuid(article.id);
-  const canonical = `${SITE}/chronicles/${slug}`;
+  const normCat   = normalizeCategorySlug(article.category);
+  const rawSlug   = article.slug || shortIdFromUuid(article.id);
+  const slug      = encodeURIComponent(String(rawSlug).toLowerCase().trim());
+  const canonical = `${SITE}/${normCat}/${slug}`;
   const seoDesc   = truncate(summary, 200);
   const readTime  = calculateReadTime(summary + ' ' + cleanBody);
 
@@ -607,7 +620,7 @@ ${claimOrCritiqueJsonLd ? `<script type="application/ld+json">${claimOrCritiqueJ
 // Handler
 // --------------------------------------------------------------------------
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(200).end();
@@ -659,26 +672,20 @@ module.exports = async (req, res) => {
     );
   }
 
-  // Canonical URL structure: /chronicles/:slug
-  const targetCat = String(article.category || 'politics').toLowerCase().trim();
-  const targetSlug = String(article.slug || shortIdFromUuid(article.id)).toLowerCase().trim();
-  const canonicalPath = `/chronicles/${targetSlug}`;
+  // Canonical URL structure: /:category/:slug
+  const targetNormCat = normalizeCategorySlug(article.category);
+  const targetSlug = encodeURIComponent(String(article.slug || shortIdFromUuid(article.id)).toLowerCase().trim());
+  const canonicalPath = `/${targetNormCat}/${targetSlug}`;
 
-  const reqCat = req.query && req.query.category ? String(req.query.category).toLowerCase().trim() : null;
-  const reqSlug = String(slug).toLowerCase().trim();
+  const reqCat = req.query && req.query.category ? normalizeCategorySlug(req.query.category) : null;
+  const reqSlug = encodeURIComponent(String(slug).toLowerCase().trim());
 
-  // If request arrived with an outdated category parameter that no longer matches article.category,
-  // 301 redirect to canonical /chronicles/:slug (preventing 404s and split SEO authority when reclassified).
-  if (reqCat && reqCat !== targetCat) {
-    res.writeHead(301, {
-      Location: canonicalPath,
-      'Cache-Control': 'public, max-age=86400'
-    });
-    return res.end();
-  }
+  // If request arrived via legacy /chronicles/:slug or /article/:slug or mismatched category, 301 redirect
+  const reqUrl = req.url || '';
+  const matchedPath = (req.headers && req.headers['x-matched-path']) || '';
+  const isLegacyPath = !reqCat || reqUrl.startsWith('/chronicles/') || reqUrl.startsWith('/article/') || matchedPath.startsWith('/chronicles/') || matchedPath.startsWith('/article/');
 
-  // If request arrived via legacy /article/:slug or non-canonical shortId, redirect to /chronicles/:targetSlug
-  if (reqSlug !== targetSlug || (req.url && req.url.startsWith('/article/'))) {
+  if (isLegacyPath || reqCat !== targetNormCat || reqSlug !== targetSlug) {
     res.writeHead(301, {
       Location: canonicalPath,
       'Cache-Control': 'public, max-age=86400'
@@ -697,4 +704,9 @@ module.exports = async (req, res) => {
   }
   return res.status(200).send(renderArticleHtml(article));
 };
+
+module.exports = handler;
+module.exports.normalizeCategorySlug = normalizeCategorySlug;
+module.exports.getArticleUrl = getArticleUrl;
+module.exports.renderArticleHtml = renderArticleHtml;
 

@@ -36,21 +36,29 @@ const STATIC_ROUTES = [
 ];
 
 try {
-  const statesPath = path.join(__dirname, '..', 'taxmetrics', 'scripts', 'states.json');
-  if (fs.existsSync(statesPath)) {
-    const statesData = JSON.parse(fs.readFileSync(statesPath, 'utf8'));
-    Object.values(statesData).forEach(s => {
-      const slug = s.name.toLowerCase().replace(/\s+/g, '-');
-      STATIC_ROUTES.push({ url: `/taxmetrics/${slug}`, changefreq: 'monthly', priority: 0.7 });
-    });
-  }
-} catch (e) {}
+  const statesData = require('../taxmetrics/scripts/states.json');
+  Object.values(statesData).forEach(s => {
+    const slug = s.name.toLowerCase().replace(/\s+/g, '-');
+    STATIC_ROUTES.push({ url: `/taxmetrics/${slug}`, changefreq: 'monthly', priority: 0.7 });
+  });
+} catch (e) {
+  console.warn('Could not bundle taxmetrics states.json in sitemap:', e.message);
+}
 
 let _sitemapCache = { at: 0, xml: null };
 const SITEMAP_CACHE_MS = 45 * 1000;
 
 let _rssCache = { at: 0, xml: null };
 const RSS_CACHE_MS = 60 * 1000;
+
+function normalizeCategorySlug(raw) {
+  if (!raw) return 'politics';
+  const s = String(raw).toLowerCase().trim();
+  if (s === 'crime & law' || s === 'crime and law') return 'crime-and-law';
+  if (s === 'world & civic' || s === 'world and civic') return 'world-and-civic';
+  const slug = s.replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || 'politics';
+}
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -59,8 +67,9 @@ function shortIdFromUuid(uuid) {
 
 function getArticleUrl(article) {
   if (!article) return '/';
-  const cat = String(article.category || 'politics').toLowerCase().trim();
-  const slug = article.slug || shortIdFromUuid(article.id);
+  const cat = normalizeCategorySlug(article.category);
+  const rawSlug = article.slug || shortIdFromUuid(article.id);
+  const slug = encodeURIComponent(String(rawSlug).toLowerCase().trim());
   return `/${cat}/${slug}`;
 }
 
@@ -137,7 +146,9 @@ function buildSitemapXml(articles) {
   for (const route of STATIC_ROUTES) {
     xml += '  <url>\n';
     xml += `    <loc>${BASE_URL}${route.url}</loc>\n`;
-    xml += `    <lastmod>${today}</lastmod>\n`;
+    if (route.lastmod) {
+      xml += `    <lastmod>${route.lastmod}</lastmod>\n`;
+    }
     xml += `    <changefreq>${route.changefreq}</changefreq>\n`;
     xml += `    <priority>${route.priority.toFixed(1)}</priority>\n`;
     xml += '  </url>\n';
@@ -146,8 +157,7 @@ function buildSitemapXml(articles) {
   for (const a of articles) {
     const shortId = shortIdFromUuid(a.id);
     if (!shortId && !a.slug) continue;
-    const slug = a.slug || shortId;
-    const url = `${BASE_URL}/chronicles/${slug}`;
+    const url = `${BASE_URL}${getArticleUrl(a)}`;
     const lastmod = (a.updatedat || a.publishdate || today).toString().split('T')[0];
     xml += '  <url>\n';
     xml += `    <loc>${escapeXml(url)}</loc>\n`;
@@ -212,10 +222,7 @@ function buildRssXml(articles) {
     const url = `${BASE_URL}${getArticleUrl(a)}`;
     const title = a.aiheadline || a.title || 'Untitled';
     const desc = truncate(stripTags(a.aisummary) || stripTags(a.biasaudit) || stripTags(a.fullblog), 500);
-    const content = truncate(
-      (a.biasaudit ? `<p><strong>Bias Audit:</strong> ${stripTags(a.biasaudit)}</p>\n` : '') + (a.fullblog || ''),
-      5000
-    );
+    const content = (a.biasaudit ? `<p><strong>Bias Audit:</strong> ${escapeXml(stripTags(a.biasaudit))}</p>\n` : '') + (a.fullblog || `<p>${escapeXml(desc)}</p>`);
     const author = a.author || SITE_NAME;
     const category = a.category || 'Editorial';
     const pubDate = (() => {
@@ -258,7 +265,7 @@ function buildRssXml(articles) {
   return xml;
 }
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -307,3 +314,13 @@ module.exports = async (req, res) => {
   if (req.method === 'HEAD') return res.status(200).end();
   return res.status(200).send(xml);
 };
+
+module.exports = handler;
+module.exports.normalizeCategorySlug = normalizeCategorySlug;
+module.exports.getArticleUrl = getArticleUrl;
+module.exports.buildSitemapXml = buildSitemapXml;
+module.exports.buildRssXml = buildRssXml;
+module.exports.STATIC_ROUTES = STATIC_ROUTES;
+module.exports.shortIdFromUuid = shortIdFromUuid;
+module.exports.escapeXml = escapeXml;
+module.exports.stripTags = stripTags;

@@ -43,15 +43,23 @@ const STATIC_ROUTES = [
 ];
 
 try {
-  const statesPath = path.join(__dirname, '..', 'taxmetrics', 'scripts', 'states.json');
-  if (fs.existsSync(statesPath)) {
-    const statesData = JSON.parse(fs.readFileSync(statesPath, 'utf8'));
-    Object.values(statesData).forEach(s => {
-      const slug = s.name.toLowerCase().replace(/\s+/g, '-');
-      STATIC_ROUTES.push({ url: `/taxmetrics/${slug}`, changefreq: 'monthly', priority: 0.7 });
-    });
-  }
-} catch (e) {}
+  const statesData = require('../taxmetrics/scripts/states.json');
+  Object.values(statesData).forEach(s => {
+    const slug = s.name.toLowerCase().replace(/\s+/g, '-');
+    STATIC_ROUTES.push({ url: `/taxmetrics/${slug}`, changefreq: 'monthly', priority: 0.7 });
+  });
+} catch (e) {
+  console.warn('Could not bundle taxmetrics states.json in sitemap generator:', e.message);
+}
+
+function normalizeCategorySlug(raw) {
+  if (!raw) return 'politics';
+  const s = String(raw).toLowerCase().trim();
+  if (s === 'crime & law' || s === 'crime and law') return 'crime-and-law';
+  if (s === 'world & civic' || s === 'world and civic') return 'world-and-civic';
+  const slug = s.replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || 'politics';
+}
 
 function shortIdFromUuid(uuid) {
   if (!uuid) return '';
@@ -125,7 +133,9 @@ function buildSitemap(articles) {
   for (const route of STATIC_ROUTES) {
     xml += '  <url>\n';
     xml += `    <loc>${BASE_URL}${route.url}</loc>\n`;
-    xml += `    <lastmod>${today}</lastmod>\n`;
+    if (route.lastmod) {
+      xml += `    <lastmod>${route.lastmod}</lastmod>\n`;
+    }
     xml += `    <changefreq>${route.changefreq}</changefreq>\n`;
     xml += `    <priority>${route.priority.toFixed(1)}</priority>\n`;
     xml += '  </url>\n';
@@ -134,9 +144,10 @@ function buildSitemap(articles) {
   // Article routes with full metadata + NewsArticle schema hook
   for (const a of articles) {
     if (!a.shortId && !a.slug) continue;
-    const cat = String(a.category || 'politics').toLowerCase().trim();
-    const slug = a.slug || a.shortId;
-    const url = `${BASE_URL}/chronicles/${slug}`;
+    const cat = normalizeCategorySlug(a.category);
+    const rawSlug = a.slug || a.shortId;
+    const slug = encodeURIComponent(String(rawSlug).toLowerCase().trim());
+    const url = `${BASE_URL}/${cat}/${slug}`;
     const lastmod = (a.lastmod ? new Date(a.lastmod).toISOString().split('T')[0] : today);
     xml += '  <url>\n';
     xml += `    <loc>${url}</loc>\n`;
