@@ -20,6 +20,16 @@
       "source": "/whatitakehome/:slug*",
       "destination": "/taxmetrics/:slug*",
       "permanent": true
+    },
+    {
+      "source": "/scripts/:path*",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/tests/:path*",
+      "destination": "/",
+      "permanent": false
     }
   ],
   "rewrites": [

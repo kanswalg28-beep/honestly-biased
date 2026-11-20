@@ -13,10 +13,8 @@ node_modules
 /.agents
 skills-lock.json
 
-# Development server & root helper scripts
+# Development server
 /mock-server.js
-/scripts
-/tests
 
 # Runtime & cache JSON data
 /gnews-cache.json
