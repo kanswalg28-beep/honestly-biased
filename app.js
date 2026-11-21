@@ -287,12 +287,23 @@ function classifyClientCategory(rawCategory, headline = '', summary = '') {
     return map[current] || rawCategory || 'Politics';
 }
 
-// Derive canonical article URL (/chronicles/:slug)
+function normalizeCategorySlug(raw) {
+    if (!raw) return 'politics';
+    const s = String(raw).toLowerCase().trim();
+    if (s === 'crime & law' || s === 'crime and law') return 'crime-and-law';
+    if (s === 'world & civic' || s === 'world and civic') return 'world-and-civic';
+    const slug = s.replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return slug || 'politics';
+}
+
+// Derive canonical article URL (/:category/:slug)
 function getArticleUrl(article) {
     if (!article) return '/';
-    if (article.url && article.url.startsWith('/chronicles/')) return article.url;
-    const slug = article.slug || shortIdFromUuid(article.id);
-    return `/chronicles/${slug}`;
+    if (article.url && !article.url.startsWith('/chronicles/')) return article.url;
+    const cat = normalizeCategorySlug(article.category);
+    const rawSlug = article.slug || shortIdFromUuid(article.id);
+    const slug = encodeURIComponent(String(rawSlug).toLowerCase().trim());
+    return `/${cat}/${slug}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -338,6 +349,84 @@ document.addEventListener('DOMContentLoaded', () => {
             detail: { theme: bodyElement.classList.contains('dark-theme') ? 'dark' : 'light' } 
         }));
     });
+
+    // ==========================================================================
+    // 2. MOBILE NAVIGATION DRAWER
+    // ==========================================================================
+    const mobileMenuToggleBtn = document.getElementById('mobile-menu-toggle-btn');
+    const mobileNavDrawer = document.getElementById('mobile-nav-drawer');
+    const mobileNavOverlay = document.getElementById('mobile-nav-overlay');
+    const mobileDrawerCloseBtn = document.getElementById('mobile-drawer-close-btn');
+
+    function openMobileDrawer() {
+        if (!mobileNavDrawer) return;
+        mobileNavDrawer.classList.add('active');
+        mobileNavDrawer.setAttribute('aria-hidden', 'false');
+        if (mobileNavOverlay) {
+            mobileNavOverlay.classList.add('active');
+            mobileNavOverlay.setAttribute('aria-hidden', 'false');
+        }
+        if (mobileMenuToggleBtn) {
+            mobileMenuToggleBtn.setAttribute('aria-expanded', 'true');
+            const openIcon = mobileMenuToggleBtn.querySelector('.menu-icon-open');
+            const closeIcon = mobileMenuToggleBtn.querySelector('.menu-icon-close');
+            if (openIcon) openIcon.style.display = 'none';
+            if (closeIcon) closeIcon.style.display = 'inline-block';
+        }
+        document.body.classList.add('drawer-open');
+    }
+
+    function closeMobileDrawer() {
+        if (!mobileNavDrawer) return;
+        mobileNavDrawer.classList.remove('active');
+        mobileNavDrawer.setAttribute('aria-hidden', 'true');
+        if (mobileNavOverlay) {
+            mobileNavOverlay.classList.remove('active');
+            mobileNavOverlay.setAttribute('aria-hidden', 'true');
+        }
+        if (mobileMenuToggleBtn) {
+            mobileMenuToggleBtn.setAttribute('aria-expanded', 'false');
+            const openIcon = mobileMenuToggleBtn.querySelector('.menu-icon-open');
+            const closeIcon = mobileMenuToggleBtn.querySelector('.menu-icon-close');
+            if (openIcon) openIcon.style.display = 'inline-block';
+            if (closeIcon) closeIcon.style.display = 'none';
+        }
+        document.body.classList.remove('drawer-open');
+    }
+
+    if (mobileMenuToggleBtn) {
+        mobileMenuToggleBtn.addEventListener('click', () => {
+            const isOpen = mobileNavDrawer && mobileNavDrawer.classList.contains('active');
+            if (isOpen) {
+                closeMobileDrawer();
+            } else {
+                openMobileDrawer();
+            }
+        });
+    }
+
+    if (mobileDrawerCloseBtn) {
+        mobileDrawerCloseBtn.addEventListener('click', closeMobileDrawer);
+    }
+
+    if (mobileNavOverlay) {
+        mobileNavOverlay.addEventListener('click', closeMobileDrawer);
+    }
+
+    // Close mobile drawer when pressing Escape or clicking a link inside it
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && mobileNavDrawer && mobileNavDrawer.classList.contains('active')) {
+            closeMobileDrawer();
+        }
+    });
+
+    if (mobileNavDrawer) {
+        mobileNavDrawer.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                closeMobileDrawer();
+            });
+        });
+    }
 
     let isHeaderClick = false;
     let currentRegion = 'indian'; // Enforce Indian Edition as the default
@@ -749,22 +838,20 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("📡 Fetching site_content blocks first, then live feed...");
 
         // ------------------------------------------------------------
-        // 1. Wait for PerspectiveLens to be ready, then hydrate site content
+        // 1. Wait for PerspectiveLens to be ready (if canvas exists), then hydrate site content
         // ------------------------------------------------------------
-        let lensReady = false;
-        const maxWait = 5000;
-        const startTime = Date.now();
-        
-        while (!lensReady && (Date.now() - startTime) < maxWait) {
-            if (window.PerspectiveLens && window.PerspectiveLens.material) {
-                lensReady = true;
-                break;
+        if (document.getElementById('lens-canvas-container')) {
+            let lensReady = false;
+            const maxWait = 1500;
+            const startTime = Date.now();
+            
+            while (!lensReady && (Date.now() - startTime) < maxWait) {
+                if (window.PerspectiveLens && window.PerspectiveLens.material) {
+                    lensReady = true;
+                    break;
+                }
+                await new Promise(r => setTimeout(r, 100));
             }
-            await new Promise(r => setTimeout(r, 100));
-        }
-        
-        if (!lensReady) {
-            console.warn('PerspectiveLens not ready after timeout, proceeding anyway');
         }
         
         try { await hydrateSiteContent(); }
@@ -956,10 +1043,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.add('modal-open');
         }
 
-        // Push URL to browser history (/chronicles/:slug)
+        // Push URL to browser history
         const slug = article.slug || shortIdFromUuid(article.id);
+        const articleUrl = getArticleUrl(article);
         if (window.history && window.history.pushState) {
-            window.history.pushState({ modalOpen: true, articleId: article.id, slug }, '', `/chronicles/${slug}`);
+            window.history.pushState({ modalOpen: true, articleId: article.id, slug, url: articleUrl }, '', articleUrl);
         }
 
         // Re-compile Lucide icons inside the modal
@@ -974,8 +1062,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('modal-open');
         }
         
-        // Restore browser URL if on /chronicles/
-        if (window.history && window.location.pathname.startsWith('/chronicles/')) {
+        // Restore browser URL if opened via modal
+        if (window.history && window.history.state && window.history.state.modalOpen) {
+            window.history.back();
+        } else if (window.history && (window.location.pathname.startsWith('/chronicles/') || window.location.pathname.startsWith('/article/'))) {
             window.history.pushState(null, '', '/');
         }
 
@@ -1124,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const category = classifyClientCategory(article.category, headline, summary);
 
                         const slug = article.slug || shortIdFromUuid(article.id);
-                        const articleUrl = `/chronicles/${slug}`;
+                        const articleUrl = getArticleUrl(article);
                         const fullArticleUrl = `${window.location.origin}${articleUrl}`;
                         const cardLink = `<a href="${articleUrl}" class="stretched-link audit-trigger" data-id="${escapeHtml(article.id)}" data-slug="${escapeHtml(slug)}">${escapeHtml(headline)}</a>`;
 
@@ -1567,8 +1657,10 @@ document.addEventListener('DOMContentLoaded', () => {
             currentCategory = routeParams.category;
         }
 
-        // If SSR content exists and it's initial load, skip re-render — just update active tab styles
-        if (isInitialLoad && hasSSRContent) {
+        // If SSR content exists and it's initial load on homepage, skip re-render — just update active tab styles
+        const isFilteredView = (routeParams && routeParams.category !== 'all') || (routeParams && routeParams.region !== 'indian' && routeParams.region !== 'all');
+        const hasStaticLoadingCard = document.getElementById('dynamic-bento-grid')?.querySelector('.glass-element i[data-lucide="loader"]');
+        if (isInitialLoad && hasSSRContent && !isFilteredView && !hasStaticLoadingCard) {
             console.log('📋 SSR content preserved on initial load');
             // Update tab button active states without re-rendering cards
             try {
@@ -1738,13 +1830,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const scrollLeft = catContainer.scrollLeft;
                 const leftOffset = btnRect.left - containerRect.left + scrollLeft;
+                const scrollTop = catContainer.scrollTop;
+                const topOffset = btnRect.top - containerRect.top + scrollTop;
                 
                 catPill.style.width = `${btnRect.width}px`;
                 catPill.style.left = `${leftOffset}px`;
-                
-                // Clear inline vertical styles to allow CSS stylesheet to apply (top/height)
-                catPill.style.height = '';
-                catPill.style.top = '';
+                catPill.style.height = `${btnRect.height}px`;
+                catPill.style.top = `${topOffset}px`;
             }
             
             const currentCat = activeCatBtn.getAttribute('data-category').toLowerCase().trim();

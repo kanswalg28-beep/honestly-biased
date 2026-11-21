@@ -178,37 +178,58 @@ async function resolveArticleBySlug(slug) {
     }
   }
 
-  // 3. Fallback: shortId suffix (last 8 hex of uuid). Paginate through ALL
-  //    non-archived articles (newest first) until matched — no arbitrary cap,
-  //    so every published article resolves regardless of catalog size.
-  //    EGRESS: scan only tiny (id, publishdate) rows; fetch the full row just
-  //    for the single match. Avoids pulling every article's fullblog just to
-  //    do an 8-char suffix match.
-  const PAGE = 1000;
-  let from = 0;
-  while (true) {
-    const { data: list, error } = await supabase
+  // 3. Fallback: shortId suffix (last 8 hex of uuid). If slug is 8 hex chars,
+  //    paginate through non-archived articles (newest first) up to 3 pages
+  //    (3,000 articles) to avoid function execution timeouts on Vercel Hobby.
+  if (/^[a-f0-9]{8}$/i.test(slug)) {
+    const PAGE = 1000;
+    const MAX_PAGES = 3;
+    let from = 0;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const { data: list, error } = await supabase
+        .from('articles')
+        .select('id, publishdate')
+        .eq('archived', false)
+        .order('publishdate', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error || !list || list.length === 0) break;
+      const match = list.find(a => shortIdFromUuid(a.id) === slug.toLowerCase());
+      if (match) {
+        const { data: full } = await supabase
+          .from('articles')
+          .select(ARTICLE_SELECT)
+          .eq('id', match.id)
+          .eq('archived', false)
+          .maybeSingle();
+        const article = full || match;
+        articleCache.set(cacheKey, { article, time: Date.now() });
+        return article;
+      }
+      if (list.length < PAGE) break;
+      from += PAGE;
+    }
+  }
+
+  // 4. Fallback: Match recent articles by slugify(aiheadline) if slug is a headline slug
+  try {
+    const { data: recent } = await supabase
       .from('articles')
-      .select('id, publishdate')
+      .select(ARTICLE_SELECT)
       .eq('archived', false)
       .order('publishdate', { ascending: false })
-      .range(from, from + PAGE - 1);
-    if (error || !list || list.length === 0) return null;
-    const match = list.find(a => shortIdFromUuid(a.id) === slug.toLowerCase());
-    if (match) {
-      const { data: full } = await supabase
-        .from('articles')
-        .select(ARTICLE_SELECT)
-        .eq('id', match.id)
-        .eq('archived', false)
-        .maybeSingle();
-      const article = full || match;
-      articleCache.set(cacheKey, { article, time: Date.now() });
-      return article;
+      .limit(100);
+    if (recent && recent.length > 0) {
+      const match = recent.find(a => slugify(a.aiheadline) === slug.toLowerCase());
+      if (match) {
+        articleCache.set(cacheKey, { article: match, time: Date.now() });
+        return match;
+      }
     }
-    if (list.length < PAGE) return null; // last page, no match
-    from += PAGE;
+  } catch (e) {
+    // ignore
   }
+
+  return null;
 }
 
 // --------------------------------------------------------------------------
@@ -686,6 +707,10 @@ const handler = async (req, res) => {
   const isLegacyPath = !reqCat || reqUrl.startsWith('/chronicles/') || reqUrl.startsWith('/article/') || matchedPath.startsWith('/chronicles/') || matchedPath.startsWith('/article/');
 
   if (isLegacyPath || reqCat !== targetNormCat || reqSlug !== targetSlug) {
+    if (typeof res.redirect === 'function') {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.redirect(301, canonicalPath);
+    }
     res.writeHead(301, {
       Location: canonicalPath,
       'Cache-Control': 'public, max-age=86400'
@@ -702,7 +727,13 @@ const handler = async (req, res) => {
   if (req.method === 'HEAD') {
     return res.status(200).end();
   }
-  return res.status(200).send(renderArticleHtml(article));
+  try {
+    const html = renderArticleHtml(article);
+    return res.status(200).send(html);
+  } catch (renderErr) {
+    console.error('renderArticleHtml error:', renderErr);
+    return res.status(500).send('Error rendering article');
+  }
 };
 
 module.exports = handler;

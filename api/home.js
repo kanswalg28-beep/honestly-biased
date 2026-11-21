@@ -53,10 +53,21 @@ function shortIdFromUuid(uuid) {
   return String(uuid).replace(/-/g, '').slice(-8);
 }
 
+function normalizeCategorySlug(raw) {
+  if (!raw) return 'politics';
+  const s = String(raw).toLowerCase().trim();
+  if (s === 'crime & law' || s === 'crime and law') return 'crime-and-law';
+  if (s === 'world & civic' || s === 'world and civic') return 'world-and-civic';
+  const slug = s.replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || 'politics';
+}
+
 function getArticleUrl(article) {
   if (!article) return '/';
-  const slug = article.slug || shortIdFromUuid(article.id);
-  return `/chronicles/${slug}`;
+  const cat = normalizeCategorySlug(article.category);
+  const rawSlug = article.slug || shortIdFromUuid(article.id);
+  const slug = encodeURIComponent(String(rawSlug).toLowerCase().trim());
+  return `/${cat}/${slug}`;
 }
 
 function escapeHtml(s) {
@@ -169,8 +180,9 @@ function buildBentoCard(article, index) {
   const biasAudit = cleanEditorialText(rawBias);
   const category = classifyCategory(article.category, headline, summary, article.fullblog);
 
-  const slug = article.slug || shortIdFromUuid(article.id);
-  const articleUrl = `/chronicles/${slug}`;
+  const rawSlug = article.slug || shortIdFromUuid(article.id);
+  const slug = encodeURIComponent(String(rawSlug).toLowerCase().trim());
+  const articleUrl = getArticleUrl(article);
   const fullArticleUrl = `${SITE}${articleUrl}`;
   const cardLink = `<a href="${escapeAttr(articleUrl)}" class="stretched-link audit-trigger" data-id="${escapeAttr(article.id)}" data-slug="${escapeAttr(slug)}">${escapeHtml(headline)}</a>`;
   const badgeHtml = authorBadgeHtml(article.authortype);
@@ -443,9 +455,44 @@ async function renderHomepageHtml(articles) {
           <span class="theme-toggle-thumb"><i data-lucide="moon" class="icon-dark"></i><i data-lucide="sun" class="icon-light"></i></span>
         </span>
       </button>
+      <button class="mobile-menu-toggle icon-btn" id="mobile-menu-toggle-btn" aria-label="Open mobile navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+        <i data-lucide="menu" class="menu-icon-open"></i>
+        <i data-lucide="x" class="menu-icon-close" style="display:none;"></i>
+      </button>
     </div>
   </div>
 </header>
+
+<!-- MOBILE NAVIGATION DRAWER & BACKDROP -->
+<div class="mobile-nav-overlay" id="mobile-nav-overlay" aria-hidden="true"></div>
+<aside class="mobile-nav-drawer glass-element" id="mobile-nav-drawer" aria-label="Mobile Navigation" aria-hidden="true">
+  <div class="mobile-drawer-header">
+    <a href="/" class="mobile-drawer-logo">
+      <img src="/assets/logo.png" alt="Honestly Biased Logo" class="logo-png" style="height: 32px; border-radius: 4px;">
+    </a>
+    <button class="icon-btn close-drawer-btn" id="mobile-drawer-close-btn" aria-label="Close navigation menu">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+  <div class="mobile-drawer-links">
+    <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.08em; padding: 0 16px;">Chronicle Desks</span>
+    <a href="/category/all" class="mobile-drawer-link"><i data-lucide="layout-grid"></i><span>All Chronicles</span></a>
+    <a href="/category/politics" class="mobile-drawer-link"><i data-lucide="landmark"></i><span>Politics</span></a>
+    <a href="/category/tech" class="mobile-drawer-link"><i data-lucide="cpu"></i><span>Tech</span></a>
+    <a href="/category/finance" class="mobile-drawer-link"><i data-lucide="circle-dollar-sign"></i><span>Finance</span></a>
+    <a href="/category/crime-and-law" class="mobile-drawer-link"><i data-lucide="scale"></i><span>Crime & Law</span></a>
+    <a href="/category/world-and-civic" class="mobile-drawer-link"><i data-lucide="globe"></i><span>World & Civic</span></a>
+    <a href="/category/health" class="mobile-drawer-link"><i data-lucide="heart-pulse"></i><span>Health</span></a>
+    <a href="/category/sports" class="mobile-drawer-link"><i data-lucide="trophy"></i><span>Sports</span></a>
+    <a href="/category/entertainment" class="mobile-drawer-link"><i data-lucide="clapperboard"></i><span>Entertainment</span></a>
+    <div style="height: 1px; background: var(--border-color); margin: 8px 16px;"></div>
+    <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.08em; padding: 0 16px;">Tools & Standards</span>
+    <a href="/taxmetrics" class="mobile-drawer-link"><i data-lucide="calculator"></i><span>TaxMetrics</span></a>
+    <a href="/manifesto" class="mobile-drawer-link"><i data-lucide="scroll"></i><span>Our Manifesto</span></a>
+    <a href="/standards" class="mobile-drawer-link"><i data-lucide="shield-check"></i><span>Editorial Standards</span></a>
+    <a href="/funding" class="mobile-drawer-link"><i data-lucide="badge-dollar-sign"></i><span>Funding Audit</span></a>
+  </div>
+</aside>
 
 <main id="main-content">
   <!-- Dynamic Premium Region Selector Bar -->

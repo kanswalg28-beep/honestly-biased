@@ -97,6 +97,10 @@ body.light-theme {
     --accent-white-mix: rgba(18, 22, 32, 0.92);
     
     /* Semantic color aliases for light mode */
+    --accent-gold: #92400e;
+    --accent-gold-rgb: 146, 64, 14;
+    --accent-saffron: #92400e;
+    --accent-saffron-rgb: 146, 64, 14;
     --instagram-pink: #C1214D;
     --neon-cyan: #0284C7;
     --success-green: #059669;
@@ -143,6 +147,10 @@ body {
     overflow-x: hidden;
     transition: background-color var(--transition-slow), color var(--transition-slow);
     line-height: 1.6;
+}
+
+main header h1 {
+    color: var(--text-primary) !important;
 }
 
 /* Selection aesthetics */
@@ -882,25 +890,71 @@ button, input, textarea {
 /* Mobile Toggle Hamburger button */
 .mobile-menu-toggle {
     display: none; /* Hidden by default on desktop */
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-sm);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-/* Mobile Nav Drawer overlay panel */
+.mobile-menu-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-color-hover);
+}
+
+.mobile-menu-toggle i {
+    width: 20px;
+    height: 20px;
+}
+
+/* Mobile Nav Drawer overlay panel & backdrop */
+.mobile-nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-medium);
+}
+
+.mobile-nav-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .mobile-nav-drawer {
     position: fixed;
     top: 0;
     right: 0;
     width: 320px;
+    max-width: 85vw;
     height: 100vh;
+    height: 100dvh;
     z-index: 2000;
     transform: translateX(100%);
     transition: transform var(--transition-slow);
     display: flex;
     flex-direction: column;
     padding: 24px;
+    background: var(--bg-primary);
     border-left: 1px solid var(--border-color);
     box-shadow: var(--glass-shadow);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
+.mobile-nav-drawer.active,
 .mobile-nav-drawer[aria-hidden="false"] {
     transform: translateX(0);
 }
@@ -1664,9 +1718,9 @@ body.light-theme .active-indicator-pill {
     }
     
     .category-tabs-container .active-indicator-pill {
-        top: 8px;
-        height: calc(100% - 16px);
-        width: auto; /* Handled dynamically by JS */
+        /* Positioned and sized dynamically by JS to prevent multi-row stretching */
+        border-radius: 9999px;
+        width: auto;
     }
 }
 
