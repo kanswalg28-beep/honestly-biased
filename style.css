@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,SOFT,WONK,wght@0,9..144,0..100,0..1,400..800;1,9..144,0..100,0..1,400..600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ==========================================================================
    HONESTLY BIASED DESIGN SYSTEM & STYLE SHEET (EDITORIAL JOURNAL OVERHAUL)
@@ -110,6 +110,19 @@ body.light-theme {
     --region-tabs-bg: rgba(239, 236, 227, 0.95);
     --category-tabs-bg: rgba(239, 236, 227, 0.95);
     --border-glass: rgba(18, 22, 32, 0.08);
+}
+
+body.light-theme .bento-card:hover {
+    box-shadow: 0 14px 28px -6px rgba(18, 22, 32, 0.12), 0 0 0 1px rgba(146, 64, 14, 0.25);
+    border-color: transparent;
+}
+
+body.light-theme .bento-card::after {
+    background: radial-gradient(
+        420px circle at 15% 0%,
+        rgba(254, 243, 199, 0.45),
+        transparent 65%
+    );
 }
 
 /* ==========================================================================
@@ -283,6 +296,9 @@ h4 { font-size: clamp(1.1rem, 1.5vw, 1.25rem); }
     font-weight: 800;
     line-height: 1.05;
     letter-spacing: -0.03em;
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 72, "SOFT" 45, "WONK" 1;
+    text-wrap: balance;
 }
 
 .hero-summary {
@@ -1424,6 +1440,45 @@ body.light-theme .icon-dark { opacity: 0; transform: rotate(90deg); }
     color: var(--accent-saffron);
 }
 
+/* Tactile Button Press Compression */
+.btn,
+.icon-btn,
+.region-tab-btn,
+.category-tab-btn,
+.mobile-menu-toggle,
+.close-drawer-btn,
+.share-receipt-btn,
+.inspect-audit-btn {
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn:active,
+.icon-btn:active,
+.region-tab-btn:active,
+.category-tab-btn:active,
+.mobile-menu-toggle:active,
+.close-drawer-btn:active,
+.share-receipt-btn:active,
+.inspect-audit-btn:active {
+    transform: scale(0.96) !important;
+    transition-duration: 75ms !important;
+}
+
+/* Prevent anchor jumps from hiding beneath sticky glass header */
+[id] {
+    scroll-margin-top: 92px;
+}
+
+/* Global Reduced-Motion Accessibility Baseline */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 /* ==========================================================================
    BENTO GRID LAYOUT
    ========================================================================== */
@@ -1656,7 +1711,7 @@ body.light-theme .category-tab-btn.active {
     opacity: 1;
 }
 
-/* Sliding Active Indicator Pill */
+/* Sliding Active Indicator Pill with Tactile Spring Physics */
 .active-indicator-pill {
     position: absolute;
     border-radius: 9999px;
@@ -1665,7 +1720,13 @@ body.light-theme .category-tab-btn.active {
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
     pointer-events: none;
     z-index: 1;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition:
+        transform 340ms cubic-bezier(0.34, 1.24, 0.64, 1),
+        width 300ms cubic-bezier(0.34, 1.24, 0.64, 1),
+        height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        top 340ms cubic-bezier(0.34, 1.24, 0.64, 1),
+        left 300ms cubic-bezier(0.34, 1.24, 0.64, 1),
+        opacity 160ms ease;
 }
 
 .region-tabs-container .active-indicator-pill {
@@ -1761,8 +1822,53 @@ body.light-theme .active-indicator-pill {
     display: flex;
     flex-direction: column;
     position: relative;
+    isolation: isolate;
     border: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    box-shadow: var(--glass-shadow);
     min-height: 420px;
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1), border-color 220ms ease;
+}
+
+/* Subtle top-left gradient hairline glow revealed on hover */
+.bento-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+        135deg,
+        rgba(var(--accent-saffron-rgb), 0.55) 0%,
+        rgba(var(--accent-navy-rgb), 0.35) 42%,
+        transparent 78%
+    );
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+    transition: opacity 260ms ease;
+}
+
+/* Soft radial sheen inside top corner on hover */
+.bento-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+        420px circle at 15% 0%,
+        rgba(var(--accent-saffron-rgb), 0.08),
+        transparent 65%
+    );
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 300ms ease;
 }
 
 /* Card Sizes (12-column Desktop Spans) */
@@ -1790,10 +1896,17 @@ body.light-theme .active-indicator-pill {
     min-height: 420px;
 }
 
-/* Dynamic transform transitions */
-.bento-card:hover {
-    border-color: var(--border-color-hover);
-    transform: translateY(-4px);
+/* Dynamic transform transitions with layered optical depth */
+@media (hover: hover) {
+    .bento-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(var(--accent-saffron-rgb), 0.2);
+        border-color: transparent;
+    }
+    .bento-card:hover::before,
+    .bento-card:hover::after {
+        opacity: 1;
+    }
 }
 
 /* Stretched link support for dynamic accessibility */
@@ -1888,22 +2001,40 @@ body.light-theme .active-indicator-pill {
 }
 
 .card-title {
-    font-size: 1.35rem;
+    font-size: 1.3125rem;
     margin-bottom: 12px;
-    line-height: 1.25;
-    letter-spacing: -0.5px;
+    line-height: 1.24;
+    letter-spacing: -0.016em;
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 24, "SOFT" 15, "WONK" 0;
+    text-wrap: balance;
 }
 
+.bento-span-2x1 .card-title,
 .bento-span-2x2 .card-title {
-    font-size: 1.65rem;
+    font-size: clamp(1.5rem, 2.2vw, 1.85rem);
+    line-height: 1.15;
+    letter-spacing: -0.024em;
+    font-variation-settings: "opsz" 48, "SOFT" 35, "WONK" 1;
+    text-wrap: balance;
 }
 
+/* Sweeping Editorial Underline on Hover */
 .card-title a {
     color: var(--text-primary);
+    text-decoration: none;
+    background-image: linear-gradient(var(--accent-saffron), var(--accent-saffron));
+    background-position: 0% 96%;
+    background-repeat: no-repeat;
+    background-size: 0% 2px;
+    transition: background-size 280ms cubic-bezier(0.22, 1, 0.36, 1), color var(--transition-fast);
 }
 
-.card-title a:hover {
-    color: var(--accent-saffron);
+.bento-card:hover .card-title a,
+.card-title a:hover,
+.card-title a:focus-visible {
+    background-size: 100% 2px;
+    color: var(--text-primary);
 }
 
 .card-summary {
@@ -3693,17 +3824,30 @@ body.light-theme .header-highlights .ticker-track {
 
 /* Journal Drop Caps & Editorial Pull Quotes */
 .article-content > p:first-of-type::first-letter,
+.article-detail-card .blog-post-content > p:first-of-type::first-letter,
 .drop-cap {
-    float: left;
-    font-family: var(--font-display), 'Syne', serif;
-    font-size: 3.8rem;
-    line-height: 0.85;
-    padding-top: 4px;
-    padding-right: 12px;
-    padding-bottom: 2px;
-    color: var(--accent-gold, #ff9933);
-    font-weight: 800;
-    text-shadow: 0 0 20px rgba(255, 153, 51, 0.3);
+    font-family: var(--font-editorial);
+    font-weight: 700;
+    font-variation-settings: "opsz" 96, "SOFT" 50, "WONK" 1;
+    color: var(--accent-saffron);
+    initial-letter: 3 2;
+    margin-inline-end: 0.65rem;
+}
+
+@supports not (initial-letter: 3) {
+    .article-content > p:first-of-type::first-letter,
+    .article-detail-card .blog-post-content > p:first-of-type::first-letter,
+    .drop-cap {
+        float: left;
+        font-family: var(--font-display), serif;
+        font-size: 3.8rem;
+        line-height: 0.85;
+        padding-top: 4px;
+        padding-right: 12px;
+        padding-bottom: 2px;
+        color: var(--accent-saffron);
+        font-weight: 800;
+    }
 }
 
 .editorial-quote,

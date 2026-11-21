@@ -812,6 +812,22 @@ document.addEventListener("DOMContentLoaded", () => {
       els.legFed.textContent = `${formatCurrency(res.federalTax / d, isHourly)}${hourlySuffix} (${fedPct.toFixed(fedDigits)}%)`;
       els.legState.textContent = `${formatCurrency((res.stateTax + res.localTax) / d, isHourly)}${hourlySuffix} (${statePct.toFixed(stateDigits)}%)`;
       els.legFica.textContent = `${formatCurrency(res.totalFica / d, isHourly)}${hourlySuffix} (${ficaPct.toFixed(ficaDigits)}%)`;
+
+      // Instant 100%-Stacked Allocation Bar
+      const segTakehome = document.getElementById('seg-takehome');
+      const segFederal = document.getElementById('seg-federal');
+      const segState = document.getElementById('seg-state');
+      const segFica = document.getElementById('seg-fica');
+      if (segTakehome) segTakehome.style.flexBasis = `${netPct}%`;
+      if (segFederal) segFederal.style.flexBasis = `${fedPct}%`;
+      if (segState) segState.style.flexBasis = `${statePct}%`;
+      if (segFica) segFica.style.flexBasis = `${ficaPct}%`;
+    }
+
+    if (els.takeHome) {
+      els.takeHome.classList.remove('is-updating');
+      void els.takeHome.offsetWidth;
+      els.takeHome.classList.add('is-updating');
     }
 
     buildLadder(res.federalBrackets, res.bracketBreakdown, res.taxableFederalIncome);

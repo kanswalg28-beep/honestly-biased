@@ -676,6 +676,51 @@ input[type="range"]::-moz-range-thumb {
 .breakdown-table .sub-row td { font-size: 0.82rem; color: var(--color-text-muted); }
 .breakdown-table td.amount { text-align: right; font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
 
+/* Sticky First Column on Mobile */
+.breakdown-table th:first-child,
+.breakdown-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: var(--color-canvas);
+}
+.breakdown-table tr:hover th:first-child,
+.breakdown-table tr:hover td:first-child {
+  background-color: var(--color-canvas);
+}
+
+/* Instant 100%-Stacked Allocation Bar */
+.tm-allocation-bar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  gap: 2px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.tm-allocation-bar__seg {
+  height: 100%;
+  transition: flex-basis 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tm-allocation-bar__seg--takehome { background-color: var(--color-semantic-positive); }
+.tm-allocation-bar__seg--federal  { background-color: var(--color-semantic-deduction); }
+.tm-allocation-bar__seg--state    { background-color: var(--color-semantic-state); }
+.tm-allocation-bar__seg--fica     { background-color: var(--color-semantic-fica); }
+
+/* Recalculation Pulse Animation */
+@keyframes tmValueTick {
+  0%   { opacity: 0.72; transform: translateY(1px); }
+  100% { opacity: 1;    transform: translateY(0); }
+}
+
+.result-value.is-updating {
+  animation: tmValueTick 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .indicator { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; }
 .ind-fed { background: var(--color-semantic-deduction); }
 .ind-state { background: var(--color-semantic-state); }
